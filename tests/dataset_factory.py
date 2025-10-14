@@ -1,5 +1,6 @@
 import argparse
 import random
+import os
 from random_shapes import Circle, Point, Quadrilateral, RandomShape
 
 MONTREAL_QUAD = Quadrilateral(
@@ -39,6 +40,7 @@ def save_to_tsv(list_lines: list[str], filename: str):
     Save generated desire lines to a TSV file.
     """
     header = "name\tweight\tcoordinates\n"
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     with open(filename, "w") as f:
         f.write(header)
@@ -51,9 +53,12 @@ def save_to_traclus(list_lines: list[str], filename: str):
     """
     Save generated desire lines to a Traclus format file.
     """
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
     with open(filename, "w") as f:
         for i, weight, start_point, end_point in list_lines:
-             f.write(f"{weight}\t{start_point.x}\t{start_point.y}\t{end_point.x}\t{end_point.y}\n")
+             f.write(f"{i}\t{weight}\t{start_point.x}\t{start_point.y}\t{end_point.x}\t{end_point.y}\n")
+
 
 def main():
     random.seed(42)  # fixed seed for reproducibility
@@ -64,7 +69,7 @@ def main():
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Small_radius_to_Small_radius: 500 lines
+    # Small_radius_to_Small_radius: 250 lines
     filename = "data/small_radius_to_small_radius_DL"
     list_of_lines = generate_desire_line(250, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
