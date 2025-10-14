@@ -1,2 +1,4 @@
-# traclus_optimization
-Optimisation d'un algorithme d'agrégation spatiale (TRACLUS) de déplacements 
+# traclus\_optimization
+
+Optimisation d'un algorithme d'agrégation spatiale de déplacements (TRACLUS\_DL)
+
