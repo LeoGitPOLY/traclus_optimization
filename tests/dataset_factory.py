@@ -9,8 +9,8 @@ MONTREAL_QUAD = Quadrilateral(
      Point(303942,5053921), 
      Point(297464,5035132)])
 
-SMALL_RADIUS_1 = Circle(Point(293680,5040290), 30)
-SMALL_RADIUS_2 = Circle(Point(299157,5049817), 30)
+SMALL_RADIUS_1 = Circle(Point(293680,5040290), 100)
+SMALL_RADIUS_2 = Circle(Point(299157,5049817), 100)
 
 RIVE_SUD_POS = Circle(Point(305156,5042535), 30)
 LAVAL_POS = Circle(Point(287256,5045801), 30)
@@ -64,19 +64,19 @@ def main():
     random.seed(42)  # fixed seed for reproducibility
 
     # Montreal_to_Montreal: 500 lines
-    filename = "data/montreal_to_montreal_DL"
+    filename = "tests/data/montreal_to_montreal_DL"
     list_of_lines = generate_desire_line(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Small_radius_to_Small_radius: 250 lines
-    filename = "data/small_radius_to_small_radius_DL"
-    list_of_lines = generate_desire_line(250, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
+    # Small_radius_to_Small_radius: 100 lines
+    filename = "tests/data/small_radius_to_small_radius_DL"
+    list_of_lines = generate_desire_line(100, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Up_the_bridges: 500 lines
-    filename = "data/up_the_bridges_DL"
+    filename = "tests/data/up_the_bridges_DL"
     list_of_lines = generate_desire_line(500, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
