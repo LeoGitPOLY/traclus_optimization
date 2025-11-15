@@ -1,4 +1,4 @@
-import argparse
+from pathlib import Path
 import random
 import os
 from random_shapes import Circle, Point, Quadrilateral, RandomShape
@@ -63,21 +63,27 @@ def save_to_traclus(list_lines: list[str], filename: str):
 def main():
     random.seed(42)  # fixed seed for reproducibility
 
+    # Base path: always points to the root of your project
+    ROOT_DIR = Path(__file__).resolve().parent.parent
+    DATA_DIR = ROOT_DIR / "inputs" / "data"
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
     # Montreal_to_Montreal: 500 lines
-    filename = "tests/data/montreal_to_montreal_DL"
-    list_of_lines = generate_desire_line(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
+    filename = DATA_DIR / "montreal_to_montreal_DL"
+    list_of_lines = generate_desire_line(10, [MONTREAL_QUAD], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Small_radius_to_Small_radius: 100 lines
-    filename = "tests/data/small_radius_to_small_radius_DL"
-    list_of_lines = generate_desire_line(100, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
+    filename = DATA_DIR / "small_radius_to_small_radius_DL"
+    list_of_lines = generate_desire_line(5, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Up_the_bridges: 500 lines
-    filename = "tests/data/up_the_bridges_DL"
-    list_of_lines = generate_desire_line(500, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
+    filename = DATA_DIR / "up_the_bridges_DL"
+    list_of_lines = generate_desire_line(10, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
