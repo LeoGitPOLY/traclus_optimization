@@ -91,7 +91,8 @@ def run_python_impl_once(args: ArgumentsTraclus):
 
     subprocess.run(cmd, capture_output=True, text=True)
 
-    # Extract output file
+    # TODO: pass this step to retrieve the correct output file 
+    # to a function after the running phase
     folder_path = os.path.join(PYTHON_IMPL_DIR, args.data_path)
     output_files = glob.glob(os.path.join(folder_path, "*"))
 
@@ -103,7 +104,6 @@ def run_python_impl_once(args: ArgumentsTraclus):
     if corridor_file and os.path.exists(corridor_file):
         with open(corridor_file, "r") as f:
             content = f.read()
-        os.remove(corridor_file)
         return content
 
     return ""
