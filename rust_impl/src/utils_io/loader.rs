@@ -1,6 +1,6 @@
 use crate::spatial::geometry::Point;
 use crate::spatial::input_od_line::InputODLine;
-use crate::spatial::raw_trajectory_store::RawTrajectoryStore;
+use crate::spatial::raw_trajectory_store::RawTrajStore;
 use crate::spatial::trajectory::Trajectory;
 use crate::utils_io::traclus_args::TraclusArgs;
 
@@ -49,9 +49,9 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
     })
 }
 
-pub fn parse_input_data(args: &TraclusArgs) -> RawTrajectoryStore {
+pub fn parse_input_data(args: &TraclusArgs) -> RawTrajStore {
     let content: String = read_file(&args.infile).expect("Failed to read input file");
-    let mut trajectory_storage: RawTrajectoryStore = RawTrajectoryStore::new(args.max_angle);
+    let mut trajectory_storage: RawTrajStore = RawTrajStore::new(args.max_angle);
 
     for (index, line) in content.lines().enumerate() {
         let od_line: InputODLine = parse_line_to_od(line, index).unwrap_or_else(|err| {
@@ -59,7 +59,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> RawTrajectoryStore {
             std::process::exit(1);
         });
 
-        let trajectory: Trajectory = Trajectory::new(od_line);
+        let trajectory: Trajectory = Trajectory::new(od_line, args.segment_size);
         trajectory_storage.add_trajectory(trajectory);
     }
 

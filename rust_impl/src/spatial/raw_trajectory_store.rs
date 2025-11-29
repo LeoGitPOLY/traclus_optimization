@@ -11,12 +11,12 @@ pub struct Bucket {
     pub angle_end: f64,   // (exclusive)
     pub trajectories: Vec<Trajectory>,
 }
-pub struct RawTrajectoryStore {
+pub struct RawTrajStore {
     pub bucket_size: f64,
     pub traj_buckets: Vec<Bucket>, // index-based buckets
 }
 
-impl RawTrajectoryStore {
+impl RawTrajStore {
     pub fn new(bucket_size: f64) -> Self {
         let buckets: Vec<Bucket> = Self::create_buckets(bucket_size);
 
@@ -97,6 +97,7 @@ impl RawTrajectoryStore {
             .into_iter()
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
+
 
     pub fn print_summary(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {

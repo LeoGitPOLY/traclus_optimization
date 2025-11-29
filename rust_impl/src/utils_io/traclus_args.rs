@@ -24,9 +24,9 @@ pub struct TraclusArgs {
     #[arg(
         short = 'n',
         long = "min_density",
-        default_value_t = 2,
+        default_value_t = 3,
         value_parser = |v: &str| {
-            let val: u32 = v.parse().map_err(|_| String::from("must be a number"))?;
+            let val: usize = v.parse().map_err(|_| String::from("must be a number"))?;
             if val < 1 {
                 Err(String::from("min_density must be >= 1"))
             } else {
@@ -34,7 +34,7 @@ pub struct TraclusArgs {
             }
         }
     )]
-    pub min_density: u32, // RANGE VALUE IS [1; INFINITY[
+    pub min_density: usize, // RANGE VALUE IS [1; INFINITY[
 
     #[arg(
         short = 'a',
