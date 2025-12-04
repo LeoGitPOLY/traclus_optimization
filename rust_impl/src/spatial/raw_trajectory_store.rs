@@ -98,7 +98,6 @@ impl RawTrajStore {
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
 
-
     pub fn print_summary(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {
             // if bucket.trajectories.len() == 0 {

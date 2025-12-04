@@ -115,6 +115,10 @@ impl Trajectory {
         self.segments.iter()
     }
 
+    pub fn segment(&self, index: usize) -> Option<&Segment> {
+        self.segments.get(index)
+    }
+
     pub fn to_str(&self) -> String {
         format!(
             "Trajectory ID: {}, Start: ({}, {}), End: ({}, {}), Weight: {}, Angle: {}",
