@@ -1,22 +1,27 @@
+// TODO: différence entre total_weight et min_density ?
+// Je crois: que total_weight est le poids pour order, min_density est le nombre minimal de segments
+
 mod cluster;
 mod spatial;
 mod utils_io;
 
-use crate::cluster::cluster::Cluster;
 use crate::cluster::clustered_trajectory_store::ClusteredTrajStore;
-use crate::spatial::raw_trajectory_store::Bucket;
+use crate::spatial::geometry::Corridor;
 use crate::spatial::raw_trajectory_store::RawTrajStore;
 use crate::spatial::trajectory::Trajectory;
 
-use crate::utils_io::loader::parse_input_data;
+use crate::utils_io::loader::{parse_input_data, parse_output_data};
 use crate::utils_io::traclus_args::TraclusArgs;
 
 use clap::Parser;
 use std::io;
 
-fn create_corridors(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredTrajStore) {
-    while let Some(complet_clust) = clust_storage.pop_complete_cluster() {
-        complet_clust.print_info();
+fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
+    while let Some(complet_clust) = clust_storage.pop_completed_cluster() {
+        let index_corridor: usize = clust_storage.corridors.len();
+        clust_storage
+            .corridors
+            .push(Corridor::new(&complet_clust, index_corridor));
     }
 }
 
@@ -28,12 +33,7 @@ fn create_corridors(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredTra
 /// 2. Attempts to form initial clusters from seed segments
 /// 3. Expands valid clusters by finding nearby dense regions
 /// 4. Returns a collection of all discovered clusters
-fn db_scan_segment_clustering(
-    raw_storage: &RawTrajStore,
-    args: &TraclusArgs,
-) -> ClusteredTrajStore {
-    let mut clust_storage: ClusteredTrajStore = ClusteredTrajStore::new(args);
-
+fn db_scan_segment_clustering(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredTrajStore) {
     // Process each angle bucket and its trajectories
     for bucket in &raw_storage.traj_buckets {
         // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
@@ -42,21 +42,19 @@ fn db_scan_segment_clustering(
 
         // Process each trajectory and its segments within this bucket
         for traj_seed in &bucket.trajectories {
-            process_trajectory_segments(traj_seed, &nearby_trajs, &mut clust_storage);
+            cluster_trajectory_segments(traj_seed, &nearby_trajs, clust_storage);
         }
     }
-
-    clust_storage
 }
 
-/// Processes all segments in a trajectory, attempting to form and expand clusters.
+/// Clusters all segments in a trajectory attempting to form and expand clusters.
 ///
 /// For each segment:
 /// - Attempts to create an initial cluster if density requirements are met
 /// - Expands the cluster to include all reachable segments
 /// - Stores the completed cluster
 #[inline]
-fn process_trajectory_segments(
+fn cluster_trajectory_segments(
     traj_seed: &Trajectory,
     nearby_trajs: &Vec<&Trajectory>,
     clust_storage: &mut ClusteredTrajStore,
@@ -77,9 +75,11 @@ fn process_trajectory_segments(
 fn main() -> io::Result<()> {
     let args: TraclusArgs = TraclusArgs::parse();
     let raw_storage: RawTrajStore = parse_input_data(&args);
+    let mut clust_storage: ClusteredTrajStore = ClusteredTrajStore::new(&args);
 
-    let mut clust_storage: ClusteredTrajStore = db_scan_segment_clustering(&raw_storage, &args);
-    create_corridors(&raw_storage, &mut clust_storage);
-
+    db_scan_segment_clustering(&raw_storage, &mut clust_storage);
+    create_corridors(&mut clust_storage);
+    parse_output_data(&args, &clust_storage);
+  
     Ok(())
 }

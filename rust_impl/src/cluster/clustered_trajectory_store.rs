@@ -1,13 +1,14 @@
 use crate::cluster::cluster::Cluster;
 use crate::cluster::cluster_member::{ClusterMember, ClusterSeed};
 use crate::cluster::priority_queue::PriorityQueueCluster;
-use crate::spatial::geometry::{Point, Segment};
+use crate::spatial::geometry::{Corridor, Point, Segment};
 use crate::spatial::trajectory::Trajectory;
 use crate::utils_io::traclus_args::TraclusArgs;
 
 pub struct ClusteredTrajStore {
     args: TraclusArgs,
     pub clusters: PriorityQueueCluster,
+    pub corridors: Vec<Corridor>,
 }
 
 impl ClusteredTrajStore {
@@ -15,6 +16,7 @@ impl ClusteredTrajStore {
         Self {
             args: args.clone(),
             clusters: PriorityQueueCluster::new(),
+            corridors: Vec::new(),
         }
     }
 
@@ -42,17 +44,20 @@ impl ClusteredTrajStore {
             }
 
             // DISTANCE CONSTRAINT
-            let (dist, segment_id) = nearby_traj.distance_to_point(&seed_ref.cm.center_point);
+            let (dist, segment_id) = nearby_traj.distance_to_point(&seed_ref.cm.center);
             if dist > self.args.max_dist {
                 continue;
             }
 
-            let center_segment: Point = nearby_traj.segment(segment_id).unwrap().middle.clone();
+            let segment: &Segment = nearby_traj.segment(segment_id).unwrap();
+            let center_segment: Point = segment.middle.clone();
+            let start_segment: Point = segment.start.clone();
             let candidate: ClusterMember = ClusterMember::new(
                 nearby_traj.id,
                 segment_id,
                 nearby_traj.weight,
                 center_segment,
+                start_segment,
             );
             cluster.total_weight += candidate.weight;
             cluster.candidates.push(candidate);
@@ -78,16 +83,9 @@ impl ClusteredTrajStore {
             let mut new_clusters: Vec<Cluster> = Vec::new();
 
             // utiliser chaque membre du cluster comme un nouveau seed pour trouver des nouveaux segments atteignables
-            for members in &cluster.members {
-                let seed_member: ClusterSeed = ClusterSeed::new(
-                    ClusterMember::new(
-                        members.traj_id,
-                        members.segment_id,
-                        members.weight,
-                        members.center_point.clone(),
-                    ),
-                    cluster.seed.angle,
-                );
+            for member in &cluster.members {
+                let seed_member: ClusterSeed =
+                    ClusterSeed::new(ClusterMember::new_from_member(member), cluster.seed.angle);
                 if let Some(new_cluster) = self.cluster_reachable_segs(seed_member, nearby_trajs) {
                     new_clusters.push(new_cluster);
                 } else {
@@ -111,14 +109,12 @@ impl ClusteredTrajStore {
         seed: (&Segment, &Trajectory),
         nearby_trajs: &Vec<&Trajectory>,
     ) -> Option<Cluster> {
-        let seed_member: ClusterSeed = ClusterSeed::new(
-            ClusterMember::new(seed.1.id, seed.0.id, seed.1.weight, seed.0.middle.clone()),
-            seed.1.angle,
-        );
+        let member: ClusterMember = ClusterMember::new_from_traj(seed.1, seed.0);
+        let seed_member: ClusterSeed = ClusterSeed::new(member, seed.1.angle);
         self.cluster_reachable_segs(seed_member, nearby_trajs)
     }
 
-    pub fn pop_complete_cluster(&mut self) -> Option<Box<Cluster>> {
+    pub fn pop_completed_cluster(&mut self) -> Option<Box<Cluster>> {
         self.clusters.pop_and_clean(self.args.min_density)
     }
 }

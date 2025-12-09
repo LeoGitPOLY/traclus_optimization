@@ -13,7 +13,7 @@ pub struct Bucket {
 }
 pub struct RawTrajStore {
     pub bucket_size: f64,
-    pub traj_buckets: Vec<Bucket>, // index-based buckets
+    pub traj_buckets: Vec<Bucket>,
 }
 
 impl RawTrajStore {

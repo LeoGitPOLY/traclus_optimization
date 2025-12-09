@@ -1,5 +1,5 @@
 // TODO: ADD SOME OF SQUARE AS THE TIE BREAKER WHEN WEIGHT ARE THE SAME
-use std::{collections::HashSet, mem};
+use std::collections::HashSet;
 
 use crate::cluster::cluster::Cluster;
 
@@ -60,20 +60,8 @@ impl PriorityQueueCluster {
         let mut remove_indexes: Vec<usize> = Vec::new();
 
         for (index, cluster) in self.elements.iter_mut().enumerate() {
-            if used.contains(&(cluster.seed.cm.traj_id, cluster.seed.cm.segment_id)) {
+            if Self::clean_individual_cluster(cluster, used, threshold) {
                 remove_indexes.push(index);
-                continue;
-            }
-
-            for member in &cluster.members {
-                if used.contains(&(member.traj_id, member.segment_id)) {
-                    cluster.total_weight -= member.weight;
-                }
-            }
-
-            if cluster.total_weight < threshold {
-                remove_indexes.push(index);
-                continue;
             }
         }
 
@@ -81,5 +69,35 @@ impl PriorityQueueCluster {
         for &index in remove_indexes.iter().rev() {
             self.elements.remove(index);
         }
+    }
+
+    #[inline]
+    fn clean_individual_cluster(
+        cluster: &mut Cluster,
+        used: &HashSet<(usize, usize)>,
+        threshold: u32,
+    ) -> bool {
+        if used.contains(&(cluster.seed.cm.traj_id, cluster.seed.cm.segment_id)) {
+            return true;
+        }
+
+        let mut remove_indexes: Vec<usize> = Vec::new();
+
+        for member in &cluster.members {
+            if used.contains(&(member.traj_id, member.segment_id)) {
+                cluster.total_weight -= member.weight;
+                remove_indexes.push(member.segment_id);
+            }
+
+            if cluster.total_weight < threshold {
+                return true;
+            }
+        }
+
+        // Remove clusters in reverse order to avoid index shifting
+        for &index in remove_indexes.iter().rev() {
+            cluster.members.remove(index);
+        }
+        return false;
     }
 }
