@@ -48,23 +48,6 @@ impl Cluster {
         }
         false
     }
-
-    pub fn contains_segment(&self, traj_id: usize, segment_id: usize) -> bool {
-        for member in &self.members {
-            if member.traj_id == traj_id && member.segment_id == segment_id {
-                return true;
-            }
-        }
-        for candidate in &self.candidates {
-            if candidate.traj_id == traj_id && candidate.segment_id == segment_id {
-                return true;
-            }
-        }
-        if self.seed.cm.traj_id == traj_id && self.seed.cm.segment_id == segment_id {
-            return true;
-        }
-        false
-    }
     
     pub fn print_info(&self) {
         println!(

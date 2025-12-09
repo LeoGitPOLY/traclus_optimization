@@ -1,17 +1,21 @@
+use crate::cluster::cluster::Cluster;
+use crate::cluster::cluster_member::{ClusterMember, ClusterSeed};
+use crate::cluster::priority_queue::PriorityQueueCluster;
 use crate::spatial::geometry::{Point, Segment};
 use crate::spatial::trajectory::Trajectory;
 use crate::utils_io::traclus_args::TraclusArgs;
-use crate::cluster::cluster_member::{ClusterMember, ClusterSeed};
-use crate::cluster::cluster::Cluster;
 
 pub struct ClusteredTrajStore {
     args: TraclusArgs,
-    // clusters: Vec<Box<Cluster>>,
+    pub clusters: PriorityQueueCluster,
 }
 
 impl ClusteredTrajStore {
     pub fn new(args: &TraclusArgs) -> Self {
-        Self { args: args.clone() }
+        Self {
+            args: args.clone(),
+            clusters: PriorityQueueCluster::new(),
+        }
     }
 
     /* Méthode pour agréger un cluster autour d'un segment seed
@@ -112,5 +116,9 @@ impl ClusteredTrajStore {
             seed.1.angle,
         );
         self.cluster_reachable_segs(seed_member, nearby_trajs)
+    }
+
+    pub fn pop_complete_cluster(&mut self) -> Option<Box<Cluster>> {
+        self.clusters.pop_and_clean(self.args.min_density)
     }
 }
