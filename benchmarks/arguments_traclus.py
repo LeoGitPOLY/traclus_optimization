@@ -29,7 +29,12 @@ class ArgumentsTraclus:
 
         min_len = min(len(k) for k in (self._max_dist, self._min_density, self._max_angle, self._seg_size))
         self.max_index_args = min_len
-        
+
+    def reset_arguments(self):
+        self.index_args = 0
+        self.index_path = 0
+        self.load_arguments()
+         
     def iter_arguments(self) -> bool:     
         self.index_args += 1
 

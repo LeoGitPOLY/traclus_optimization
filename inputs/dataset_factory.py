@@ -9,13 +9,13 @@ MONTREAL_QUAD = Quadrilateral(
      Point(303942,5053921), 
      Point(297464,5035132)])
 
-SMALL_RADIUS_1 = Circle(Point(293680,5040290), 100)
-SMALL_RADIUS_2 = Circle(Point(299157,5049817), 100)
+SMALL_RADIUS_1 = Circle(Point(293680,5040290), 500)
+SMALL_RADIUS_2 = Circle(Point(299157,5049817), 500)
 
 RIVE_SUD_POS = Circle(Point(305156,5042535), 30)
 LAVAL_POS = Circle(Point(287256,5045801), 30)
 
-def generate_desire_line(lines: int, start_shapes: list[RandomShape], end_shapes: list[RandomShape]) -> list[list]:
+def generate_desire_line_shape(lines: int, start_shapes: list[RandomShape], end_shapes: list[RandomShape]) -> list[list]:
     """
     Generate desire lines with a random weight and coordinates inside a shape
     """
@@ -33,6 +33,9 @@ def generate_desire_line(lines: int, start_shapes: list[RandomShape], end_shapes
         list_of_lines.append([i, weight, start_point, end_point])
     
     return list_of_lines
+
+def generate_desire_line_in_circle(lines: int, center: Point, radius: float, angle_interval: float) -> list[list]:
+    pass
 
 
 def save_to_tsv(list_lines: list[str], filename: str):
@@ -63,29 +66,31 @@ def save_to_traclus(list_lines: list[str], filename: str):
 def main():
     random.seed(42)  # fixed seed for reproducibility
 
-    # Base path: always points to the root of your project
+    # Base path: always points to the root of the project
     ROOT_DIR = Path(__file__).resolve().parent.parent
     DATA_DIR = ROOT_DIR / "inputs" / "data"
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     # Montreal_to_Montreal: 500 lines
-    filename = DATA_DIR / "montreal_to_montreal_DL"
-    list_of_lines = generate_desire_line(10, [MONTREAL_QUAD], [MONTREAL_QUAD])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # filename = DATA_DIR / "montreal_to_montreal_DL"
+    # list_of_lines = generate_desire_line(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Small_radius_to_Small_radius: 100 lines
-    filename = DATA_DIR / "small_radius_to_small_radius_DL"
-    list_of_lines = generate_desire_line(5, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # Small_radius_to_Small_radius: 150 lines
+    # filename = DATA_DIR / "small_radius_to_small_radius_DL"
+    # list_of_lines = generate_desire_line(150, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Up_the_bridges: 500 lines
-    filename = DATA_DIR / "up_the_bridges_DL"
-    list_of_lines = generate_desire_line(10, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # filename = DATA_DIR / "up_the_bridges_DL"
+    # list_of_lines = generate_desire_line(500, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+
+
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,7 @@ pub struct Cluster {
     pub total_weight: u32,
     pub candidates: Vec<ClusterMember>,
     pub members: Vec<ClusterMember>,
+    pub sum_distance: f64,
 }
 
 impl Cluster {
@@ -15,11 +16,13 @@ impl Cluster {
             total_weight: weight,
             candidates,
             members: Vec::new(),
+            sum_distance: 0.0,
         }
     }
 
     pub fn move_candidates_to_members(&mut self) {
         while let Some(candidate) = self.candidates.pop() {
+            self.sum_distance += self.distance_to_members(&candidate);
             self.members.push(candidate);
         }
     }
@@ -48,7 +51,17 @@ impl Cluster {
         }
         false
     }
-    
+
+    fn distance_to_members(&self, new_member: &ClusterMember) -> f64 {
+        let mut total_dist: f64 = 0.0;
+        for member in &self.members {
+            let dx: f64 = member.start.x - new_member.start.x;
+            let dy: f64 = member.start.y - new_member.start.y;
+            total_dist += (dx * dx + dy * dy).sqrt();
+        }
+        total_dist
+    }
+
     pub fn print_info(&self) {
         println!(
             "Cluster Seed ID: ({}, {}), Total Weight: {}, Num members {}, Num Candidates: {}",

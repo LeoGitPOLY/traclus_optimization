@@ -98,6 +98,11 @@ impl RawTrajStore {
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
 
+    // pub fn get_traj_by_id(&self, traj_id: usize) -> Option<&Trajectory> {
+    //     // Find the trajectory bucket id
+    //     let
+    // }
+
     pub fn print_summary(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {
             // if bucket.trajectories.len() == 0 {

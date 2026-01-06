@@ -1,7 +1,7 @@
-// TODO: ADD SOME OF SQUARE AS THE TIE BREAKER WHEN WEIGHT ARE THE SAME
-use std::collections::HashSet;
-
+// TODO: the sum of distances could be calculated only when needed, to optimize performance
+// Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
 use crate::cluster::cluster::Cluster;
+use std::collections::HashSet;
 
 pub struct PriorityQueueCluster {
     pub elements: Vec<Box<Cluster>>,
@@ -21,9 +21,14 @@ impl PriorityQueueCluster {
         self.elements.push(Box::new(cluster));
     }
 
-    pub fn sort_by_weight(&mut self) {
-        self.elements
-            .sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| b.total_weight.cmp(&a.total_weight));
+    pub fn sort_by_weight_and_distance(&mut self) {
+        self.elements.sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| {
+            b.total_weight.cmp(&a.total_weight).then_with(|| {
+                a.sum_distance
+                    .partial_cmp(&b.sum_distance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        });
         self.is_sorted = true;
     }
 
@@ -32,14 +37,14 @@ impl PriorityQueueCluster {
             return None;
         }
         if !self.is_sorted {
-            self.sort_by_weight();
+            self.sort_by_weight_and_distance();
         }
 
         let first: Box<Cluster> = self.elements.remove(0); // TODO: optimize later with something not O(n)
         let used_ids: HashSet<(usize, usize)> = Self::collect_used_traj_ids(&first);
 
         self.clean_remaining_clusters(&used_ids, threshold);
-        self.sort_by_weight();
+        self.sort_by_weight_and_distance();
 
         Some(first)
     }
@@ -83,10 +88,10 @@ impl PriorityQueueCluster {
 
         let mut remove_indexes: Vec<usize> = Vec::new();
 
-        for member in &cluster.members {
+        for (member_index, member) in cluster.members.iter().enumerate() {
             if used.contains(&(member.traj_id, member.segment_id)) {
                 cluster.total_weight -= member.weight;
-                remove_indexes.push(member.segment_id);
+                remove_indexes.push(member_index);
             }
 
             if cluster.total_weight < threshold {

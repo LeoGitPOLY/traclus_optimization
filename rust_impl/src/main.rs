@@ -1,6 +1,3 @@
-// TODO: différence entre total_weight et min_density ?
-// Je crois: que total_weight est le poids pour order, min_density est le nombre minimal de segments
-
 mod cluster;
 mod spatial;
 mod utils_io;
@@ -25,6 +22,7 @@ fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
     }
 }
 
+
 // TODO: optimize with maybe the reference of the nearby_trajectories vector instead of the iterator.collect()
 /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
 ///
@@ -32,7 +30,7 @@ fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
 /// 1. Iterates through all trajectory segments in angle-ordered buckets
 /// 2. Attempts to form initial clusters from seed segments
 /// 3. Expands valid clusters by finding nearby dense regions
-/// 4. Returns a collection of all discovered clusters
+/// 4. Set a collection of all discovered clusters inside the clustered trajectory storage
 fn db_scan_segment_clustering(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredTrajStore) {
     // Process each angle bucket and its trajectories
     for bucket in &raw_storage.traj_buckets {
@@ -40,7 +38,6 @@ fn db_scan_segment_clustering(raw_storage: &RawTrajStore, clust_storage: &mut Cl
         let nearby_trajs: Vec<&Trajectory> =
             raw_storage.iter_nearby_angle(bucket.angle_start).collect();
 
-        // Process each trajectory and its segments within this bucket
         for traj_seed in &bucket.trajectories {
             cluster_trajectory_segments(traj_seed, &nearby_trajs, clust_storage);
         }

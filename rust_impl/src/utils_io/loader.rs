@@ -82,12 +82,12 @@ pub fn parse_input_data(args: &TraclusArgs) -> RawTrajStore {
 ///
 /// Panics if file writing fails, as this indicates a critical I/O error.
 pub fn parse_output_data(args: &TraclusArgs, clust_storage: &ClusteredTrajStore) {
-    let output_filename = build_output_filename(args);
+    let output_filename: String = build_output_filename(args);
 
     // Create file with buffered writer for better performance
-    let file = File::create(&output_filename).expect("Failed to create output file");
+    let file: File = File::create(&output_filename).expect("Failed to create output file");
 
-    let mut writer = BufWriter::new(file);
+    let mut writer: BufWriter<File> = BufWriter::new(file);
 
     // Write header
     writeln!(writer, "name\tweight\tcoordinates").expect("Failed to write header");
@@ -107,15 +107,22 @@ pub fn parse_output_data(args: &TraclusArgs, clust_storage: &ClusteredTrajStore)
 ///
 /// Format: {basename}.{max_dist}.{min_density}.{max_angle}.{segment_size}.corridorlist
 fn build_output_filename(args: &TraclusArgs) -> String {
-    let input_path = Path::new(&args.infile);
-    let basename = input_path
+    let input_path: &Path = Path::new(&args.infile);
+    let basename: &str = input_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("output");
 
+    let parent_dir: &Path = input_path.parent().unwrap_or_else(|| Path::new("."));
+
     format!(
-        "{}.{}.{}.{}.{}.corridorlist",
-        basename, args.max_dist, args.min_density, args.max_angle, args.segment_size
+        "{}/{}.{}.{}.{}.{}.corridorlist.txt",
+        parent_dir.display(),
+        basename,
+        args.max_dist,
+        args.min_density,
+        args.max_angle,
+        args.segment_size
     )
 }
 

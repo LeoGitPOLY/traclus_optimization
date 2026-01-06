@@ -101,7 +101,7 @@ impl ClusteredTrajStore {
         cluster
     }
 
-    /* Méthode initier le clustering à partir d'un segment seed
+    /* Méthode pour initier le clustering à partir d'un segment seed
     Time complexity: O(cluster_reachable_segs) = O(n x d / bucket_size)
     */
     pub fn initial_segment_cluster(
