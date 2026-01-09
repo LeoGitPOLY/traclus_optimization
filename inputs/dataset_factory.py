@@ -2,6 +2,7 @@ from pathlib import Path
 import random
 import os
 from random_shapes import Circle, Point, Quadrilateral, RandomShape
+from math import cos, sin, radians
 
 MONTREAL_QUAD = Quadrilateral(
     [Point(287175,5039383), 
@@ -34,8 +35,33 @@ def generate_desire_line_shape(lines: int, start_shapes: list[RandomShape], end_
     
     return list_of_lines
 
-def generate_desire_line_in_circle(lines: int, center: Point, radius: float, angle_interval: float) -> list[list]:
-    pass
+def generate_desire_line_in_circle(angle_interval: float, center: Point, radius: float) -> list[list]:
+    """
+    Generate desire lines starting from the center and ending on a circle.
+    angle_interval is the spacing between lines in DEGREES.
+    """
+    list_of_lines = []
+
+    if angle_interval <= 0:
+        return list_of_lines
+
+    num_lines = int(360 / angle_interval)
+
+    for i in range(num_lines):
+        angle_deg = i * angle_interval
+        angle_rad = radians(angle_deg)
+
+        start_point = center
+        end_point = Point(
+            center.x + radius * cos(angle_rad),
+            center.y + radius * sin(angle_rad)
+        )
+
+        weight = random.randint(1000, 2000)
+
+        list_of_lines.append([i, weight, start_point, end_point])
+
+    return list_of_lines
 
 
 def save_to_tsv(list_lines: list[str], filename: str):
@@ -90,6 +116,11 @@ def main():
     # save_to_tsv(list_of_lines, f"{filename}.tsv")
     # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
+    # Circle_around: lines every 5 degrees
+    filename = DATA_DIR / "circle_around_DL"
+    list_of_lines = generate_desire_line_in_circle(10, SMALL_RADIUS_1.center, 1000)
+    save_to_tsv(list_of_lines, f"{filename}.tsv")
+    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
 
 if __name__ == "__main__":

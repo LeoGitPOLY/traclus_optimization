@@ -1,7 +1,7 @@
 // TODO: the sum of distances could be calculated only when needed, to optimize performance
 // Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
 use crate::cluster::cluster::Cluster;
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 pub struct PriorityQueueCluster {
     pub elements: Vec<Box<Cluster>>,
@@ -21,14 +21,19 @@ impl PriorityQueueCluster {
         self.elements.push(Box::new(cluster));
     }
 
-    pub fn sort_by_weight_and_distance(&mut self) {
-        self.elements.sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| {
-            b.total_weight.cmp(&a.total_weight).then_with(|| {
+    fn compare_clusters(a: &Cluster, b: &Cluster) -> Ordering {
+        b.total_weight
+            .cmp(&a.total_weight) // descending weight
+            .then_with(|| {
                 a.sum_distance
-                    .partial_cmp(&b.sum_distance)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .partial_cmp(&b.sum_distance) // ascending distance
+                    .unwrap_or(Ordering::Equal)
             })
-        });
+    }
+
+    fn sort_by_weight_and_distance(&mut self) {
+        self.elements
+            .sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| Self::compare_clusters(a, b));
         self.is_sorted = true;
     }
 

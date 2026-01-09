@@ -27,8 +27,19 @@ class ArgumentsTraclus:
         self._max_angle =    self.__valid_value('max_angle')
         self._seg_size =     self.__valid_value('seg_size')
 
-        min_len = min(len(k) for k in (self._max_dist, self._min_density, self._max_angle, self._seg_size))
-        self.max_index_args = min_len
+        self.max_index_args = max(
+            len(self._max_dist),
+            len(self._min_density),
+            len(self._max_angle),
+            len(self._seg_size),
+        )
+
+        # 2) Extend all lists to that length
+        self._max_dist = self._extend_to_length(self._max_dist, self.max_index_args)
+        self._min_density = self._extend_to_length(self._min_density, self.max_index_args)
+        self._max_angle = self._extend_to_length(self._max_angle, self.max_index_args)
+        self._seg_size = self._extend_to_length(self._seg_size, self.max_index_args)
+
 
     def reset_arguments(self):
         self.index_args = 0
@@ -86,3 +97,9 @@ class ArgumentsTraclus:
 
         if valid_value: return self.values[key]
         else: return DEFAULT_VALUES[key]
+
+    def _extend_to_length(self, values: list, target_len: int) -> list:
+        if len(values) >= target_len:
+            return values
+        return values + [values[-1]] * (target_len - len(values))
+
