@@ -22,6 +22,8 @@ PYTHON_SCRIPT   = os.path.join(PYTHON_IMPL_DIR, "Traclus_DL.py")
 RUST_EXECUTABLE = os.path.join(RUST_IMPL_DIR, "target", "release", "rust_impl")
 
 BENCH_SRC = os.path.join(INPUTS_DIR, "benchmarked_data")
+DATA_SRC = os.path.join(INPUTS_DIR, "data")
+
 PYTHON_BENCH_DST = os.path.join(PYTHON_IMPL_DIR, "benchmarked_data")
 RUST_BENCH_DST = os.path.join(RUST_IMPL_DIR, "benchmarked_data")
 
@@ -148,29 +150,39 @@ def visual_testing(traclus_args: ArgumentsTraclus):
         print(f"Error: Required folder to run the visual testing'{RESULTS_QGIS_DIR}' does not exist.")
         sys.exit(1)
     
-    remove_data_folder(PYTHON_BENCH_DST)
-    remove_data_folder(RUST_BENCH_DST)
+    while True:
+        remove_data_folder(PYTHON_BENCH_DST)
+        remove_data_folder(RUST_BENCH_DST)
 
-    # Copy only the one file at the time (for python and rust)
-    create_empty_folder(PYTHON_BENCH_DST)
-    copy_file(BENCH_SRC, PYTHON_BENCH_DST, traclus_args.get_name())
-    create_empty_folder(RUST_BENCH_DST)
-    copy_file(BENCH_SRC, RUST_BENCH_DST, traclus_args.get_name())
+        # Copy only the one file at the time (for python and rust)
+        create_empty_folder(PYTHON_BENCH_DST)
+        copy_file(BENCH_SRC, PYTHON_BENCH_DST, traclus_args.get_name())
+        create_empty_folder(RUST_BENCH_DST)
+        copy_file(BENCH_SRC, RUST_BENCH_DST, traclus_args.get_name())
 
-    run_timed_once("python", traclus_args)
-    run_timed_once("rust", traclus_args)
+        run_timed_once("python", traclus_args)
+        run_timed_once("rust", traclus_args)
 
-    names_py  = get_list_of_files_name(PYTHON_BENCH_DST)
-    names_rust = get_list_of_files_name(RUST_BENCH_DST)
+        names_py  = get_list_of_files_name(PYTHON_BENCH_DST)
+        names_rust = get_list_of_files_name(RUST_BENCH_DST)
+        name_data = traclus_args.get_name().replace("_traclus", "").replace(".txt", ".tsv")
 
-    name_py_corridor = next((name for name in names_py if "corridor" in name), None)
-    name_py_segments = next((name for name in names_py if "segment" in name), None)
-    name_rust_corridor = next((name for name in names_rust if "corridor" in name), None)
+        name_py_corridor = next((name for name in names_py if "corridor" in name), None)
+        name_py_segments = next((name for name in names_py if "segment" in name), None)
+        name_rust_corridor = next((name for name in names_rust if "corridor" in name), None)
 
-    create_file(BENCH_SRC, RESULTS_QGIS_DIR, traclus_args.get_name(), "DL_INPUT.txt")
-    create_file(PYTHON_BENCH_DST, RESULTS_QGIS_DIR, name_py_corridor, "CORRIDOR_PY.txt")
-    create_file(PYTHON_BENCH_DST, RESULTS_QGIS_DIR, name_py_segments, "SEG_PY.txt")
-    create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, name_rust_corridor, "CORRIDOR_RUST.txt")
+        create_file(DATA_SRC, RESULTS_QGIS_DIR, name_data, "DL_INPUT.txt")
+        create_file(PYTHON_BENCH_DST, RESULTS_QGIS_DIR, name_py_corridor, "CORRIDOR_PY.txt")
+        create_file(PYTHON_BENCH_DST, RESULTS_QGIS_DIR, name_py_segments, "SEG_PY.txt")
+        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, name_rust_corridor, "CORRIDOR_RUST.txt")
+
+        print(f"\n=== Visual results for argument set {traclus_args.get_args()} ===")
+        user_input = input("Press Enter to continue to the next argument set (or 's' to stop)...")
+        
+        if user_input.lower() == 's':
+            break
+        if traclus_args.iter_arguments() is False:
+            break
 
 
 def time_testing(traclus_args: ArgumentsTraclus):
@@ -238,7 +250,7 @@ if __name__ == "__main__":
         'min_density':  [8],
         'max_angle':    [10],
         'seg_size':     [1000],
-        'path':   ["up_the_bridges_DL_traclus.txt"],
+        'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt"],
     }
 
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
