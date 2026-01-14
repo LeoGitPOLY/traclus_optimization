@@ -1,3 +1,5 @@
+use std::f32::consts::E;
+
 use crate::cluster::cluster::Cluster;
 use crate::cluster::cluster_member::{ClusterMember, ClusterSeed};
 use crate::cluster::priority_queue::PriorityQueueCluster;
@@ -41,13 +43,13 @@ impl ClusteredTrajStore {
             // ANGLE CONSTRAINT
             let angle_diff: f64 = (seed_ref.angle - nearby_traj.angle).abs();
             let min_angle_diff: f64 = angle_diff.min(360.0 - angle_diff);
-            if (self.args.max_angle - min_angle_diff + 1e-9) < 0.0 {
+            if min_angle_diff > self.args.max_angle + 1e-9 {
                 continue;
             }
 
             // DISTANCE CONSTRAINT
             let (dist, segment_id) = nearby_traj.distance_to_point(&seed_ref.cm.center);
-            if (self.args.max_dist - dist + 1e-9) < 0.0 {
+            if dist > self.args.max_dist + 1e-9 {
                 continue;
             }
 
