@@ -89,7 +89,7 @@ impl Trajectory {
 
         let length: f64 = self.get_spatial_length();
 
-        let nsegs: usize = ((length / segment_length) + 1e-9).ceil() as usize;
+        let nsegs: usize = ((length / segment_length) - 1e-9).floor() as usize;
         let base_x: f64 = self.start.x;
         let base_y: f64 = self.start.y;
 
