@@ -39,7 +39,9 @@ impl ClusteredTrajStore {
             }
 
             // ANGLE CONSTRAINT
-            if (seed_ref.angle - nearby_traj.angle).abs() > self.args.max_angle {
+            let angle_diff: f64 = (seed_ref.angle - nearby_traj.angle).abs();
+            let min_angle_diff: f64 = angle_diff.min(360.0 - angle_diff);
+            if min_angle_diff > self.args.max_angle {
                 continue;
             }
 

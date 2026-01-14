@@ -206,7 +206,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Specifics from traclus_optimization code
-tests/data/
+# Specifics for traclus_optimization code
+results_qgis/
 python_impl/benchmarked_data/
+python_impl/data/
 rust_impl/benchmarked_data/
+rust_impl/data/

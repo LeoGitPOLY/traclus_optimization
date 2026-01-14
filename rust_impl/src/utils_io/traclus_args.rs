@@ -42,7 +42,7 @@ pub struct TraclusArgs {
         default_value_t = 5.0,
         value_parser = |v: &str| {
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val < 0.0 || val > 220.5 {
+            if val < 0.0 || val > 220.5 { // TODO: Set correct max angle
                 Err(String::from("max_angle must be in range 0.0..22.5"))
             } else {
                 Ok(val)

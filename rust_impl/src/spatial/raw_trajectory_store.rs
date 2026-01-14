@@ -84,13 +84,17 @@ impl RawTrajStore {
         indices.push(idx); // current bucket
         indices.push(wrap(idx as isize + 1)); // bucket +1 (wrap-around)
 
-        // --- Special +2 rule (wrap-around) ---
+        // --- Special +/-2 rule (wrap-around) if last bucket is smaller than bucket size ---
         let is_before_last: bool = idx == last - 1;
+        let is_first: bool = idx == 0;
         let last_bucket: &Bucket = &self.traj_buckets[last];
         let last_bucket_size: f64 = last_bucket.angle_end - last_bucket.angle_start;
 
         if is_before_last && last_bucket_size < self.bucket_size {
             indices.push(wrap(idx as isize + 2));
+        }
+        if is_first && last_bucket_size < self.bucket_size {
+            indices.push(wrap(idx as isize - 2));
         }
 
         indices

@@ -57,7 +57,7 @@ def generate_desire_line_in_circle(angle_interval: float, center: Point, radius:
             center.y + radius * sin(angle_rad)
         )
 
-        weight = random.randint(1000, 2000)
+        weight = 1
 
         list_of_lines.append([i, weight, start_point, end_point])
 
@@ -116,9 +116,9 @@ def main():
     # save_to_tsv(list_of_lines, f"{filename}.tsv")
     # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Circle_around: lines every 5 degrees
+    # Circle_around: lines every 30 degrees
     filename = DATA_DIR / "circle_around_DL"
-    list_of_lines = generate_desire_line_in_circle(10, SMALL_RADIUS_1.center, 1000)
+    list_of_lines = generate_desire_line_in_circle(30, SMALL_RADIUS_1.center, 1000)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 

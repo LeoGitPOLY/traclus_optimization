@@ -176,8 +176,8 @@ def visual_testing(traclus_args: ArgumentsTraclus):
         create_file(PYTHON_BENCH_DST, RESULTS_QGIS_DIR, name_py_segments, "SEG_PY.txt")
         create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, name_rust_corridor, "CORRIDOR_RUST.txt")
 
-        print(f"\n=== Visual results for argument set {traclus_args.get_args()} ===")
-        user_input = input("Press Enter to continue to the next argument set (or 's' to stop)...")
+        print(f"=== Visual results are ready for argument set {traclus_args.get_args()} ===")
+        user_input = input("\nPress Enter to continue to the next argument set (or 's' to stop)...\n")
         
         if user_input.lower() == 's':
             break
@@ -220,7 +220,7 @@ def run_timed_once(impl: str, args: ArgumentsTraclus):
     run_end = perf_counter()
     time = run_end - run_start
 
-    print(f"Argument Set {args.get_args()} // Time: {time:.6f} seconds")
+    print(f"Argument Set {args.get_args()} for {impl} // Time: {time:.6f} seconds")
     return {"args": args.get_args(), "out": out, "time": time}
 
     
