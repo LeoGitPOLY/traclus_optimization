@@ -246,13 +246,14 @@ def run_timed_all(impl: str, args: ArgumentsTraclus):
 if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
-        'max_dist':     [250],
-        'min_density':  [8],
-        'max_angle':    [10],
-        'seg_size':     [1000],
-        'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt"],
+        'max_dist':     [200],
+        'min_density':  [3, 5, 7, 9],
+        'max_angle':    [10, 10, 10],
+        'seg_size':     [3000],
+        'path': ["montreal_to_montreal_DL_traclus.txt"],
     }
-
+    #'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt", "up_the_bridges_DL_traclus.txt"],
+    
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
 
     build_python_impl()
