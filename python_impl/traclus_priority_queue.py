@@ -87,6 +87,36 @@ class TraclusPriorityQueue:
             for ind2 in range(ind1+1, len(segments)):
                 sum_pair += hypot(segments[ind1].startx - segments[ind2].startx, segments[ind1].starty - segments[ind2].starty)
         return sum_pair
+    
+    # TODO: remove this function !!
+    def print_info(self):
+        """Print information about all clusters in the priority queue"""
+        print("PriorityQueueCluster info:")
 
+        copie_pq = self.pq.copy()
+        i = 0
+        while copie_pq:
+            entry: ClusterEntry = heappop(copie_pq)
+            if not entry.removed:
+                self.print_clusters(i, entry)
+                i += 1
+            
+    def print_clusters(self, i, entry):
+        """Print information about all clusters in the priority queue"""
+        traj_id = entry.cluster_seed.id.split(':')[0]
 
+        if not entry.removed:
+            print(
+                f"Cluster {i}: seed = {traj_id}, "
+                f"total_weight = {entry.priority}, "
+                f"num_members = {len(entry.cluster)-1}"
+            )
 
+        if traj_id != "701":
+            return
+        tot_weight = 0.0
+        for segment in entry.cluster:
+            traj_seg_id = segment.id.split(':')[0]
+            tot_weight += segment.weight
+            print(f"    Member: traj_id = {traj_seg_id}, starting point = ({segment.start_x}, {segment.start_y}), weight = {segment.weight}")
+        print(f"    Total weight of cluster: {tot_weight}")

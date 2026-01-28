@@ -27,7 +27,7 @@ impl ClusterMember {
             start: start_point,
         }
     }
-    pub fn new_from_member(cm: &ClusterMember) -> Self {
+    pub fn new_from_candidate(cm: &ClusterMember) -> Self {
         Self {
             traj_id: cm.traj_id,
             segment_id: cm.segment_id,

@@ -122,7 +122,9 @@ def run_python_impl_once(args: ArgumentsTraclus):
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
+    print(result.stdout.strip())
     return result.stdout.strip()
+
 
 
 def run_rust_impl_once(args: ArgumentsTraclus):
@@ -139,6 +141,7 @@ def run_rust_impl_once(args: ArgumentsTraclus):
     ]   
     
     result = subprocess.run(cmd, cwd=RUST_IMPL_DIR, capture_output=True, text=True)
+    print(result.stdout.strip())
     return result.stdout.strip()
 
 # =====================================================
@@ -246,11 +249,11 @@ def run_timed_all(impl: str, args: ArgumentsTraclus):
 if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
-        'max_dist':     [200],
-        'min_density':  [3, 5, 7, 9],
-        'max_angle':    [10, 10, 10],
-        'seg_size':     [3000],
-        'path': ["montreal_to_montreal_DL_traclus.txt"],
+        'max_dist':     [600],
+        'min_density':  [700],
+        'max_angle':    [5],
+        'seg_size':     [2000],
+        'path': ["enquete_od_DL_500_traclus.txt"],
     }
     #'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt", "up_the_bridges_DL_traclus.txt"],
     

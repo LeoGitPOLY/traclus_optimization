@@ -1,6 +1,7 @@
 from pathlib import Path
 import random
 import os
+import csv
 from random_shapes import Circle, Point, Quadrilateral, RandomShape
 from math import cos, sin, radians
 
@@ -92,6 +93,39 @@ def generate_vertical_parallel_lines(spacing: float, center: Point, height: floa
 
     return lines
 
+def convert_csv_enquete_to_list(input_file) -> list[list]:
+    """
+    Convert Enquête CSV format to a list of desire lines.
+    """
+    list_of_lines = []
+    
+    with open(input_file, 'r') as infile:
+        reader = csv.DictReader(infile, delimiter=';')
+
+        for row in reader:
+            id_val = int(row['id'])
+            weight = round(float(row['facper']))
+            xorig = float(row['xorig'])
+            yorig = float(row['yorig'])
+            xdest = float(row['xdest'])
+            ydest = float(row['ydest'])
+            
+            start_point = Point(xorig, yorig)
+            end_point = Point(xdest, ydest)
+            
+            list_of_lines.append([id_val, weight, start_point, end_point])
+    
+    return list_of_lines
+
+def chose_random_lines(list_lines: list[list], num_lines: int) -> list[list]:
+    """
+    Choose a random subset of lines from the given list.
+    """
+    if num_lines >= len(list_lines):
+        return list_lines.copy()
+    
+    return random.sample(list_lines, num_lines)
+
 
 def save_to_tsv(list_lines: list[str], filename: str):
     """
@@ -118,6 +152,7 @@ def save_to_traclus(list_lines: list[str], filename: str):
              f.write(f"{i}\t{weight}\t{start_point.x}\t{start_point.y}\t{end_point.x}\t{end_point.y}\n")
 
 
+
 def main():
     random.seed(42)  # fixed seed for reproducibility
 
@@ -127,35 +162,47 @@ def main():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Montreal_to_Montreal: 500 lines
-    filename = DATA_DIR / "montreal_to_montreal_DL"
-    list_of_lines = generate_desire_line_shape(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # # Montreal_to_Montreal: 500 lines
+    # filename = DATA_DIR / "montreal_to_montreal_DL"
+    # list_of_lines = generate_desire_line_shape(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Small_radius_to_Small_radius: 150 lines
-    filename = DATA_DIR / "small_radius_to_small_radius_DL"
-    list_of_lines = generate_desire_line_shape(150, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # # Small_radius_to_Small_radius: 150 lines
+    # filename = DATA_DIR / "small_radius_to_small_radius_DL"
+    # list_of_lines = generate_desire_line_shape(150, [SMALL_RADIUS_1], [SMALL_RADIUS_2])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Up_the_bridges: 500 lines
-    filename = DATA_DIR / "up_the_bridges_DL"
-    list_of_lines = generate_desire_line_shape(500, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # # Up_the_bridges: 500 lines
+    # filename = DATA_DIR / "up_the_bridges_DL"
+    # list_of_lines = generate_desire_line_shape(500, [LAVAL_POS, RIVE_SUD_POS], [MONTREAL_QUAD])
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
-    # Circle_around: lines every 30 degrees
+    # # Circle_around: lines every 30 degrees
     # filename = DATA_DIR / "circle_around_DL"
     # list_of_lines = generate_desire_line_in_circle(5, SMALL_RADIUS_1.center, 1000)
     # save_to_tsv(list_of_lines, f"{filename}.tsv")
     # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
     
-    # Parallels lines: 10 lines
-    filename = DATA_DIR / "parallels_DL"
-    list_of_lines = generate_vertical_parallel_lines(20, SMALL_RADIUS_1.center, 1000, 10)
-    save_to_tsv(list_of_lines, f"{filename}.tsv")
-    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+    # # Parallels lines: 10 lines
+    # filename = DATA_DIR / "parallels_DL"
+    # list_of_lines = generate_vertical_parallel_lines(20, SMALL_RADIUS_1.center, 1000, 10)
+    # save_to_tsv(list_of_lines, f"{filename}.tsv")
+    # save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+
+    # Convert Enquête format to Traclus format
+    input_file = DATA_DIR / "traclus_od_sample_3k_south_shore_to_montreal.csv"
+    filename = DATA_DIR / "enquete_od_DL"
+    list_of_lines = convert_csv_enquete_to_list(input_file)
+
+    for sample_size in [500, 1000, 3000]:
+        sampled_lines = chose_random_lines(list_of_lines, sample_size)
+        save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
+        save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
+    
+
 
 if __name__ == "__main__":
     main()

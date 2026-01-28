@@ -22,6 +22,7 @@ impl Cluster {
 
     pub fn move_candidates_to_members(&mut self) {
         while let Some(candidate) = self.candidates.pop() {
+            self.total_weight += candidate.weight;
             self.sum_distance += self.distance_to_members(&candidate);
             self.members.push(candidate);
         }
@@ -30,7 +31,6 @@ impl Cluster {
     pub fn merge_clusters(&mut self, other: Cluster) {
         for candidate in other.candidates {
             if !self.contains_traj(candidate.traj_id) {
-                self.total_weight += candidate.weight;
                 self.candidates.push(candidate);
             }
         }

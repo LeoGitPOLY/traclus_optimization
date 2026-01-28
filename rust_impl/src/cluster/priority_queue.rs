@@ -31,7 +31,8 @@ impl PriorityQueueCluster {
             })
     }
 
-    fn sort_by_weight_and_distance(&mut self) {
+    pub fn sort_by_weight_and_distance(&mut self) {
+        // TODO: remove public
         self.elements
             .sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| Self::compare_clusters(a, b));
         self.is_sorted = true;
@@ -109,5 +110,39 @@ impl PriorityQueueCluster {
             cluster.members.remove(index);
         }
         return false;
+    }
+
+    pub fn print_info(&self) {
+        println!("PriorityQueueCluster info:");
+        for (i, cluster) in self.elements.iter().enumerate() {
+            println!(
+                "Cluster {}: seed = {}, total_weight = {}, num_members = {}",
+                i,
+                cluster.seed.cm.traj_id,
+                cluster.total_weight,
+                cluster.members.len()
+            );
+            if cluster.seed.cm.traj_id != 701 || i != 4 {
+                continue;
+            }
+
+            print!(
+                "    Seed: traj_id = {}, segment_id = {}, weight = {}\n",
+                cluster.seed.cm.traj_id, cluster.seed.cm.segment_id, cluster.seed.cm.weight
+            );
+            let mut tot_weight: u32 = cluster.seed.cm.weight;
+            for member in &cluster.members {
+                println!(
+                    "    Member: traj_id = {}, segment_id = {}, starting point = ({}, {}), weight = {}",
+                    member.traj_id,
+                    member.segment_id,
+                    member.start.x,
+                    member.start.y,
+                    member.weight
+                );
+                tot_weight += member.weight;
+            }
+            println!("    Total weight of cluster: {}", tot_weight);
+        }
     }
 }

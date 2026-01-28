@@ -14,6 +14,9 @@ use clap::Parser;
 use std::io;
 
 fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
+    clust_storage.clusters.sort_by_weight_and_distance();
+    clust_storage.clusters.print_info();
+
     while let Some(completed_cluster) = clust_storage.pop_completed_cluster() {
         let index_corridor: usize = clust_storage.corridors.len();
         clust_storage
