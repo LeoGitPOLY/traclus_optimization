@@ -1,4 +1,4 @@
-use crate::spatial::geometry::Point;
+use crate::geometry::point::Point;
 
 #[derive(Debug)]
 pub struct InputODLine {

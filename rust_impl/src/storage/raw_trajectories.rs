@@ -1,4 +1,4 @@
-use crate::spatial::trajectory::Trajectory;
+use crate::geometry::trajectory::Trajectory;
 
 // TODO:
 // - bucket size should be a fraction of the max angle threshold used in clustering
@@ -11,12 +11,12 @@ pub struct Bucket {
     pub angle_end: f64,   // (exclusive)
     pub trajectories: Vec<Trajectory>,
 }
-pub struct RawTrajStore {
+pub struct RawTrajectories {
     pub bucket_size: f64,
     pub traj_buckets: Vec<Bucket>,
 }
 
-impl RawTrajStore {
+impl RawTrajectories {
     pub fn new(bucket_size: f64) -> Self {
         let buckets: Vec<Bucket> = Self::create_buckets(bucket_size);
 

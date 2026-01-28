@@ -1,17 +1,19 @@
-use crate::cluster::cluster::Cluster;
-use crate::cluster::cluster_member::{ClusterMember, ClusterSeed};
-use crate::cluster::priority_queue::PriorityQueueCluster;
-use crate::spatial::geometry::{Corridor, Point, Segment};
-use crate::spatial::trajectory::Trajectory;
-use crate::utils_io::traclus_args::TraclusArgs;
+use crate::clustering::cluster::Cluster;
+use crate::clustering::cluster_member::{ClusterMember, ClusterSeed};
+use crate::clustering::corridor::Corridor;
+use crate::geometry::point::Point;
+use crate::geometry::segment::Segment;
+use crate::geometry::trajectory::Trajectory;
+use crate::storage::priority_queue::PriorityQueueCluster;
+use crate::io::traclus_args::TraclusArgs;
 
-pub struct ClusteredTrajStore {
+pub struct ClusteredTrajectories {
     args: TraclusArgs,
     pub clusters: PriorityQueueCluster,
     pub corridors: Vec<Corridor>,
 }
 
-impl ClusteredTrajStore {
+impl ClusteredTrajectories {
     pub fn new(args: &TraclusArgs) -> Self {
         Self {
             args: args.clone(),
@@ -28,7 +30,6 @@ impl ClusteredTrajStore {
         &self,
         seed: ClusterSeed,
         nearby_trajs: &Vec<&Trajectory>,
-        id_expended: usize,
     ) -> Option<Cluster> {
         let mut cluster: Cluster = Cluster::new(seed, Vec::new());
         let seed_ref: &ClusterSeed = &cluster.seed;
@@ -67,32 +68,6 @@ impl ClusteredTrajStore {
             cluster.candidates.push(candidate);
         }
 
-        // TODO remove:
-        let list_traj_debug = vec![
-            701, 1017, 970, 969, 2949, 2282, 2444, 422, 2298, 1810, 298, 1009, 516, 2562, 2045,
-            667, 379, 2478, 404, 2999, 230, 2957, 380, 938, 2073, 1994, 496, 2208, 2620, 2438,
-            2752,
-        ];
-
-        if cluster
-            .candidates
-            .iter()
-            .any(|c: &ClusterMember| c.traj_id == 2728)
-            && list_traj_debug.contains(&seed_ref.cm.traj_id)
-            && id_expended == 701
-        {
-            println!(
-                "$$$$       Checking traj 2728 to seed traj {}, local_weight = {}",
-                seed_ref.cm.traj_id, local_weight
-            );
-            for candidate in &cluster.candidates {
-                println!(
-                    "    Candidate traj_id = {}, segment_id = {}, weight = {}",
-                    candidate.traj_id, candidate.segment_id, candidate.weight
-                );
-            }
-        }
-
         // DENSITY CONSTRAINT (including the seed)
         if local_weight < self.args.min_density {
             return None;
@@ -117,9 +92,7 @@ impl ClusteredTrajStore {
                     ClusterMember::new_from_candidate(candidate),
                     cluster.seed.angle,
                 );
-                if let Some(new_cluster) =
-                    self.cluster_reachable_segs(seed_member, nearby_trajs, cluster.seed.cm.traj_id)
-                {
+                if let Some(new_cluster) = self.cluster_reachable_segs(seed_member, nearby_trajs) {
                     new_clusters.push(new_cluster);
                 }
             }
@@ -144,7 +117,7 @@ impl ClusteredTrajStore {
     ) -> Option<Cluster> {
         let member: ClusterMember = ClusterMember::new_from_traj(seed.1, seed.0);
         let seed_member: ClusterSeed = ClusterSeed::new(member, seed.1.angle);
-        self.cluster_reachable_segs(seed_member, nearby_trajs, 0)
+        self.cluster_reachable_segs(seed_member, nearby_trajs)
     }
 
     pub fn pop_completed_cluster(&mut self) -> Option<Box<Cluster>> {

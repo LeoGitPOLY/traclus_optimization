@@ -250,7 +250,7 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [700],
+        'min_density':  [600],
         'max_angle':    [5],
         'seg_size':     [2000],
         'path': ["enquete_od_DL_500_traclus.txt"],

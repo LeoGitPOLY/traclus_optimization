@@ -1,10 +1,10 @@
-use crate::cluster::clustered_trajectory_store::ClusteredTrajStore;
-use crate::spatial::geometry::Corridor;
-use crate::spatial::geometry::Point;
-use crate::spatial::input_od_line::InputODLine;
-use crate::spatial::raw_trajectory_store::RawTrajStore;
-use crate::spatial::trajectory::Trajectory;
-use crate::utils_io::traclus_args::TraclusArgs;
+use crate::clustering::corridor::Corridor;
+use crate::geometry::input_od_line::InputODLine;
+use crate::geometry::point::Point;
+use crate::geometry::trajectory::Trajectory;
+use crate::io::traclus_args::TraclusArgs;
+use crate::storage::clustered_trajectories::ClusteredTrajectories;
+use crate::storage::raw_trajectories::RawTrajectories;
 
 use std::fs;
 use std::io;
@@ -54,9 +54,9 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
     })
 }
 
-pub fn parse_input_data(args: &TraclusArgs) -> RawTrajStore {
+pub fn parse_input_data(args: &TraclusArgs) -> RawTrajectories {
     let content: String = read_file(&args.infile).expect("Failed to read input file");
-    let mut trajectory_storage: RawTrajStore = RawTrajStore::new(args.max_angle);
+    let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
 
     for (index, line) in content.lines().enumerate() {
         let od_line: InputODLine = parse_line_to_od(line, index).unwrap_or_else(|err| {
@@ -81,7 +81,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> RawTrajStore {
 /// {input_basename}.{max_dist}.{min_density}.{max_angle}.{segment_size}.corridorlist
 ///
 /// Panics if file writing fails, as this indicates a critical I/O error.
-pub fn parse_output_data(args: &TraclusArgs, clust_storage: &ClusteredTrajStore) {
+pub fn parse_output_data(args: &TraclusArgs, clust_storage: &ClusteredTrajectories) {
     let output_filename: String = build_output_filename(args);
 
     // Create file with buffered writer for better performance

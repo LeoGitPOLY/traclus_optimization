@@ -168,7 +168,6 @@ if __name__ == '__main__':
     corridor_list_out_file = f"{infile}.{max_dist}.{min_density}.{max_angle}.{segment_size}.corridorlist.txt"
     
     pq = build_queue(trajectories, traj_angles, max_dist, min_density, max_angle, segment_to_line_dist, segment_to_line_closest_seg)
-    pq.print_info()
     corridors = pop_corridors_from_queue(pq)
         
     write_segment_output(trajectories, corridors, segment_list_out_file, corridor_list_out_file)

@@ -1,8 +1,8 @@
 use std::f64::consts::PI;
 
-use crate::spatial::geometry::Point;
-use crate::spatial::geometry::Segment;
-use crate::spatial::input_od_line::InputODLine;
+use crate::geometry::input_od_line::InputODLine;
+use crate::geometry::point::Point;
+use crate::geometry::segment::Segment;
 
 #[derive(Debug)]
 pub struct Trajectory {

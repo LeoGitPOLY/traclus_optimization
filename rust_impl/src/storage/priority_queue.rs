@@ -1,6 +1,6 @@
 // TODO: the sum of distances could be calculated only when needed, to optimize performance
 // Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
-use crate::cluster::cluster::Cluster;
+use crate::clustering::cluster::Cluster;
 use std::{cmp::Ordering, collections::HashSet};
 
 pub struct PriorityQueueCluster {
@@ -122,27 +122,21 @@ impl PriorityQueueCluster {
                 cluster.total_weight,
                 cluster.members.len()
             );
-            if cluster.seed.cm.traj_id != 701 || i != 4 {
-                continue;
-            }
+            // print!(
+            //     "    Seed: traj_id = {}, segment_id = {}, weight = {}\n",
+            //     cluster.seed.cm.traj_id, cluster.seed.cm.segment_id, cluster.seed.cm.weight
+            // );
 
-            print!(
-                "    Seed: traj_id = {}, segment_id = {}, weight = {}\n",
-                cluster.seed.cm.traj_id, cluster.seed.cm.segment_id, cluster.seed.cm.weight
-            );
-            let mut tot_weight: u32 = cluster.seed.cm.weight;
-            for member in &cluster.members {
-                println!(
-                    "    Member: traj_id = {}, segment_id = {}, starting point = ({}, {}), weight = {}",
-                    member.traj_id,
-                    member.segment_id,
-                    member.start.x,
-                    member.start.y,
-                    member.weight
-                );
-                tot_weight += member.weight;
-            }
-            println!("    Total weight of cluster: {}", tot_weight);
+            // for member in &cluster.members {
+            //     println!(
+            //         "    Member: traj_id = {}, segment_id = {}, starting point = ({}, {}), weight = {}",
+            //         member.traj_id,
+            //         member.segment_id,
+            //         member.start.x,
+            //         member.start.y,
+            //         member.weight
+            //     );
+            // }
         }
     }
 }

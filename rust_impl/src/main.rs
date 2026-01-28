@@ -1,21 +1,21 @@
-mod cluster;
-mod spatial;
-mod utils_io;
+mod clustering;
+mod geometry;
+mod io;
+mod storage;
 
-use crate::cluster::clustered_trajectory_store::ClusteredTrajStore;
-use crate::spatial::geometry::Corridor;
-use crate::spatial::raw_trajectory_store::RawTrajStore;
-use crate::spatial::trajectory::Trajectory;
+use crate::clustering::corridor::Corridor;
+use crate::geometry::trajectory::Trajectory;
+use crate::storage::clustered_trajectories::ClusteredTrajectories;
+use crate::storage::raw_trajectories::RawTrajectories;
 
-use crate::utils_io::loader::{parse_input_data, parse_output_data};
-use crate::utils_io::traclus_args::TraclusArgs;
+use crate::io::loader::{parse_input_data, parse_output_data};
+use crate::io::traclus_args::TraclusArgs;
 
 use clap::Parser;
-use std::io;
 
-fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
-    clust_storage.clusters.sort_by_weight_and_distance();
-    clust_storage.clusters.print_info();
+fn create_corridors(clust_storage: &mut ClusteredTrajectories) {
+    // clust_storage.clusters.sort_by_weight_and_distance();
+    // clust_storage.clusters.print_info();
 
     while let Some(completed_cluster) = clust_storage.pop_completed_cluster() {
         let index_corridor: usize = clust_storage.corridors.len();
@@ -33,7 +33,7 @@ fn create_corridors(clust_storage: &mut ClusteredTrajStore) {
 /// 2. Attempts to form initial clusters from seed segments
 /// 3. Expands valid clusters by finding nearby dense regions
 /// 4. Set a collection of all discovered clusters inside the clustered trajectory storage
-fn db_scan_clustering(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredTrajStore) {
+fn db_scan_clustering(raw_storage: &RawTrajectories, clust_storage: &mut ClusteredTrajectories) {
     // Process each angle bucket and its trajectories
     for bucket in &raw_storage.traj_buckets {
         // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
@@ -56,7 +56,7 @@ fn db_scan_clustering(raw_storage: &RawTrajStore, clust_storage: &mut ClusteredT
 fn trajectory_segments_clustering(
     traj_seed: &Trajectory,
     nearby_trajs: &Vec<&Trajectory>,
-    clust_storage: &mut ClusteredTrajStore,
+    clust_storage: &mut ClusteredTrajectories,
 ) {
     for seed_segment in traj_seed.segments_iter() {
         // Try to form an initial cluster from this seed segment
@@ -71,10 +71,10 @@ fn trajectory_segments_clustering(
     }
 }
 
-fn main() -> io::Result<()> {
+fn main() -> std::io::Result<()> {
     let args: TraclusArgs = TraclusArgs::parse();
-    let raw_storage: RawTrajStore = parse_input_data(&args);
-    let mut clust_storage: ClusteredTrajStore = ClusteredTrajStore::new(&args);
+    let raw_storage: RawTrajectories = parse_input_data(&args);
+    let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(&args);
 
     db_scan_clustering(&raw_storage, &mut clust_storage);
     create_corridors(&mut clust_storage);
