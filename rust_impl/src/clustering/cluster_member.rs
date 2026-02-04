@@ -42,6 +42,19 @@ impl ClusterMember {
             start: seg.start.clone(),
         }
     }
+
+    pub fn end_point(&self) -> Point {
+        Point {
+            x: self.start.x + 2.0 * (self.center.x - self.start.x),
+            y: self.start.y + 2.0 * (self.center.y - self.start.y),
+        }
+    }
+
+    pub fn angle(&self) -> f64 {
+        let dx = self.center.x - self.start.x;
+        let dy = self.center.y - self.start.y;
+        dy.atan2(dx).to_degrees()
+    }
 }
 
 pub struct ClusterSeed {

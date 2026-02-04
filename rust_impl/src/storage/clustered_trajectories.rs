@@ -1,126 +1,47 @@
 use crate::clustering::cluster::Cluster;
-use crate::clustering::cluster_member::{ClusterMember, ClusterSeed};
+use crate::clustering::cluster_member::ClusterMember;
 use crate::clustering::corridor::Corridor;
-use crate::geometry::point::Point;
-use crate::geometry::segment::Segment;
 use crate::geometry::trajectory::Trajectory;
-use crate::storage::priority_queue::PriorityQueueCluster;
 use crate::io::traclus_args::TraclusArgs;
+use crate::storage::priority_queue::PriorityQueueCluster;
 
 pub struct ClusteredTrajectories {
-    args: TraclusArgs,
-    pub clusters: PriorityQueueCluster,
+    clusters: PriorityQueueCluster,
     pub corridors: Vec<Corridor>,
 }
 
 impl ClusteredTrajectories {
-    pub fn new(args: &TraclusArgs) -> Self {
+    pub fn new() -> Self {
         Self {
-            args: args.clone(),
             clusters: PriorityQueueCluster::new(),
             corridors: Vec::new(),
         }
     }
 
-    /* Méthode pour agréger un cluster autour d'un segment seed
-    Vérifie les contraintes: 1) Pas la même trajectoire, 2) Angle, 3) Distance 4) Densité
-    Time complexity: O(n x d / bucket_size)
-    */
-    fn cluster_reachable_segs(
-        &self,
-        seed: ClusterSeed,
-        nearby_trajs: &Vec<&Trajectory>,
-    ) -> Option<Cluster> {
-        let mut cluster: Cluster = Cluster::new(seed, Vec::new());
-        let seed_ref: &ClusterSeed = &cluster.seed;
-        let mut local_weight: u32 = seed_ref.cm.weight;
-
-        for nearby_traj in nearby_trajs {
-            // SAME TRAJECTORY CONSTRAINT
-            if seed_ref.cm.traj_id == nearby_traj.id {
-                continue;
-            }
-
-            // ANGLE CONSTRAINT
-            let angle_diff: f64 = (seed_ref.angle - nearby_traj.angle).abs();
-            let min_angle_diff: f64 = angle_diff.min(360.0 - angle_diff);
-            if min_angle_diff > self.args.max_angle + 1e-9 {
-                continue;
-            }
-
-            // DISTANCE CONSTRAINT
-            let (dist, segment_id) = nearby_traj.distance_to_point(&seed_ref.cm.center);
-            if dist > self.args.max_dist + 1e-9 {
-                continue;
-            }
-
-            let segment: &Segment = nearby_traj.segment(segment_id).unwrap();
-            let center_segment: Point = segment.middle.clone();
-            let start_segment: Point = segment.start.clone();
-            let candidate: ClusterMember = ClusterMember::new(
-                nearby_traj.id,
-                segment_id,
-                nearby_traj.weight,
-                center_segment,
-                start_segment,
-            );
-            local_weight += candidate.weight;
-            cluster.candidates.push(candidate);
-        }
-
-        // DENSITY CONSTRAINT (including the seed)
-        if local_weight < self.args.min_density {
-            return None;
-        }
-        Some(cluster)
+    pub fn add_cluster(&mut self, cluster: Cluster) {
+        self.clusters.push(cluster);
     }
 
-    /* Méthode pour étendre le cluster en agrégeant à partir des segments candidats
-    Time complexity: O(m' x cluster_reachable_segs) = O(m' x n x d / bucket_size)
-    */
-    pub fn expand_segment_cluster<'a>(
-        &self,
-        cluster: &'a mut Cluster,
-        nearby_trajs: &Vec<&Trajectory>,
-    ) -> &'a mut Cluster {
-        while cluster.candidates.len() > 0 {
-            let mut new_clusters: Vec<Cluster> = Vec::new();
-
-            // Iterate in REVERSE order to match v1's pop() behavior
-            for candidate in cluster.candidates.iter().rev() {
-                let seed_member: ClusterSeed = ClusterSeed::new(
-                    ClusterMember::new_from_candidate(candidate),
-                    cluster.seed.angle,
-                );
-                if let Some(new_cluster) = self.cluster_reachable_segs(seed_member, nearby_trajs) {
-                    new_clusters.push(new_cluster);
-                }
-            }
-
-            cluster.move_candidates_to_members();
-
-            // fusionner les nouveaux clusters dans le cluster de base
-            for new_cluster in new_clusters {
-                cluster.merge_clusters(new_cluster);
-            }
+    pub fn add_list_cluster(&mut self, clusters: Vec<Cluster>) {
+        for cluster in clusters {
+            self.add_cluster(cluster);
         }
-        cluster
     }
 
-    /* Méthode pour initier le clustering à partir d'un segment seed
-    Time complexity: O(cluster_reachable_segs) = O(n x d / bucket_size)
-    */
-    pub fn initial_segment_cluster(
-        &self,
-        seed: (&Segment, &Trajectory),
-        nearby_trajs: &Vec<&Trajectory>,
-    ) -> Option<Cluster> {
-        let member: ClusterMember = ClusterMember::new_from_traj(seed.1, seed.0);
-        let seed_member: ClusterSeed = ClusterSeed::new(member, seed.1.angle);
-        self.cluster_reachable_segs(seed_member, nearby_trajs)
+    pub fn fill_non_clustered_segments(&mut self, trajectory: &Trajectory) {
+        for segment in trajectory.segments_iter() {
+            let cluster_member: ClusterMember = ClusterMember::new_from_traj(trajectory, segment);
+            self.clusters
+                .non_clustered_segments
+                .push(Box::new(cluster_member));
+        }
     }
 
-    pub fn pop_completed_cluster(&mut self) -> Option<Box<Cluster>> {
-        self.clusters.pop_and_clean(self.args.min_density)
+    pub fn pop_completed_cluster(&mut self, args: &TraclusArgs) -> Option<Box<Cluster>> {
+        self.clusters.pop_and_clean(args.min_density)
+    }
+
+    pub fn list_non_clustered_segments(&self) -> &Vec<Box<ClusterMember>> {
+        &self.clusters.non_clustered_segments
     }
 }

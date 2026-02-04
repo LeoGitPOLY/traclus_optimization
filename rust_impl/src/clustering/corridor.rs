@@ -1,6 +1,9 @@
 use crate::{
     clustering::{cluster::Cluster, cluster_member::ClusterMember},
-    geometry::point::Point,
+    geometry::{
+        point::Point,
+        segment::{self, Segment},
+    },
 };
 
 pub struct Corridor {
@@ -8,19 +11,31 @@ pub struct Corridor {
     pub weight: u32,
     pub start: Point,
     pub end: Point,
+    pub segments: Vec<Segment>,
 }
 
 impl Corridor {
     pub fn new(cluster: &Cluster, id: usize) -> Self {
         let (start, end) = Self::weighted_average(cluster);
+        let segments: Vec<Segment> = Self::cluster_member_to_segments(cluster);
         let weight: u32 = cluster.total_weight;
         Self {
             id,
             weight,
             start,
             end,
+            segments,
         }
     }
+
+    pub fn cluster_member_to_segments(cluster: &Cluster) -> Vec<Segment> {
+        let mut segments: Vec<Segment> = Vec::new();
+
+        //TODOOOO
+
+        segments
+    }
+
     pub fn weighted_average(cluster: &Cluster) -> (Point, Point) {
         let mut weighted_start: Point = cluster.seed.cm.start * (cluster.seed.cm.weight as f64);
         let mut weighted_end: Point = Self::get_weighted_end(&cluster.seed.cm);

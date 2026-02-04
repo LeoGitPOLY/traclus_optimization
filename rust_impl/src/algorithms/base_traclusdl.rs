@@ -1,7 +1,12 @@
-use crate::clustering::{Cluster, ClusterMember, ClusterSeed};
-use crate::config::TraclusArgs;
-use crate::geometry::{Point, Segment, Trajectory};
-use crate::storage::{ClusteredTrajectories, RawTrajectories};
+use crate::{
+    clustering::{
+        cluster::Cluster,
+        cluster_member::{ClusterMember, ClusterSeed},
+    },
+    geometry::{segment::Segment, trajectory::Trajectory},
+    io::traclus_args::TraclusArgs,
+    storage::{clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories},
+};
 
 /// Base trait for TraClus algorithm implementations.
 ///
@@ -12,12 +17,6 @@ pub trait TraclusAlgorithm {
     // ============================================================
     // Shared Data Accessors
     // ============================================================
-    fn raw_trajectories(&self) -> &RawTrajectories;
-    fn clustered_trajectories(&self) -> &ClusteredTrajectories;
-
-    fn raw_trajectories_mut(&mut self) -> &mut RawTrajectories;
-    fn clustered_trajectories_mut(&mut self) -> &mut ClusteredTrajectories;
-
     fn args(&self) -> &TraclusArgs;
 
     // ============================================================
@@ -28,23 +27,34 @@ pub trait TraclusAlgorithm {
     ///
     /// This is the main method to partitions the trajectory into clusters
     /// based constraints.
-    fn db_scan_clustering(&mut self) -> Result<(), String>;
+    /// # Arguments
+    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
+    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    fn db_scan_clustering(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        clustered_trajectories: &mut ClusteredTrajectories,
+    );
 
     /// Phase 1.2: Clusters an individual trajectory against nearby trajectories.
     ///
     /// # Arguments
     /// * `traj_seed` - The trajectory to use as a clustering seed
     /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
+    /// # Returns
+    /// * A vector of clusters formed from the trajectory segments
     fn individual_trajectory_clustering(
-        &mut self,
+        &self,
         traj_seed: &Trajectory,
         nearby_trajs: &Vec<&Trajectory>,
-    ) -> Result<(), String>;
+    ) -> Vec<Cluster>;
 
     /// Phase 2: Creates representative corridors from trajectory clusters.
     ///
     /// This phase generates corridors from the clustered trajectory segments.
-    fn create_corridors(&mut self) -> Result<(), String>;
+    /// # Arguments
+    /// * `clustered_trajectories` - The clustered trajectory storage containing clusters to process
+    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories);
 
     // ============================================================
     // Default Methods (Can Be Overridden If Needed)

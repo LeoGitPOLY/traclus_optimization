@@ -250,10 +250,10 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [600],
-        'max_angle':    [5],
-        'seg_size':     [2000],
-        'path': ["enquete_od_DL_500_traclus.txt"],
+        'min_density':  [3, 700],
+        'max_angle':    [5, 5],
+        'seg_size':     [1000, 1000],
+        'path': ["90_degres_3_DL_traclus.txt", "enquete_od_DL_500_traclus.txt"],
     }
     #'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt", "up_the_bridges_DL_traclus.txt"],
     

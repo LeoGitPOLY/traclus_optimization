@@ -35,6 +35,7 @@ impl Cluster {
             }
         }
     }
+    
     pub fn contains_traj(&self, traj_id: usize) -> bool {
         for member in &self.members {
             if member.traj_id == traj_id {
