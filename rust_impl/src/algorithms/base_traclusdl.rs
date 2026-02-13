@@ -23,10 +23,10 @@ pub trait TraclusAlgorithm {
     // Required Methods (Must Be Implemented by Implementations)
     // ============================================================
 
-    /// Phase 1.1: Performs DB-SCAN clustering on trajectory segments.
+    /// Performs DB-SCAN clustering on trajectory segments.
     ///
     /// This is the main method to partitions the trajectory into clusters
-    /// based constraints.
+    /// based constraints and then creates the appropriate corridors.
     /// # Arguments
     /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
     /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
@@ -36,25 +36,6 @@ pub trait TraclusAlgorithm {
         clustered_trajectories: &mut ClusteredTrajectories,
     );
 
-    /// Phase 1.2: Clusters an individual trajectory against nearby trajectories.
-    ///
-    /// # Arguments
-    /// * `traj_seed` - The trajectory to use as a clustering seed
-    /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
-    /// # Returns
-    /// * A vector of clusters formed from the trajectory segments
-    fn individual_trajectory_clustering(
-        &self,
-        traj_seed: &Trajectory,
-        nearby_trajs: &Vec<&Trajectory>,
-    ) -> Vec<Cluster>;
-
-    /// Phase 2: Creates representative corridors from trajectory clusters.
-    ///
-    /// This phase generates corridors from the clustered trajectory segments.
-    /// # Arguments
-    /// * `clustered_trajectories` - The clustered trajectory storage containing clusters to process
-    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories);
 
     // ============================================================
     // Default Methods (Can Be Overridden If Needed)

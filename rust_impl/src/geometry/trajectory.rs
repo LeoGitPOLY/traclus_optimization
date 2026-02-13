@@ -119,7 +119,8 @@ impl Trajectory {
         self.segments.get(index)
     }
 
-    pub fn to_str(&self) -> String {
+    #[allow(unused)]
+    pub fn print_info(&self) -> String {
         format!(
             "Trajectory ID: {}, Start: ({}, {}), End: ({}, {}), Weight: {}, Angle: {}",
             self.id, self.start.x, self.start.y, self.end.x, self.end.y, self.weight, self.angle

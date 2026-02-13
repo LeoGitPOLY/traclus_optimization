@@ -1,6 +1,6 @@
 use crate::{
     algorithms::base_traclusdl::TraclusAlgorithm,
-    clustering::{cluster::Cluster, corridor::Corridor},
+    clustering::cluster::Cluster,
     geometry::trajectory::Trajectory,
     io::traclus_args::TraclusArgs,
     storage::{clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories},
@@ -8,12 +8,6 @@ use crate::{
 
 pub struct SerialTraclusDL {
     args: TraclusArgs,
-}
-
-impl SerialTraclusDL {
-    pub fn new(args: TraclusArgs) -> Self {
-        Self { args }
-    }
 }
 
 impl TraclusAlgorithm for SerialTraclusDL {
@@ -25,19 +19,33 @@ impl TraclusAlgorithm for SerialTraclusDL {
     }
 
     // ============================================================
-    // Required Methods (Must Be Implemented)
+    // Required Method
     // ============================================================
 
-    // TODO: optimize with maybe the reference of the nearby_trajectories vector instead of the iterator.collect()
     /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
-    ///
-    /// This function:
-    /// 1. Iterates through all trajectory segments in angle-ordered buckets
-    /// 2. Attempts to form initial clusters from seed segments
-    /// 3. Expands valid clusters by finding nearby dense regions
-    /// 4. Set a collection of all discovered clusters inside the clustered trajectory storage
-    /// 5. Marks non-clustered segments for later processing
+    /// Implements the main clustering logic for the Serial TraClusDL algorithm.
     fn db_scan_clustering(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        clustered_trajectories: &mut ClusteredTrajectories,
+    ) {
+        self.complete_serial_clustering(raw_trajectories, clustered_trajectories);
+        self.create_corridors(clustered_trajectories);
+    }
+}
+
+impl SerialTraclusDL {
+    pub fn new(args: TraclusArgs) -> Self {
+        Self { args }
+    }
+
+    /// Completes the serial clustering process by iterating over angle buckets
+    /// Clusters each trajectory and fills non-clustered segments
+    ///
+    /// # Arguments
+    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
+    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    fn complete_serial_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
@@ -60,12 +68,17 @@ impl TraclusAlgorithm for SerialTraclusDL {
         }
     }
 
-    /// Clusters all segments in a trajectory attempting to form and expand clusters.
-    ///
+    /// Clusters an individual trajectory against nearby trajectories.
     /// For each segment:
     /// - Attempts to create an initial cluster if density requirements are met
     /// - Expands the cluster to include all reachable segments
     /// - Stores the completed cluster
+    ///
+    /// # Arguments
+    /// * `traj_seed` - The trajectory to use as a clustering seed
+    /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
+    /// # Returns
+    /// * A vector of clusters formed from the trajectory segments
     #[inline]
     fn individual_trajectory_clustering(
         &self,
@@ -78,6 +91,7 @@ impl TraclusAlgorithm for SerialTraclusDL {
             // Try to form an initial cluster from this seed segment
             let cluster: Option<Cluster> =
                 self.initial_segment_cluster((&seed_segment, &traj_seed), nearby_trajs);
+
             if let Some(mut cluster) = cluster {
                 // Expand the cluster to include all density-reachable segments
                 self.expand_segment_cluster(&mut cluster, nearby_trajs);
@@ -89,20 +103,10 @@ impl TraclusAlgorithm for SerialTraclusDL {
         return cluster_group;
     }
 
+    /// Creates corridors for all clustered trajectories based on the clustering results
+    /// # Arguments
+    /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
     fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
-        while let Some(completed_cluster) = clustered_trajectories.pop_completed_cluster(&self.args)
-        {
-            let index_corridor: usize = clustered_trajectories.corridors.len();
-            clustered_trajectories
-                .corridors
-                .push(Corridor::new(&completed_cluster, index_corridor));
-        }
-
-        for non_clust_seg in clustered_trajectories.list_non_clustered_segments() {
-            print!(
-                "Non-clustered segment: {:?}, {:?}\n",
-                non_clust_seg.traj_id, non_clust_seg.segment_id
-            );
-        }
+        clustered_trajectories.finalize_corridors(self.args());
     }
 }

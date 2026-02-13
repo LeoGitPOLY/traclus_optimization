@@ -35,7 +35,7 @@ impl Cluster {
             }
         }
     }
-    
+
     pub fn contains_traj(&self, traj_id: usize) -> bool {
         for member in &self.members {
             if member.traj_id == traj_id {
@@ -63,6 +63,11 @@ impl Cluster {
         total_dist
     }
 
+    pub fn get_all_members_iter(&self) -> impl Iterator<Item = &ClusterMember> {
+        std::iter::once(&self.seed.cm).chain(self.members.iter())
+    }
+
+    #[allow(unused)]
     pub fn print_info(&self) {
         println!(
             "Cluster Seed ID: ({}, {}), Total Weight: {}, Num members {}, Num Candidates: {}",

@@ -1,4 +1,20 @@
-use clap::Parser;
+use std::fmt;
+use clap::{Parser, ValueEnum};
+
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum ExecutionMode {
+    Serial,
+    ParallelRayon,
+}
+
+impl fmt::Display for ExecutionMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExecutionMode::Serial => write!(f, "Serial"),
+            ExecutionMode::ParallelRayon => write!(f, "ParallelRayon"),
+        }
+    }
+}
 
 #[derive(Clone, Parser, Debug)]
 #[command(author, version, about = "Traclus DL Optimized in Rust")]
@@ -65,4 +81,12 @@ pub struct TraclusArgs {
         }
     )]
     pub segment_size: f64, // RANGE VALUE IS ]0; INFINITY[
+
+    #[arg(
+        short = 'm',
+        long = "mode",
+        value_enum,
+        default_value_t = ExecutionMode::Serial
+    )]
+    pub mode: ExecutionMode, // ACCEPTED VALUES ARE [Serial, ParallelRayon]
 }

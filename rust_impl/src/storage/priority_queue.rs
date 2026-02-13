@@ -5,7 +5,7 @@ use std::{cmp::Ordering, collections::HashSet};
 
 pub struct PriorityQueueCluster {
     pub elements: Vec<Box<Cluster>>,
-    pub non_clustered_segments: Vec<Box<ClusterMember>>,
+    pub non_clustered_segments: Vec<ClusterMember>,
     is_sorted: bool,
 }
 
@@ -135,6 +135,7 @@ impl PriorityQueueCluster {
         }
     }
 
+    #[allow(unused)]
     pub fn print_info(&self) {
         println!("PriorityQueueCluster info:");
         for (i, cluster) in self.elements.iter().enumerate() {
@@ -145,21 +146,6 @@ impl PriorityQueueCluster {
                 cluster.total_weight,
                 cluster.members.len()
             );
-            // print!(
-            //     "    Seed: traj_id = {}, segment_id = {}, weight = {}\n",
-            //     cluster.seed.cm.traj_id, cluster.seed.cm.segment_id, cluster.seed.cm.weight
-            // );
-
-            // for member in &cluster.members {
-            //     println!(
-            //         "    Member: traj_id = {}, segment_id = {}, starting point = ({}, {}), weight = {}",
-            //         member.traj_id,
-            //         member.segment_id,
-            //         member.start.x,
-            //         member.start.y,
-            //         member.weight
-            //     );
-            // }
         }
     }
 }

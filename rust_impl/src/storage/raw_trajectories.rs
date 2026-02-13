@@ -107,7 +107,8 @@ impl RawTrajectories {
     //     let
     // }
 
-    pub fn print_summary(&self) {
+    #[allow(unused)]
+    pub fn print_info(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {
             // if bucket.trajectories.len() == 0 {
             //     continue;
@@ -121,7 +122,7 @@ impl RawTrajectories {
             );
 
             for traj in &bucket.trajectories {
-                println!("  {}", traj.to_str());
+                println!("  {}", traj.print_info());
             }
         }
     }
