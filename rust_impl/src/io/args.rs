@@ -1,5 +1,5 @@
-use std::fmt;
 use clap::{Parser, ValueEnum};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum ExecutionMode {
@@ -89,4 +89,7 @@ pub struct TraclusArgs {
         default_value_t = ExecutionMode::Serial
     )]
     pub mode: ExecutionMode, // ACCEPTED VALUES ARE [Serial, ParallelRayon]
+
+    #[arg(long, default_value_t = false)]
+    pub gui: bool,
 }

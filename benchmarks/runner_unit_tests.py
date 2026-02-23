@@ -36,7 +36,7 @@ def parse_args():
 
     parser.add_argument(
         "-m", "--mode",
-        choices=["visual", "time"],
+        choices=["visual", "time", "multi-od"],
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
@@ -68,6 +68,17 @@ def create_empty_folder(folder: str):
 def get_list_of_files_name(folder: str) -> list:
     return [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
 
+def remove_and_copy_input_file(traclus_args: ArgumentsTraclus):
+    # remove previous input files in the implementation folders
+    remove_data_folder(PYTHON_BENCH_DST)
+    remove_data_folder(RUST_BENCH_DST)
+
+    # Copy only one input file at the time (for python and rust)
+    create_empty_folder(PYTHON_BENCH_DST)
+    copy_file(BENCH_SRC, PYTHON_BENCH_DST, traclus_args.get_name())
+    create_empty_folder(RUST_BENCH_DST)
+    copy_file(BENCH_SRC, RUST_BENCH_DST, traclus_args.get_name())
+
 def get_files_with_all_substring(folder: str, substring: list[str]) -> list:
     names_folder = get_list_of_files_name(folder)
     names_substring = [name for name in names_folder if all(sub in name for sub in substring)]
@@ -86,12 +97,15 @@ def transfert_files_to_qgis_results(rust_mode: list):
     
     # For rust output files; many instances can be generated (e.g., for different modes)
     for mode in rust_mode:
-        rust_seg_old = get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old", mode])[0]
-        rust_corr_new = get_files_with_all_substring(RUST_BENCH_DST, ["corridor", "new", mode])[0]
-        rust_corr = get_files_with_all_substring(RUST_BENCH_DST, ["corridor", mode])[0]
-        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_seg_old, f"SEG_RUST_{mode}.txt")
-        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_corr_new, f"CORRIDOR_RUST_NEW_{mode}.txt")
-        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_corr, f"CORRIDOR_RUST_{mode}.txt")
+        name = mode['name']
+        
+        rust_seg_old = get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old", name])[0]
+        rust_seg_new = get_files_with_all_substring(RUST_BENCH_DST, ["segment", "new", name])[0]
+        rust_corr = get_files_with_all_substring(RUST_BENCH_DST, ["corridor", name])[0]
+        
+        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_seg_old, f"SEG_RUST_{name}.txt")
+        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_seg_new, f"SEG_RUST_NEW_{name}.txt")
+        create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_corr, f"CORRIDOR_RUST_{name}.txt")
 
 # =====================================================
 #                 BUILD STEP
@@ -145,13 +159,11 @@ def run_python_impl_once(args: ArgumentsTraclus):
         "--segment_size", args.get_args_value('seg_size'),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    # print(result.stdout.strip())
-    return result.stdout.strip()
+    results = subprocess.run(cmd, capture_output=True, text=True)
 
 
 
-def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial"):
+def run_rust_impl_once(args: ArgumentsTraclus, cmd: str = "serial"):
     cmd = [
         "cargo",
         "run",
@@ -162,12 +174,39 @@ def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial"):
         "--min_density", args.get_args_value('min_density'),
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
-        "--mode", mode
+        "--mode", cmd
     ]   
     
-    result = subprocess.run(cmd, cwd=RUST_IMPL_DIR, capture_output=True, text=True)
-    # print(result.stdout.strip())
-    return result.stdout.strip()
+    results = subprocess.run(cmd, cwd=RUST_IMPL_DIR, capture_output=True, text=True)
+
+def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}):
+    run_start = perf_counter()
+    
+    if impl == "python":
+        run_python_impl_once(args)
+    elif impl == "rust":
+        run_rust_impl_once(args, mode['cmd'])
+    
+    run_end = perf_counter()
+    time = run_end - run_start
+
+    print(f"Argument Set {args.get_args()} for {impl} // Time: {time:.6f} seconds")
+    return {"impl": impl, "mode": mode['name'], "args": args.get_args(), "time": time}
+    
+def run_timed_all(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}):
+    outputs = []
+    total_time = 0.0
+
+    while True:
+        output = run_timed_once(impl, args, mode)
+        outputs.append(output)
+        total_time += output["time"]
+
+        if args.iter_arguments() is False:
+            break  
+    
+    print(f"\nTotal {impl} mode {mode['name']} execution time: {total_time:.6f} seconds \n")
+    return outputs
 
 # =====================================================
 #                 TEST IMPLEMENTATIONS
@@ -179,16 +218,11 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         sys.exit(1)
     
     while True:
-        remove_data_folder(PYTHON_BENCH_DST)
-        remove_data_folder(RUST_BENCH_DST)
+        remove_and_copy_input_file(traclus_args)
 
-        # Copy only one input file at the time (for python and rust)
-        create_empty_folder(PYTHON_BENCH_DST)
-        copy_file(BENCH_SRC, PYTHON_BENCH_DST, traclus_args.get_name())
-        create_empty_folder(RUST_BENCH_DST)
-        copy_file(BENCH_SRC, RUST_BENCH_DST, traclus_args.get_name())
-
+        # TESTING PYTHON
         run_timed_once("python", traclus_args)
+        # TESTING ALL MODE RUST
         for mode in rust_mode: run_timed_once("rust", traclus_args, mode)
 
         transfert_files_to_qgis_results(rust_mode)
@@ -203,72 +237,61 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
 
 
 def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
-    remove_data_folder(PYTHON_BENCH_DST)
-    remove_data_folder(RUST_BENCH_DST)
-
-    # Copy only one input file at the time (for python and rust)
-    create_empty_folder(PYTHON_BENCH_DST)
-    copy_file(BENCH_SRC, PYTHON_BENCH_DST, traclus_args.get_name())
-    create_empty_folder(RUST_BENCH_DST)
-    copy_file(BENCH_SRC, RUST_BENCH_DST, traclus_args.get_name())
+    remove_and_copy_input_file(traclus_args)
+    outputs = []
 
     # TESTING PYTHON
-    py_outputs = run_timed_all("python", traclus_args)
+    outputs += run_timed_all("python", traclus_args)
     traclus_args.reset_arguments()
 
     # TESTING ALL MODE RUST
-    rs_outputs_all_modes = {}
     for  mode in rust_mode:
-        rs_outputs_all_modes[mode] = run_timed_all("rust", traclus_args, mode)
+        outputs += run_timed_all("rust", traclus_args, mode)
         traclus_args.reset_arguments()
-
-
-    print("\n=== Comparison ===")
-    for index in range(len(py_outputs)):
-        time_algo = {}
-        output_algo = {}
-        args = py_outputs[index]["args"]
-        
-        time_algo["python"] = py_outputs[index]["time"]
-        output_algo["python"] = py_outputs[index]["out"]
-
-        for mode in rust_mode:
-            time_algo[mode] = rs_outputs_all_modes[mode][index]["time"]
-            output_algo[mode] = rs_outputs_all_modes[mode][index]["out"]
-
-        print(f"-- Argument Set {args} --")
-        for algo in time_algo:
-            print(f"{algo}: {time_algo[algo]:.6f} seconds")
-
-
-def run_timed_once(impl: str, args: ArgumentsTraclus, mode: str = ""):
-    run_start = perf_counter()
     
-    if impl == "python":
-        out = run_python_impl_once(args)
-    elif impl == "rust":
-        out = run_rust_impl_once(args, mode)
-    
-    run_end = perf_counter()
-    time = run_end - run_start
+    for output in outputs:
+        print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}")
 
-    print(f"Argument Set {args.get_args()} for {impl} // Time: {time:.6f} seconds")
-    return {"args": args.get_args(), "out": out, "time": time}
-    
-def run_timed_all(impl: str, args: ArgumentsTraclus, mode: str = ""):
+
+def run_averaged_multi_OD(args: dict, rust_mode: list):
+    base_file = "enquete_od_DL_$NB$_traclus.txt"
+    list_of_sizes = [500, 1000, 2000, 3000, 4000, 5000, 
+                     6000, 8000, 10000, 15000, 20000, 25000, 30000]
+    max_index_python = 5
+
     outputs = []
-    total_time = 0.0
+    try: # TODO: REMOVE
+        for (index,size) in enumerate(list_of_sizes):
+            file_name = base_file.replace("$NB$", str(size))
+            
+            args_copy = args.copy()
+            args_copy['path'] = [file_name]
+            args_copy['min_density'] = [size//3]
+            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=True)
 
-    while True:
-        output = run_timed_once(impl, args, mode)
-        outputs.append(output)
-        total_time += output["time"]
+            remove_and_copy_input_file(traclus_args)
+            print(f"\n======== Running implementations for {file_name} ===========")
 
-        if args.iter_arguments() is False:
-            break  
-    
-    print(f"\nTotal {impl} execution time: {total_time:.6f} seconds \n")
-    return outputs
+            # TESTING PYTHON
+            if index <= max_index_python:
+                outputs += run_timed_all("python", traclus_args)
+                traclus_args.reset_arguments()
+
+            # TESTING ALL MODE RUST
+            for  mode in rust_mode:
+                outputs += run_timed_all("rust", traclus_args, mode)
+                traclus_args.reset_arguments()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    print("\n=== Final Results (sorted by implementation and mode) ===")
+    outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
+    for output in outputs_sorted:
+        print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}".replace(".", ","))
+
+        
+
+
 
 # =====================================================
 #                 MAIN
@@ -278,12 +301,20 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [1000],
-        'max_angle':    [7],
+        'min_density':  [500],
+        'max_angle':    [5,7],
         'seg_size':     [3000],
-        'path': ["enquete_od_DL_3000_traclus.txt"],
+        'path': ["enquete_od_DL_500_traclus.txt"],
     }
-    rust_mode = ['serial', 'parallel-rayon']
+    #args_values = {
+    #     'max_dist':     [600],
+    #     'min_density':  [1000],
+    #     'max_angle':    [5,7],
+    #     'seg_size':     [3000],
+    #     'path': ["enquete_od_DL_3000_traclus.txt"],
+    # }
+    rust_mode = [{'cmd': 'serial', 'name': 'Serial'}, 
+                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
     #'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt", "up_the_bridges_DL_traclus.txt"],
     # "enquete_od_DL_500_traclus.txt"
@@ -297,20 +328,6 @@ if __name__ == "__main__":
         visual_testing(traclus_args, rust_mode)
     elif args_cli.mode == "time":
         time_testing(traclus_args, rust_mode)
+    elif args_cli.mode == "multi-od":
+        run_averaged_multi_OD(args_values, rust_mode)
     
-
-
- # TODO: pass this step to retrieve the correct output file 
-    # to a function after the running phase
-    # folder_path = os.path.join(PYTHON_IMPL_DIR, args.data_path)
-    # output_files = glob.glob(os.path.join(folder_path, "*"))
-
-    # corridor_file = next(
-    #     (f for f in output_files if "corridor" in f and args.get_name() in f),
-    #     None
-    # )
-
-    # if corridor_file and os.path.exists(corridor_file):
-    #     with open(corridor_file, "r") as f:
-    #         content = f.read()
-    #     return content

@@ -1,3 +1,4 @@
-pub mod base_traclusdl;
-pub mod parallel_rayon_traclusdl;
-pub mod serial_traclusdl;
+pub mod main_traclusdl;
+mod base_traclusdl;
+mod parallel_rayon_traclusdl;
+mod serial_traclusdl;

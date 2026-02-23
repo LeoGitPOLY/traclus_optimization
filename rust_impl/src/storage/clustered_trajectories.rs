@@ -2,7 +2,7 @@ use crate::clustering::cluster::Cluster;
 use crate::clustering::cluster_member::ClusterMember;
 use crate::clustering::corridor::Corridor;
 use crate::geometry::trajectory::Trajectory;
-use crate::io::traclus_args::TraclusArgs;
+use crate::io::args::TraclusArgs;
 use crate::storage::priority_queue::PriorityQueueCluster;
 
 pub struct ClusteredTrajectories {

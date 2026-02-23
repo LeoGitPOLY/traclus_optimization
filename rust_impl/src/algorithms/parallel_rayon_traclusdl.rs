@@ -2,7 +2,7 @@ use crate::{
     algorithms::base_traclusdl::TraclusAlgorithm,
     clustering::cluster::Cluster,
     geometry::trajectory::Trajectory,
-    io::traclus_args::TraclusArgs,
+    io::args::TraclusArgs,
     storage::{
         clustered_trajectories::ClusteredTrajectories,
         raw_trajectories::{Bucket, RawTrajectories},
@@ -51,6 +51,30 @@ impl ParallelRayonTraclusDL {
             })
             .collect()
     }
+    /// Trying a diffenrent approach to parallelization
+    ///
+    /// # Arguments
+    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
+    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    // fn complete_parallel_clustering_v2(
+    //     &self,
+    //     raw_trajectories: &RawTrajectories,
+    // ) -> Vec<Vec<Cluster>> {
+    //     // Parallelize over angle buckets using Rayon
+    //     let bucket_parallel_iter: Iter<'_, Bucket> = raw_trajectories.traj_buckets.par_iter();
+
+    //     // FOR EACH: GET THE ONLY DATA NEEDED
+    //     // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
+    //     let nearby_trajs: Vec<&Trajectory> = raw_trajectories
+    //         .iter_nearby_angle(bucket.angle_start)
+    //         .collect();
+
+    //     // Parallelize over trajectories in this bucket using Rayon
+    //     let traj_parallel_iter: Iter<'_, Trajectory> = bucket.trajectories.par_iter();
+    //     traj_parallel_iter
+    //         .map(|traj_seed| self.individual_trajectory_clustering(traj_seed, &nearby_trajs))
+    //         .collect::<Vec<_>>()
+    // }
 
     /// Same logic as the serial version — unchanged
     #[inline]

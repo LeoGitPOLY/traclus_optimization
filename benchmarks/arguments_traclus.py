@@ -13,11 +13,12 @@ DEFAULT_VALUES = {
     }
 
 class ArgumentsTraclus:
-    def __init__(self, data_path: str, values: dict = []):
+    def __init__(self, data_path: str, values: dict = [], print_as_text: bool = True):
         self.index_args = 0
         self.index_path = 0
         self.data_path = data_path
         self.values = values
+        self._print_as_text = print_as_text
         self.load_arguments()
 
     def load_arguments(self):
@@ -39,7 +40,6 @@ class ArgumentsTraclus:
         self._min_density = self._extend_to_length(self._min_density, self.max_index_args)
         self._max_angle = self._extend_to_length(self._max_angle, self.max_index_args)
         self._seg_size = self._extend_to_length(self._seg_size, self.max_index_args)
-
 
     def reset_arguments(self):
         self.index_args = 0
@@ -82,8 +82,10 @@ class ArgumentsTraclus:
         args = (self.get_args_value('max_dist'), self.get_args_value('min_density'), 
                 self.get_args_value('max_angle'), self.get_args_value('seg_size'), 
                 self.get_name())
-
-        return f"[max dist: {args[0]}, min density: {args[1]}, max angle: {args[2]}, seg size: {args[3]}] for '{args[4]}'"
+        if self._print_as_text:
+            return f"[max dist: {args[0]}, min density: {args[1]}, max angle: {args[2]}, seg size: {args[3]}] for '{args[4]}'"
+        else:
+            return f"{args[0]};{args[1]};{args[2]};{args[3]};{args[4]}"
         
     def __valid_value(self, key: str) -> list:
         if not key in DEFAULT_VALUES:

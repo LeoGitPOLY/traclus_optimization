@@ -2,7 +2,7 @@ use crate::{
     algorithms::base_traclusdl::TraclusAlgorithm,
     clustering::cluster::Cluster,
     geometry::trajectory::Trajectory,
-    io::traclus_args::TraclusArgs,
+    io::args::TraclusArgs,
     storage::{clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories},
 };
 

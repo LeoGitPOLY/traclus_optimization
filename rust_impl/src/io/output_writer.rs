@@ -1,6 +1,6 @@
 use crate::clustering::cluster_member::ClusterMember;
 use crate::clustering::corridor::Corridor;
-use crate::io::traclus_args::TraclusArgs;
+use crate::io::args::TraclusArgs;
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use std::path::Path;
 

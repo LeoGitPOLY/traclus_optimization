@@ -4,7 +4,7 @@ use crate::{
         cluster_member::{ClusterMember, ClusterSeed},
     },
     geometry::{segment::Segment, trajectory::Trajectory},
-    io::traclus_args::TraclusArgs,
+    io::args::TraclusArgs,
     storage::{clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories},
 };
 

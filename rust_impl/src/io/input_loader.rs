@@ -1,7 +1,7 @@
 use crate::geometry::input_od_line::InputODLine;
 use crate::geometry::point::Point;
 use crate::geometry::trajectory::Trajectory;
-use crate::io::traclus_args::TraclusArgs;
+use crate::io::args::TraclusArgs;
 use crate::storage::raw_trajectories::RawTrajectories;
 
 use std::fs;

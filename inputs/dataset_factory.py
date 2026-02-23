@@ -126,6 +126,30 @@ def chose_random_lines(list_lines: list[list], num_lines: int) -> list[list]:
     
     return random.sample(list_lines, num_lines)
 
+def generate_random_lines(list_lines: list[list], num_lines: int) -> list[list]:
+    """
+    Generate random lines by randomly modifying the coordinates of existing lines.
+    Return 
+    """
+    new_lines = list_lines.copy()
+
+    for _ in range(num_lines - len(list_lines)):
+        line = random.choice(list_lines)
+        id_val, weight, start_point, end_point = line
+
+        # Randomly modify the coordinates by adding a small random offset
+        offset_x_start = random.uniform(-50, 50)
+        offset_y_start = random.uniform(-50, 50)
+
+        offset_x_end = random.uniform(-50, 50)
+        offset_y_end = random.uniform(-50, 50)
+
+        new_start = Point(start_point.x + offset_x_start, start_point.y + offset_y_start)
+        new_end = Point(end_point.x + offset_x_end, end_point.y + offset_y_end)
+
+        new_lines.append([id_val, weight, new_start, new_end])
+
+    return new_lines
 
 def save_to_tsv(list_lines: list[str], filename: str):
     """
@@ -197,12 +221,15 @@ def main():
     filename = DATA_DIR / "enquete_od_DL"
     list_of_lines = convert_csv_enquete_to_list(input_file)
 
-    for sample_size in [500, 1000, 3000]:
+    for sample_size in [500, 1000, 2000, 3000]:
         sampled_lines = chose_random_lines(list_of_lines, sample_size)
         save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
         save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
     
-
+    for sample_size in [4000, 5000, 6000,8000, 10000, 15000, 20000, 25000, 30000]:
+        sampled_lines = generate_random_lines(list_of_lines, sample_size)
+        save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
+        save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
 
 if __name__ == "__main__":
     main()
