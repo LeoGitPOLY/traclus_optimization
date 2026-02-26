@@ -50,7 +50,7 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
 }
 
 pub fn parse_input_data(args: &TraclusArgs) -> RawTrajectories {
-    let content: String = read_file(&args.infile).expect("Failed to read input file");
+    let content: String = read_file(&args.file).expect("Failed to read input file");
     let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
 
     for (index, line) in content.lines().enumerate() {

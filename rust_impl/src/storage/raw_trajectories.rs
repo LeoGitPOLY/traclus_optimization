@@ -102,11 +102,9 @@ impl RawTrajectories {
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
 
-    // pub fn get_traj_by_id(&self, traj_id: usize) -> Option<&Trajectory> {
-    //     // Find the trajectory bucket id
-    //     let
-    // }
-
+    pub fn get_total_trajectories(&self) -> usize {
+        self.traj_buckets.iter().map(|b| b.trajectories.len()).sum()
+    }
     #[allow(unused)]
     pub fn print_info(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {

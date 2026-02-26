@@ -59,7 +59,7 @@ pub fn generate_segment_file(
 }
 
 fn build_corridor_output_filename(args: &TraclusArgs) -> String {
-    let input_path: &Path = Path::new(&args.infile);
+    let input_path: &Path = Path::new(&args.file);
     let basename: &str = input_path
         .file_stem()
         .and_then(|n| n.to_str())
@@ -80,7 +80,7 @@ fn build_corridor_output_filename(args: &TraclusArgs) -> String {
 }
 
 fn build_segment_output_filename(args: &TraclusArgs, format: &SegmentOutputFormat) -> String {
-    let input_path: &Path = Path::new(&args.infile);
+    let input_path: &Path = Path::new(&args.file);
     let basename: &str = input_path
         .file_stem()
         .and_then(|n| n.to_str())

@@ -255,8 +255,9 @@ def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
 
 def run_averaged_multi_OD(args: dict, rust_mode: list):
     base_file = "enquete_od_DL_$NB$_traclus.txt"
-    list_of_sizes = [500, 1000, 2000, 3000, 4000, 5000, 
-                     6000, 8000, 10000, 15000, 20000, 25000, 30000]
+    # list_of_sizes = [500, 1000, 2000, 3000, 4000, 5000, 
+    #                  6000, 8000, 10000, 15000, 20000, 25000, 30000]
+    list_of_sizes = [6000, 8000]
     max_index_python = 5
 
     outputs = []
@@ -267,7 +268,7 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
             args_copy = args.copy()
             args_copy['path'] = [file_name]
             args_copy['min_density'] = [size//3]
-            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=True)
+            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
 
             remove_and_copy_input_file(traclus_args)
             print(f"\n======== Running implementations for {file_name} ===========")
