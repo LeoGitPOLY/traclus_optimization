@@ -1,5 +1,6 @@
 use crate::clustering::cluster_member::ClusterMember;
 use crate::clustering::corridor::Corridor;
+use crate::geometry::segment;
 use crate::io::args::TraclusArgs;
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use std::path::Path;
@@ -129,17 +130,20 @@ fn write_single_segment_new(
     .expect("Failed to write new segment");
 }
 
-// Format: {trajectory_id}\t{weight}\t{angle}\t{corridor_id}\tLINESTRING({x1} {y1}, {x2} {y2})
+// Format: {trajectory_id:segment_id}\t{weight}\t{angle}\t{corridor_id}\tLINESTRING({x1} {y1}, {x2} {y2})
 fn write_single_segment_old(
     writer: &mut BufWriter<File>,
     corridor_id: i32,
     cluster_member: &ClusterMember,
 ) {
     let end_point = cluster_member.end_point();
+    let start_str = cluster_member.start.x.to_string() + ":" + &cluster_member.start.y.to_string();
+    let segment_id = cluster_member.traj_id.to_string() + ":" + &start_str;
+
     writeln!(
         writer,
         "{}\t{}\t{}\t{}\tLINESTRING({} {}, {} {})",
-        cluster_member.traj_id,
+        segment_id,
         cluster_member.weight,
         cluster_member.angle(),
         corridor_id,

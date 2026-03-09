@@ -9,6 +9,7 @@ use eframe::egui;
 use crate::algorithms::main_traclusdl::MainTraclusDL;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
+use crate::io::args::ExecutionMode;
 
 use crate::gui::app_events::AppEvent;
 use crate::io::args::TraclusArgs;
@@ -67,7 +68,10 @@ impl TraclusDLApp {
     }
 
     pub fn on_start_computation(&mut self) {
-        let args: TraclusArgs = TraclusArgs::default();
+        let args: TraclusArgs = TraclusArgs {
+            mode: ExecutionMode::ParallelRayon,
+            ..Default::default()
+        };
 
         self.launch(move |t| {
             t.run_clustering(&args);

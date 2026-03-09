@@ -73,7 +73,7 @@ fn default_interface_mode() -> InterfaceMode {
 #[derive(Clone, Parser, Debug)]
 #[command(author, version, about = "Traclus DL Optimized in Rust")]
 pub struct TraclusArgs {
-    #[arg(short = 'f', long)]
+    #[arg(short = 'f', long = "file", default_value = "")]
     pub file: String,
 
     #[arg(

@@ -23,9 +23,32 @@ pub enum AppEvent {
     },
 
     /// Emitted on any unrecoverable error inside a task
-    Error(String),
+    Error(AppError),
 }
 
+use std::fmt;
+
+#[derive(Debug, Clone)]
+pub enum AppError {
+    NoRawStorage,
+    NoClustStorage,
+    IoError(String), // variants can still carry dynamic data when needed
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let msg = match self {
+            AppError::NoRawStorage => {
+                "No raw storage loaded. Please load data before running clustering."
+            }
+            AppError::NoClustStorage => {
+                "No clustered storage available. Please run clustering first."
+            }
+            AppError::IoError(msg) => msg,
+        };
+        write!(f, "{}", msg)
+    }
+}
 // ─────────────────────────────────────────────
 // Event : a simple fan-out broadcast channel for AppEvents
 // ─────────────────────────────────────────────

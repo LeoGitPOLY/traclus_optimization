@@ -34,7 +34,7 @@ fn get_number_of_cpus(args: &TraclusArgs) -> usize {
     let computation: usize = available.saturating_sub(reserved).max(1);
 
     println!(
-        "Available CPUs: {}, reserved for UI: {}, used for computation: {}",
+        "Available CPUs: {}, reserved for UI/Logger: {}, used for computation: {}",
         available, reserved, computation
     );
 
@@ -47,6 +47,10 @@ fn get_number_of_cpus(args: &TraclusArgs) -> usize {
 
 fn main() -> std::io::Result<()> {
     let traclus_args: TraclusArgs = TraclusArgs::parse();
+    print!(
+        "Starting TraclusDL Rust implementation with {:?}...\n",
+        traclus_args
+    );
 
     let num_computation_threads: usize = get_number_of_cpus(&traclus_args);
     let mut main_traclusdl: MainTraclusDL = MainTraclusDL::new(num_computation_threads);

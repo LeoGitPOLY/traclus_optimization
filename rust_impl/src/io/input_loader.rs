@@ -24,9 +24,7 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
     }
 
     Ok(InputODLine {
-        line_id: parts[0]
-            .parse()
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Failed to parse line_id"))?,
+        line_id: index,
         weight: parts[1]
             .parse()
             .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Failed to parse weight"))?,
@@ -54,7 +52,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> RawTrajectories {
     let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
 
     for (index, line) in content.lines().enumerate() {
-        let od_line: InputODLine = parse_line_to_od(line, index).unwrap_or_else(|err| {
+        let od_line: InputODLine = parse_line_to_od(line, index + 1).unwrap_or_else(|err| {
             eprintln!("{}", err);
             std::process::exit(1);
         });

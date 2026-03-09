@@ -1,6 +1,6 @@
 use rayon::ThreadPool;
 
-use crate::gui::app_events::{AppEvent, ComputationEvent};
+use crate::gui::app_events::{AppError, AppEvent, ComputationEvent};
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::storage::raw_trajectories::RawTrajectories;
 
@@ -39,7 +39,7 @@ impl MainTraclusDL {
     }
 
     // Loads raw trajectories from disk and stores them.
-    pub fn load_raw_storage(&mut self, infile: &str) -> String {
+    pub fn load_raw_storage(&mut self, infile: &str) {
         let args: TraclusArgs = TraclusArgs {
             file: infile.to_string(),
             ..Default::default()
@@ -50,19 +50,23 @@ impl MainTraclusDL {
             traj_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
             correlation_percent: 10.0, // TODO: compute actual correlation
         });
-        return self.raw_storage.as_ref().unwrap().traj_buckets.len().to_string();
     }
 
     // Runs the clustering algorithm on the currently loaded raw storage and stores the clustered result.
     pub fn run_clustering(&mut self, args: &TraclusArgs) {
-         let raw_storage: &RawTrajectories = self.raw_storage.as_ref().unwrap();
+        if self.raw_storage.is_none() {
+            self.event.emit(AppEvent::Error(AppError::NoRawStorage));
+            return;
+        }
+
+        let raw_storage: &RawTrajectories = self.raw_storage.as_ref().unwrap();
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new();
 
         self.event
             .emit(AppEvent::ComputationClusteringProgress { num_traj_done: 0 });
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(args);
         clustering_algorithm.db_scan_clustering(raw_storage, &mut clust_storage);
-        
+
         self.event
             .emit(AppEvent::ComputationClusteringProgress { num_traj_done: 100 });
 
