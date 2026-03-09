@@ -212,3 +212,5 @@ python_impl/benchmarked_data/
 python_impl/data/
 rust_impl/benchmarked_data/
 rust_impl/data/
+inputs/benchmarked_data/
+inputs/data/
