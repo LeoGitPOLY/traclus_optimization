@@ -5,6 +5,7 @@ import argparse
 import shutil
 from time import perf_counter
 from arguments_traclus import ArgumentsTraclus
+from measurements import calculate_file_information, calculate_similaty_index
 
 # =====================================================
 #                 PATH CONSTANTS
@@ -108,6 +109,33 @@ def transfert_files_to_qgis_results(rust_mode: list):
         create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_corr, f"CORRIDOR_RUST_{name}.txt")
 
 # =====================================================
+#                 STATISTICS CALCULATIONS
+# =====================================================
+
+def file_information(impl: str) -> dict:
+    file_corridor = None
+    file_segment = None
+
+    if impl == "python":
+        file_corridor = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["corridor"])[0]
+        file_segment = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
+    elif impl == "rust":
+        file_corridor = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["corridor"])[0]
+        file_segment = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old"])[0]
+    
+    return calculate_file_information(file_corridor, file_segment)
+
+
+def similaty_index() -> dict:
+    file_corridor_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["corridor"])[0]
+    file_corridor_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["corridor"])[0]
+
+    file_segment_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
+    file_segment_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old"])[0]
+
+    return calculate_similaty_index(file_corridor_py, file_segment_py, file_corridor_rust, file_segment_rust)
+
+# =====================================================
 #                 BUILD STEP
 # =====================================================
 
@@ -122,7 +150,6 @@ def build_python_impl():
 
     end = perf_counter()
     print(f"Python warmup done in {end - start:.4f} seconds")
-
 
 def build_rust_impl():
     print("=== Building Rust implementation (cargo build --release) ===")
@@ -143,7 +170,6 @@ def build_rust_impl():
 
     print(f"Rust build done in {end - start:.4f} seconds")
 
-
 # =====================================================
 #                 RUN STEP — Execution
 # =====================================================
@@ -161,20 +187,19 @@ def run_python_impl_once(args: ArgumentsTraclus):
 
     results = subprocess.run(cmd, capture_output=True, text=True)
 
-
-
 def run_rust_impl_once(args: ArgumentsTraclus, cmd: str = "serial"):
     cmd = [
         "cargo",
         "run",
         "--release",
         "--",
-        "--infile", os.path.join(RUST_IMPL_DIR, args.get_path()),
+        "--file", os.path.join(RUST_IMPL_DIR, args.get_path()),
         "--max_dist", args.get_args_value('max_dist'),
         "--min_density", args.get_args_value('min_density'),
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
-        "--mode", cmd
+        "--mode", cmd,
+        "--interface", "performance"
     ]   
     
     results = subprocess.run(cmd, cwd=RUST_IMPL_DIR, capture_output=True, text=True)
@@ -190,8 +215,10 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NON
     run_end = perf_counter()
     time = run_end - run_start
 
+    information = file_information(impl)
+
     print(f"Argument Set {args.get_args()} for {impl} // Time: {time:.6f} seconds")
-    return {"impl": impl, "mode": mode['name'], "args": args.get_args(), "time": time}
+    return {"impl": impl, "mode": mode['name'], "args": args.get_args(), "time": time, **information}
     
 def run_timed_all(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}):
     outputs = []
@@ -228,8 +255,8 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         transfert_files_to_qgis_results(rust_mode)
 
         print(f"=== Visual results are ready for argument set {traclus_args.get_args()} ===")
+
         user_input = input("\nPress Enter to continue to the next argument set (or 's' to stop)...\n")
-        
         if user_input.lower() == 's':
             break
         if traclus_args.iter_arguments() is False:
@@ -255,10 +282,12 @@ def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
 
 def run_averaged_multi_OD(args: dict, rust_mode: list):
     base_file = "enquete_od_DL_$NB$_traclus.txt"
-    # list_of_sizes = [500, 1000, 2000, 3000, 4000, 5000, 
-    #                  6000, 8000, 10000, 15000, 20000, 25000, 30000]
-    list_of_sizes = [6000, 8000]
-    max_index_python = 5
+    # list_of_sizes = [1000, 2000, 3000, 4000, 5000, 
+                    #  6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 
+                    #  14000, 15000, 16000, 17000, 18000, 19000, 20000]
+    list_of_sizes = [4000, 5000, 6000, 7000, 8000, 
+                     16000]
+    max_index_python = 4
 
     outputs = []
     try: # TODO: REMOVE
@@ -273,6 +302,7 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
             remove_and_copy_input_file(traclus_args)
             print(f"\n======== Running implementations for {file_name} ===========")
 
+            current_outputs = {}
             # TESTING PYTHON
             if index <= max_index_python:
                 outputs += run_timed_all("python", traclus_args)
@@ -282,16 +312,21 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
             for  mode in rust_mode:
                 outputs += run_timed_all("rust", traclus_args, mode)
                 traclus_args.reset_arguments()
+
+            # Calculate similiarity index
+            if index <= max_index_python:
+                similarity_index = similaty_index()
+                print(f"Similarity Index for {file_name}: {similarity_index}")
+            
+
     except Exception as e:
         print(f"An error occurred: {e}")
 
     print("\n=== Final Results (sorted by implementation and mode) ===")
     outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
     for output in outputs_sorted:
-        print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}".replace(".", ","))
-
-        
-
+        print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f};"
+              f"{output['number_of_corridors']};{output['number_of_segments']};{output['number_of_non_clustered_segments']}".replace(".", ","))
 
 
 # =====================================================
@@ -302,18 +337,11 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [500],
+        'min_density':  [1],
         'max_angle':    [5,7],
         'seg_size':     [3000],
-        'path': ["enquete_od_DL_500_traclus.txt"],
+        'path': ["up_the_bridges_DL_traclus.txt"],
     }
-    #args_values = {
-    #     'max_dist':     [600],
-    #     'min_density':  [1000],
-    #     'max_angle':    [5,7],
-    #     'seg_size':     [3000],
-    #     'path': ["enquete_od_DL_3000_traclus.txt"],
-    # }
     rust_mode = [{'cmd': 'serial', 'name': 'Serial'}, 
                  {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
