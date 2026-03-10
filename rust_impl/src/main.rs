@@ -67,7 +67,7 @@ fn main() -> std::io::Result<()> {
     // Route to the appropriate front-end
     match traclus_args.interface_mode {
         InterfaceMode::Gui | InterfaceMode::GuiAndLogger => {
-            start_gui(main_traclusdl);
+            start_gui(traclus_args,main_traclusdl);
         }
         InterfaceMode::Logger | InterfaceMode::Performance => {
             main_traclusdl.run_full_traclus(traclus_args);

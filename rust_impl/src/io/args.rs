@@ -3,10 +3,13 @@
 use clap::{Parser, ValueEnum};
 use std::fmt;
 
+use crate::io::args_config::get_param_configs;
+
 // ─────────────────────────────────────────────
-// ExecutionMode enum : algorithm parallelism strategy
+// ExecutionMode  — algorithm parallelism strategy
 // ─────────────────────────────────────────────
-#[derive(Copy, Clone, Debug, ValueEnum)]
+
+#[derive(Copy, Clone, Debug, ValueEnum, PartialEq)]
 pub enum ExecutionMode {
     Serial,
     ParallelRayon,
@@ -22,8 +25,9 @@ impl fmt::Display for ExecutionMode {
 }
 
 // ─────────────────────────────────────────────
-// InterfaceMode enum : which front-ends are active
+// InterfaceMode  — which front-ends are active
 // ─────────────────────────────────────────────
+
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum InterfaceMode {
     Gui,
@@ -43,22 +47,6 @@ impl fmt::Display for InterfaceMode {
     }
 }
 
-// ─────────────────────────────────────────────
-// Default value functions
-// ─────────────────────────────────────────────
-
-fn default_max_dist() -> f64 {
-    250.0
-}
-fn default_min_density() -> u32 {
-    3
-}
-fn default_max_angle() -> f64 {
-    5.0
-}
-fn default_segment_size() -> f64 {
-    500.0
-}
 fn default_mode() -> ExecutionMode {
     ExecutionMode::Serial
 }
@@ -79,11 +67,12 @@ pub struct TraclusArgs {
     #[arg(
         short = 'd',
         long = "max_dist",
-        default_value_t = default_max_dist(),
+        default_value_t = get_param_configs().max_dist.default,
         value_parser = |v: &str| {
+            let cfg = get_param_configs().max_dist;
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val < 0.0 {
-                Err(String::from("max_dist must be >= 0"))
+            if val < cfg.min || val > cfg.max {
+                Err(format!("max_dist must be in range {}..={}", cfg.min, cfg.max))
             } else {
                 Ok(val)
             }
@@ -94,11 +83,12 @@ pub struct TraclusArgs {
     #[arg(
         short = 'n',
         long = "min_density",
-        default_value_t = default_min_density(),
+        default_value_t = get_param_configs().min_density.default,
         value_parser = |v: &str| {
+            let cfg = get_param_configs().min_density;
             let val: u32 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val < 1 {
-                Err(String::from("min_density must be >= 1"))
+            if val < cfg.min || val > cfg.max {
+                Err(format!("min_density must be in range {}..={}", cfg.min, cfg.max))
             } else {
                 Ok(val)
             }
@@ -109,11 +99,12 @@ pub struct TraclusArgs {
     #[arg(
         short = 'a',
         long = "max_angle",
-        default_value_t = default_max_angle(),
+        default_value_t = get_param_configs().max_angle.default,
         value_parser = |v: &str| {
+            let cfg = get_param_configs().max_angle;
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val < 0.0 || val > 22.5 {
-                Err(String::from("max_angle must be in range 0.0..22.5"))
+            if val < cfg.min || val > cfg.max {
+                Err(format!("max_angle must be in range {}..={}", cfg.min, cfg.max))
             } else {
                 Ok(val)
             }
@@ -124,11 +115,12 @@ pub struct TraclusArgs {
     #[arg(
         short = 's',
         long = "segment_size",
-        default_value_t = default_segment_size(),
+        default_value_t = get_param_configs().segment_size.default,
         value_parser = |v: &str| {
+            let cfg = get_param_configs().segment_size;
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val <= 0.0 {
-                Err(String::from("segment_size must be > 0"))
+            if val < cfg.min || val > cfg.max {
+                Err(format!("segment_size must be in range {}..={}", cfg.min, cfg.max))
             } else {
                 Ok(val)
             }
@@ -136,31 +128,22 @@ pub struct TraclusArgs {
     )]
     pub segment_size: f64,
 
-    #[arg(
-        short = 'm',
-        long = "mode",
-        value_enum,
-        default_value_t = default_mode()
-    )]
+    #[arg(short = 'm', long = "mode",      value_enum, default_value_t = default_mode())]
     pub mode: ExecutionMode,
 
-    #[arg(
-        short = 'i',
-        long = "interface",
-        value_enum,
-        default_value_t = default_interface_mode()
-    )]
+    #[arg(short = 'i', long = "interface", value_enum, default_value_t = default_interface_mode())]
     pub interface_mode: InterfaceMode,
 }
 
 impl Default for TraclusArgs {
     fn default() -> Self {
+        let cfg = get_param_configs();
         Self {
             file: String::new(),
-            max_dist: default_max_dist(),
-            min_density: default_min_density(),
-            max_angle: default_max_angle(),
-            segment_size: default_segment_size(),
+            max_dist: cfg.max_dist.default,
+            min_density: cfg.min_density.default,
+            max_angle: cfg.max_angle.default,
+            segment_size: cfg.segment_size.default,
             mode: default_mode(),
             interface_mode: default_interface_mode(),
         }

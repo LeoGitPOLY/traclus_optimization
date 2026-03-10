@@ -1,52 +1,28 @@
 // view_model.rs - Data bound to the GUI fields (form state)
-// All fields are public so gui.rs can read and write them directly
+
+use crate::io::args::TraclusArgs;
+use crate::io::args_config::get_param_configs;
 
 // ─────────────────────────────────────────────
-// Computing Mode : TODO changed to the real computing enum
+// ArgsBuffer
 // ─────────────────────────────────────────────
 
-#[derive(PartialEq)]
-pub enum ComputeMode {
-    Serial,
-    Parallel,
+pub struct ArgsBuffer {
+    pub max_dist: String,
+    pub min_density: String,
+    pub max_angle: String,
+    pub segment_size: String,
 }
 
-impl Default for ComputeMode {
+impl Default for ArgsBuffer {
     fn default() -> Self {
-        ComputeMode::Parallel
-    }
-}
-
-// ─────────────────────────────────────────────
-// Parameter Set
-// ─────────────────────────────────────────────
-
-pub struct ParameterSet {
-    // Committed values — passed to the algorithm
-    pub max_angle: i32,    // [0, 22.5] tenths-of-degree, maps to f64 [0.0, 22.5]
-    pub min_density: i32,  // >= 1
-    pub max_distance: i32, // >= 0
-    pub seg_size: i32,     // >= 1
-
-    // Live edit buffers — bound to TextEdit widgets, committed on focus loss
-    pub buf_angle: String,
-    pub buf_density: String,
-    pub buf_distance: String,
-    pub buf_seg: String,
-}
-
-impl Default for ParameterSet {
-    fn default() -> Self {
+        // Initialise buffers from the same defaults as TraclusArgs
+        let cfg = get_param_configs();
         Self {
-            max_angle: 10,
-            min_density: 2,
-            max_distance: 10,
-            seg_size: 5,
-            // Buffers initialised to match their committed values
-            buf_angle: "10".to_string(),
-            buf_density: "2".to_string(),
-            buf_distance: "10".to_string(),
-            buf_seg: "5".to_string(),
+            max_dist: cfg.max_dist.default.to_string(),
+            min_density: cfg.min_density.default.to_string(),
+            max_angle: cfg.max_angle.default.to_string(),
+            segment_size: cfg.segment_size.default.to_string(),
         }
     }
 }
@@ -56,28 +32,43 @@ impl Default for ParameterSet {
 // ─────────────────────────────────────────────
 
 pub struct ViewModel {
-    // File section
-    pub input_file_path: String,
+    pub args: TraclusArgs,
+    pub args_buffer: ArgsBuffer,
+
+    // Input file info section
     pub input_name: String,
     pub num_dl: usize,
     pub percent_correlation: f64,
 
-    // Parameters section
-    pub parameter_sets: Vec<ParameterSet>,
+    // Output section
+    pub output: String,
+}
+impl ViewModel {
+    pub fn new(args: TraclusArgs) -> Self {
+        Self {
+            args,
+            args_buffer: ArgsBuffer::default(),
 
-    // Computing mode section
-    pub compute_mode: ComputeMode,
+            input_name: String::new(),
+            num_dl: 0,
+            percent_correlation: 0.0,
+
+            output: String::new(),
+        }
+    }
 }
 
 impl Default for ViewModel {
     fn default() -> Self {
         Self {
-            input_file_path: String::new(),
+            args: TraclusArgs::default(),
+            args_buffer: ArgsBuffer::default(),
+
             input_name: String::new(),
             num_dl: 0,
             percent_correlation: 0.0,
-            parameter_sets: vec![ParameterSet::default()],
-            compute_mode: ComputeMode::default(),
+
+            output: String::new(),
         }
     }
 }

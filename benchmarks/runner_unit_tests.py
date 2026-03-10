@@ -285,11 +285,11 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
     # list_of_sizes = [1000, 2000, 3000, 4000, 5000, 
                     #  6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 
                     #  14000, 15000, 16000, 17000, 18000, 19000, 20000]
-    list_of_sizes = [4000, 5000, 6000, 7000, 8000, 
-                     16000]
+    list_of_sizes = [500]
     max_index_python = 4
 
-    outputs = []
+    outputs_time = []
+    outputs_similarity = []
     try: # TODO: REMOVE
         for (index,size) in enumerate(list_of_sizes):
             file_name = base_file.replace("$NB$", str(size))
@@ -305,29 +305,33 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
             current_outputs = {}
             # TESTING PYTHON
             if index <= max_index_python:
-                outputs += run_timed_all("python", traclus_args)
+                outputs_time += run_timed_all("python", traclus_args)
                 traclus_args.reset_arguments()
 
             # TESTING ALL MODE RUST
             for  mode in rust_mode:
-                outputs += run_timed_all("rust", traclus_args, mode)
+                outputs_time += run_timed_all("rust", traclus_args, mode)
                 traclus_args.reset_arguments()
 
             # Calculate similiarity index
             if index <= max_index_python:
                 similarity_index = similaty_index()
-                print(f"Similarity Index for {file_name}: {similarity_index}")
+                outputs_similarity.append({"size":size, **similarity_index})
+  
             
 
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    print("\n=== Final Results (sorted by implementation and mode) ===")
-    outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
+    print("\n=== Final Time Results (sorted by implementation and mode) ===")
+    outputs_sorted = sorted(outputs_time, key=lambda x: (x['impl'], x['mode']))
     for output in outputs_sorted:
         print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f};"
               f"{output['number_of_corridors']};{output['number_of_segments']};{output['number_of_non_clustered_segments']}".replace(".", ","))
 
+    print("\n=== Final Similarity Index Results (sorted by size) ===")
+    for output in outputs_similarity:
+        print(f"{output['size']};{output['similarity_index_1']:.6f};{output['similarity_index_2']:.6f}".replace(".", ","))
 
 # =====================================================
 #                 MAIN

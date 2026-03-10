@@ -8,7 +8,8 @@ use rfd::FileDialog;
 
 use crate::gui::style::*;
 use crate::gui::traclusdl_app::TraclusDLApp;
-use crate::gui::view_model::{ComputeMode, ParameterSet};
+use crate::io::args::ExecutionMode;
+use crate::io::args_config::get_param_configs;
 
 // ─────────────────────────────────────────────
 // App Update (main render loop)
@@ -18,7 +19,7 @@ impl eframe::App for TraclusDLApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.drain_events();
 
-        // Request a repaint on next frame while a task is running so the
+        // Request a repaint every frame while a task is running so the
         // progress display stays live without user interaction
         if self.runner.is_running() {
             ctx.request_repaint();
@@ -82,8 +83,6 @@ impl eframe::App for TraclusDLApp {
 // ─────────────────────────────────────────────
 
 // Frame overhead = border (1 px each side) + inner margin (each side).
-// The inner width passed to set_min_width must subtract this so the
-// outer edge of every framed section lands at the same x.
 const FRAME_OVERHEAD: f32 = (INNER_MARGIN + 1.0) * 2.0;
 const INNER_WIDTH: f32 = CONTAINER_WIDTH - FRAME_OVERHEAD;
 
@@ -103,6 +102,7 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     container_frame().show(ui, |ui| {
         ui.set_min_width(INNER_WIDTH);
 
+        // Labels row
         ui.horizontal(|ui| {
             ui.add_space(4.0);
             ui.label(RichText::new("Input file name").color(COLOR_LABEL));
@@ -114,9 +114,10 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
         ui.add_space(WIDGET_SPACING);
 
+        // Fields row — all read-only; values come from current_vm()
         ui.horizontal(|ui| {
             ui.add(
-                TextEdit::singleline(&mut app.vm.input_name)
+                TextEdit::singleline(&mut app.current_vm().input_name)
                     .desired_width(FILE_INPUT_WIDTH)
                     .clip_text(true)
                     .interactive(false)
@@ -124,7 +125,7 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             );
             ui.add_space(SPACE_BETWEEN_FIELD);
 
-            let mut num_str = app.vm.num_dl.to_string();
+            let mut num_str = app.current_vm().num_dl.to_string();
             ui.add(
                 TextEdit::singleline(&mut num_str)
                     .desired_width(NUM_DL_WIDTH)
@@ -133,7 +134,7 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             );
             ui.add_space(SPACE_BETWEEN_FIELD);
 
-            let mut pct_str = app.vm.percent_correlation.to_string();
+            let mut pct_str = app.current_vm().percent_correlation.to_string();
             ui.add(
                 TextEdit::singleline(&mut pct_str)
                     .desired_width(PERCENT_CORR_WIDTH)
@@ -165,26 +166,31 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 // ─────────────────────────────────────────────
 
 fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
+    // Fetch config once — labels and ranges come from param_config
+    let cfg = get_param_configs();
+
     container_frame().show(ui, |ui| {
         ui.set_min_width(INNER_WIDTH);
         ui.set_max_width(INNER_WIDTH);
 
-        // Exact pixel budget:
-        // INNER_WIDTH = param_col + separator(~6) + add_col
-        // add_col holds a 36px button with 4px padding each side.
         let add_col_width: f32 = 44.0;
         let sep_width: f32 = 6.0;
         let param_col_width = INNER_WIDTH - add_col_width - sep_width;
 
         ui.horizontal(|ui| {
-            // ── Left: headers + stacked parameter rows ───────────────────
+            // ── Left: headers + parameter rows ───────────────────────────
             ui.vertical(|ui| {
                 ui.set_width(param_col_width);
 
-                // Header labels sized exactly like their corresponding fields
+                // Header row — labels come from param_config
                 ui.horizontal(|ui| {
                     ui.add_space(26.0); // aligns with "#N " prefix below
-                    for label in &["MAX ANGLE", "MIN DENSITY", "MAX DISTANCE", "SEG SIZE"] {
+                    for label in &[
+                        cfg.max_angle.label,
+                        cfg.min_density.label,
+                        cfg.max_dist.label,
+                        cfg.segment_size.label,
+                    ] {
                         ui.add_sized(
                             [PARAM_FIELD_WIDTH, 16.0],
                             egui::Label::new(
@@ -197,73 +203,80 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
                 ui.separator();
 
+                // One row per ViewModel in the list
                 let mut to_remove: Option<usize> = None;
-                let set_count = app.vm.parameter_sets.len();
-                for (idx, param) in app.vm.parameter_sets.iter_mut().enumerate() {
+                let vm_count = app.vm.len();
+
+                for (idx, vm) in app.vm.iter_mut().enumerate() {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(format!("#{}", idx + 1)).color(COLOR_TEXT));
                         ui.add_space(4.0);
 
-                        // max_angle -> f64 [0.0, 22.5]; stored as tenths-of-degree: [0, 225]
-                        commit_on_focus_loss(
+                        // max_angle
+                        commit_f64_on_focus_loss(
                             ui,
-                            &mut param.buf_angle,
-                            &mut param.max_angle,
+                            &mut vm.args_buffer.max_angle,
+                            &mut vm.args.max_angle,
                             PARAM_FIELD_WIDTH,
-                            0,
-                            225,
+                            cfg.max_angle.min,
+                            cfg.max_angle.max,
                         );
                         ui.add_space(WIDGET_SPACING);
 
-                        // min_density: u32 >= 1
-                        commit_on_focus_loss(
+                        // min_density
+                        commit_u32_on_focus_loss(
                             ui,
-                            &mut param.buf_density,
-                            &mut param.min_density,
+                            &mut vm.args_buffer.min_density,
+                            &mut vm.args.min_density,
                             PARAM_FIELD_WIDTH,
-                            1,
-                            i32::MAX,
+                            cfg.min_density.min,
+                            cfg.min_density.max,
                         );
                         ui.add_space(WIDGET_SPACING);
 
-                        // max_distance: u32 >= 0
-                        commit_on_focus_loss(
+                        // max_dist
+                        commit_f64_on_focus_loss(
                             ui,
-                            &mut param.buf_distance,
-                            &mut param.max_distance,
+                            &mut vm.args_buffer.max_dist,
+                            &mut vm.args.max_dist,
                             PARAM_FIELD_WIDTH,
-                            0,
-                            i32::MAX,
+                            cfg.max_dist.min,
+                            cfg.max_dist.max,
                         );
                         ui.add_space(WIDGET_SPACING);
 
-                        // seg_size: u32 >= 1
-                        commit_on_focus_loss(
+                        // segment_size
+                        commit_f64_on_focus_loss(
                             ui,
-                            &mut param.buf_seg,
-                            &mut param.seg_size,
+                            &mut vm.args_buffer.segment_size,
+                            &mut vm.args.segment_size,
                             PARAM_FIELD_WIDTH,
-                            1,
-                            i32::MAX,
+                            cfg.segment_size.min,
+                            cfg.segment_size.max,
                         );
 
-                        if set_count > 1 && ui.small_button(" - ").clicked() {
+                        if vm_count > 1 && ui.small_button(" - ").clicked() {
                             to_remove = Some(idx);
                         }
                     });
                 }
+
                 if let Some(idx) = to_remove {
-                    app.vm.parameter_sets.remove(idx);
+                    app.vm.remove(idx);
+                    // Keep current_selected_vm in bounds after removal
+                    if app.current_selected_vm >= app.vm.len() {
+                        app.current_selected_vm = app.vm.len().saturating_sub(1);
+                    }
                 }
             });
 
             ui.separator();
 
-            // ── Right: + button in a hard-budgeted column ────────────────
+            // ── Right: + button ───────────────────────────────────────────
             ui.allocate_ui(Vec2::new(add_col_width, ui.available_height()), |ui| {
                 ui.centered_and_justified(|ui| {
                     if ui.add_sized([36.0, 36.0], egui::Button::new("+")).clicked() {
-                        app.vm.parameter_sets.push(ParameterSet::default());
+                        app.vm.push(crate::gui::view_model::ViewModel::default());
                     }
                 });
             });
@@ -271,15 +284,54 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     });
 }
 
-// Editable integer field: typing updates the buffer freely.
-// Clamping and commit to the real value happen only on focus loss or Enter.
-fn commit_on_focus_loss(
+// ─────────────────────────────────────────────
+// Commit helpers
+//
+// `buf` is a &mut String bound directly to the TextEdit.
+// The user can type anything — empty string, partial number, minus sign — freely.
+// Only on focus loss or Enter is the text parsed, clamped, and written to `value`.
+// If parsing fails the buffer is reset to the last valid committed value.
+// ─────────────────────────────────────────────
+
+fn commit_f64_on_focus_loss(
     ui: &mut egui::Ui,
-    buf: &mut String,
-    value: &mut i32,
+    buf: &mut String, // raw text bound to TextEdit — may be empty or partial
+    value: &mut f64,  // committed value — only updated on focus loss / Enter
     width: f32,
-    min: i32,
-    max: i32,
+    min: f64,
+    max: f64,
+) {
+    let response = ui.add(
+        TextEdit::singleline(buf)
+            .desired_width(width)
+            .clip_text(true)
+            .text_color(COLOR_TEXT),
+    );
+    // buf is updated in place by TextEdit — no need to sync manually
+
+    let commit = response.lost_focus()
+        || (response.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+
+    if commit {
+        match buf.trim().parse::<f64>() {
+            Ok(v) => {
+                *value = v.clamp(min, max);
+                *buf = value.to_string(); // normalise buffer to clamped value
+            }
+            Err(_) => {
+                *buf = value.to_string(); // restore buffer to last valid committed value
+            }
+        }
+    }
+}
+
+fn commit_u32_on_focus_loss(
+    ui: &mut egui::Ui,
+    buf: &mut String, // raw text bound to TextEdit
+    value: &mut u32,  // committed value
+    width: f32,
+    min: u32,
+    max: u32,
 ) {
     let response = ui.add(
         TextEdit::singleline(buf)
@@ -292,13 +344,13 @@ fn commit_on_focus_loss(
         || (response.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
 
     if commit {
-        match buf.parse::<i32>() {
+        match buf.trim().parse::<u32>() {
             Ok(v) => {
                 *value = v.clamp(min, max);
-                *buf = value.to_string(); // normalise buffer to clamped value
+                *buf = value.to_string();
             }
             Err(_) => {
-                *buf = value.to_string(); // restore buffer to last valid value
+                *buf = value.to_string();
             }
         }
     }
@@ -315,15 +367,15 @@ fn render_computing_mode_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
             ui.radio_value(
-                &mut app.vm.compute_mode,
-                ComputeMode::Serial,
+                &mut app.current_vm().args.mode,
+                ExecutionMode::Serial,
                 RichText::new("Serial computing").color(COLOR_TEXT),
             );
             ui.add_space(40.0);
             let parallel_label = format!("Parallel computing ({} CPU detected)", app.detected_cpus);
             ui.radio_value(
-                &mut app.vm.compute_mode,
-                ComputeMode::Parallel,
+                &mut app.current_vm().args.mode,
+                ExecutionMode::ParallelRayon,
                 RichText::new(parallel_label).color(COLOR_TEXT),
             );
         });
@@ -353,14 +405,15 @@ fn render_output_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                 .show(ui, |ui| {
                     // Subtract scrollbar width (~12 px) so text doesn't clip under it
                     ui.set_min_width(INNER_WIDTH - 12.0);
-                    if app.output_text.is_empty() {
+                    let output = &app.current_vm().output;
+                    if output.is_empty() {
                         ui.label(
                             RichText::new("No output yet.")
                                 .color(egui::Color32::GRAY)
                                 .italics(),
                         );
                     } else {
-                        ui.label(RichText::new(&app.output_text).color(COLOR_TEXT));
+                        ui.label(RichText::new(output.as_str()).color(COLOR_TEXT));
                     }
                 });
         });
@@ -371,9 +424,9 @@ fn render_output_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 // ─────────────────────────────────────────────
 
 fn render_action_bar(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
-    // No border frame — just enforce the same CONTAINER_WIDTH so buttons
-    // align with the left and right edges of every framed container above.
     ui.set_min_width(CONTAINER_WIDTH);
+
+    let is_running = app.runner.is_running();
 
     ui.horizontal(|ui| {
         if ui

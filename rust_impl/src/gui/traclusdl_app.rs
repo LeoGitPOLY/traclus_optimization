@@ -20,10 +20,10 @@ use crate::utils::gui_parallel_runner::GuiParallelRunner;
 // ─────────────────────────────────────────────
 
 pub struct TraclusDLApp {
-    pub vm: ViewModel,
+    pub vm: Vec<ViewModel>,
+    pub current_selected_vm: usize,
 
     pub detected_cpus: usize,
-    pub output_text: String,
 
     pub main_traclus: Arc<Mutex<MainTraclusDL>>,
     pub runner: GuiParallelRunner,
@@ -33,14 +33,14 @@ pub struct TraclusDLApp {
 
 impl TraclusDLApp {
     // TraclusDLApp::new is private — construction only via start_gui
-    fn new(main_traclusdl: MainTraclusDL) -> Self {
+    fn new(args: TraclusArgs, main_traclusdl: MainTraclusDL) -> Self {
         let main_traclus: Arc<Mutex<MainTraclusDL>> = Arc::new(Mutex::new(main_traclusdl));
         let event_rx: Receiver<AppEvent> = main_traclus.lock().unwrap().event.subscribe();
 
         Self {
-            vm: ViewModel::default(),
+            vm: vec![ViewModel::new(args)],
+            current_selected_vm: 0,
             detected_cpus: num_cpus_detected(),
-            output_text: String::new(),
 
             main_traclus,
             runner: GuiParallelRunner::new(),
@@ -52,16 +52,17 @@ impl TraclusDLApp {
     // GUI button actions
     // ─────────────────────────────────────────────
     pub fn on_browse_done(&mut self, path: PathBuf) {
-        self.vm.input_file_path = path.display().to_string();
-        self.vm.input_name = path
+        let vm: &mut ViewModel = self.current_vm();
+        vm.args.file = path.display().to_string();
+        vm.input_name = path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
             .into_owned();
-        self.vm.num_dl = 0;
-        self.vm.percent_correlation = 0.0;
+        vm.num_dl = 0;
+        vm.percent_correlation = 0.0;
 
-        let infile: String = self.vm.input_file_path.clone();
+        let infile: String = vm.args.file.clone();
         self.launch(move |t| {
             t.load_raw_storage(&infile);
         });
@@ -91,18 +92,19 @@ impl TraclusDLApp {
     }
 
     fn handle_event(&mut self, event: AppEvent) {
+        let vm: &mut ViewModel = self.current_vm();
+
         match event {
             AppEvent::LoadComplete {
                 traj_count,
                 correlation_percent,
             } => {
-                self.vm.num_dl = traj_count;
-                self.vm.percent_correlation = correlation_percent;
+                vm.num_dl = traj_count;
+                vm.percent_correlation = correlation_percent;
             }
 
             AppEvent::ComputationClusteringProgress { num_traj_done } => {
-                self.output_text +=
-                    &format!("Clustering progress: {} trajectories done.", num_traj_done);
+                vm.output += &format!("Clustering progress: {} trajectories done.", num_traj_done);
             }
 
             AppEvent::ComputationComplete {
@@ -110,14 +112,14 @@ impl TraclusDLApp {
                 total_seg,
                 total_seg_outside_corridor,
             } => {
-                self.output_text += &format!(
+                vm.output += &format!(
                     "Computation complete: {} corridors, {} segments, {} segments outside corridor.",
                     total_corridors, total_seg, total_seg_outside_corridor
                 );
             }
 
             AppEvent::Error(msg) => {
-                self.output_text = format!("Error: {}", msg);
+                vm.output = format!("Error: {}", msg);
             }
         }
     }
@@ -128,6 +130,11 @@ impl TraclusDLApp {
         F: FnOnce(&mut MainTraclusDL) + Send + 'static,
     {
         self.runner.try_run(Arc::clone(&self.main_traclus), task);
+    }
+
+    // Returns a mutable reference to the currently selected ViewModel.
+    pub fn current_vm(&mut self) -> &mut ViewModel {
+        &mut self.vm[self.current_selected_vm]
     }
 }
 
@@ -145,7 +152,7 @@ fn num_cpus_detected() -> usize {
 // GUI Entry Point
 // ─────────────────────────────────────────────
 
-pub fn start_gui(main_traclusdl: MainTraclusDL) {
+pub fn start_gui(args: TraclusArgs, main_traclusdl: MainTraclusDL) {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT])
@@ -157,7 +164,7 @@ pub fn start_gui(main_traclusdl: MainTraclusDL) {
     eframe::run_native(
         "Traclus_DL - Rust Implementation",
         options,
-        Box::new(|_cc| Box::new(TraclusDLApp::new(main_traclusdl))),
+        Box::new(|_cc| Box::new(TraclusDLApp::new(args, main_traclusdl))),
     )
     .unwrap();
 }
