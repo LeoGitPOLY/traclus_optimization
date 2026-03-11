@@ -8,7 +8,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::algorithms::main_traclusdl::MainTraclusDL;
+use crate::clustering::main_traclusdl::MainTraclusDL;
 
 // Shared bool: true while any task is executing.
 // Shared ownership between GUI thread and worker thread.

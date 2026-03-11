@@ -1,4 +1,4 @@
-use crate::geometry::point::Point;
+use super::point::Point;
 
 #[derive(Debug)]
 pub struct Segment {

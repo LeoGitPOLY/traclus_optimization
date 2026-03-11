@@ -119,8 +119,7 @@ def calculate_file_information(file_path_corr_py: str, file_path_seg_py: str) ->
     }
     return info
 
-def calculate_similaty_index(file_path_corr_py: str, file_path_seg_py: str, 
-                         file_path_corr_rust: str, file_path_seg_rust: str) -> dict:
+def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> dict:
     dict_segments_py = generate_dict_segments(file_path_seg_py)
     dict_segments_rust = generate_dict_segments(file_path_seg_rust)
 
@@ -134,8 +133,15 @@ def calculate_similaty_index(file_path_corr_py: str, file_path_seg_py: str,
 
     total_both = nb_both_clustered + nb_both_non_clustered
 
-    similarity_index_1 = nb_both_clustered / (nb_both_clustered + nb_only_clustered_py + nb_only_clustered_rust)
-    similarity_index_2 = total_both / (total_both + nb_only_clustered_rust + nb_only_clustered_py)
+    if nb_both_clustered + nb_only_clustered_py + nb_only_clustered_rust == 0:
+        similarity_index_1 = 1.0  # If there are no segments, we consider them as perfectly similar
+    else:
+        similarity_index_1 = nb_both_clustered / (nb_both_clustered + nb_only_clustered_py + nb_only_clustered_rust)
+
+    if total_both + nb_only_clustered_rust + nb_only_clustered_py == 0:
+        similarity_index_2 = 1.0  # If there are no segments, we consider them as perfectly similar
+    else:
+        similarity_index_2 = total_both / (total_both + nb_only_clustered_rust + nb_only_clustered_py)
 
     return {
         "similarity_index_1": similarity_index_1,

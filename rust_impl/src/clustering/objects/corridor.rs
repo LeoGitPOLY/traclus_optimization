@@ -1,7 +1,6 @@
-use crate::{
-    clustering::{cluster::Cluster, cluster_member::ClusterMember},
-    geometry::point::Point,
-};
+use super::super::geometry::point::Point;
+use super::cluster::Cluster;
+use super::cluster_member::ClusterMember;
 
 pub struct Corridor {
     pub id: usize,

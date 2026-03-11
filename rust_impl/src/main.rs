@@ -1,20 +1,16 @@
-use crate::algorithms::main_traclusdl::MainTraclusDL;
+use crate::clustering::main_traclusdl::MainTraclusDL;
 use crate::gui::app_events::AppEvent;
 use crate::gui::traclusdl_app::start_gui;
 use crate::io::args::{InterfaceMode, TraclusArgs};
 use crate::io::logger::Logger;
 
 use clap::Parser;
-use eframe::App;
 use std::sync::mpsc::Receiver;
 use std::thread::available_parallelism;
 
-mod algorithms;
 mod clustering;
-mod geometry;
 mod gui;
 mod io;
-mod storage;
 mod utils;
 
 // TODO: see if it's the logical or physical cores that limits
@@ -67,7 +63,7 @@ fn main() -> std::io::Result<()> {
     // Route to the appropriate front-end
     match traclus_args.interface_mode {
         InterfaceMode::Gui | InterfaceMode::GuiAndLogger => {
-            start_gui(traclus_args,main_traclusdl);
+            start_gui(traclus_args, main_traclusdl);
         }
         InterfaceMode::Logger | InterfaceMode::Performance => {
             main_traclusdl.run_full_traclus(traclus_args);

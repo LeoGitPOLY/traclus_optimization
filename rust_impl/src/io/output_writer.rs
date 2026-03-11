@@ -1,8 +1,7 @@
-use crate::clustering::cluster_member::ClusterMember;
-use crate::clustering::corridor::Corridor;
-use crate::geometry::segment;
+use crate::clustering::objects::cluster_member::ClusterMember;
+use crate::clustering::objects::corridor::Corridor;
+use crate::clustering::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::io::args::TraclusArgs;
-use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use std::path::Path;
 
 use std::fs::File;

@@ -1,6 +1,6 @@
 // TODO: the sum of distances could be calculated only when needed, to optimize performance
 // Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
-use crate::clustering::{cluster::Cluster, cluster_member::ClusterMember};
+use super::super::objects::{cluster::Cluster, cluster_member::ClusterMember};
 use std::{cmp::Ordering, collections::HashSet};
 
 pub struct PriorityQueueCluster {

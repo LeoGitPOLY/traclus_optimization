@@ -23,7 +23,7 @@ def generate_desire_line_shape(lines: int, start_shapes: list[RandomShape], end_
     """
     list_of_lines = []
 
-    for i in range(lines):
+    for i in range(1, lines + 1):
         start_shape = start_shapes[i % len(start_shapes)]
         end_shape = end_shapes[i % len(end_shapes)]
 
@@ -48,7 +48,7 @@ def generate_desire_line_in_circle(angle_interval: float, center: Point, radius:
 
     num_lines = int(360 / angle_interval)
 
-    for i in range(num_lines):
+    for i in range(1, num_lines + 1):
         angle_deg = i * angle_interval
         angle_rad = radians(angle_deg)
 
@@ -82,7 +82,7 @@ def generate_vertical_parallel_lines(spacing: float, center: Point, height: floa
 
     start_x = center.x - (num_lines - 1) * spacing / 2
 
-    for i in range(num_lines):
+    for i in range(1, num_lines + 1):
         x = start_x + i * spacing
 
         start_point = Point(x, center.y - half_h)
@@ -219,7 +219,7 @@ def main():
 
     # Circle_around: lines every 30 degrees
     filename = BENCHMARKS_DIR / "circle_around_DL"
-    list_of_lines = generate_desire_line_in_circle(5, SMALL_RADIUS_1.center, 1000)
+    list_of_lines = generate_desire_line_in_circle(10, SMALL_RADIUS_1.center, 1000)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
     

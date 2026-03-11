@@ -1,4 +1,4 @@
-use crate::geometry::trajectory::Trajectory;
+use super::super::geometry::trajectory::Trajectory;
 
 // TODO:
 // - bucket size should be a fraction of the max angle threshold used in clustering

@@ -1,9 +1,9 @@
-use crate::clustering::cluster::Cluster;
-use crate::clustering::cluster_member::ClusterMember;
-use crate::clustering::corridor::Corridor;
-use crate::geometry::trajectory::Trajectory;
+use super::super::geometry::trajectory::Trajectory;
+use super::super::objects::cluster::Cluster;
+use super::super::objects::cluster_member::ClusterMember;
+use super::super::objects::corridor::Corridor;
+use super::super::storage::priority_queue::PriorityQueueCluster;
 use crate::io::args::TraclusArgs;
-use crate::storage::priority_queue::PriorityQueueCluster;
 
 pub struct ClusteredTrajectories {
     clusters: PriorityQueueCluster,

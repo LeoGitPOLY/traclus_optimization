@@ -1,8 +1,8 @@
-use crate::geometry::input_od_line::InputODLine;
-use crate::geometry::point::Point;
-use crate::geometry::trajectory::Trajectory;
+use crate::clustering::geometry::input_od_line::InputODLine;
+use crate::clustering::geometry::point::Point;
+use crate::clustering::geometry::trajectory::Trajectory;
 use crate::io::args::TraclusArgs;
-use crate::storage::raw_trajectories::RawTrajectories;
+use crate::clustering::storage::raw_trajectories::RawTrajectories;
 
 use std::fs;
 use std::io;

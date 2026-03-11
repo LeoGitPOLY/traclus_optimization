@@ -6,12 +6,10 @@ use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
-use crate::algorithms::main_traclusdl::MainTraclusDL;
+use crate::clustering::main_traclusdl::MainTraclusDL;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
-use crate::io::args::ExecutionMode;
-
-use crate::gui::app_events::AppEvent;
+use crate::gui::app_events::{AppEvent};
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::GuiParallelRunner;
 
@@ -59,20 +57,18 @@ impl TraclusDLApp {
             .unwrap_or_default()
             .to_string_lossy()
             .into_owned();
+
         vm.num_dl = 0;
         vm.percent_correlation = 0.0;
 
-        let infile: String = vm.args.file.clone();
+        let args: TraclusArgs = vm.args.clone();
         self.launch(move |t| {
-            t.load_raw_storage(&infile);
+            t.load_raw_storage(&args);
         });
     }
 
     pub fn on_start_computation(&mut self) {
-        let args: TraclusArgs = TraclusArgs {
-            mode: ExecutionMode::ParallelRayon,
-            ..Default::default()
-        };
+        let args: TraclusArgs = self.current_vm().args.clone();
 
         self.launch(move |t| {
             t.run_clustering(&args);
@@ -119,7 +115,7 @@ impl TraclusDLApp {
             }
 
             AppEvent::Error(msg) => {
-                vm.output = format!("Error: {}", msg);
+                vm.output = format!("<< Error >>: {}", msg);
             }
         }
     }
@@ -132,7 +128,7 @@ impl TraclusDLApp {
         self.runner.try_run(Arc::clone(&self.main_traclus), task);
     }
 
-    // Returns a mutable reference to the currently selected ViewModel.
+    /// Returns a mutable reference to the currently selected ViewModel.
     pub fn current_vm(&mut self) -> &mut ViewModel {
         &mut self.vm[self.current_selected_vm]
     }

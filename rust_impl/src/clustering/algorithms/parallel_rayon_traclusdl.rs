@@ -1,13 +1,12 @@
-use crate::{
-    algorithms::base_traclusdl::TraclusAlgorithm,
-    clustering::cluster::Cluster,
-    geometry::trajectory::Trajectory,
-    io::args::TraclusArgs,
-    storage::{
-        clustered_trajectories::ClusteredTrajectories,
-        raw_trajectories::{Bucket, RawTrajectories},
-    },
+use crate::io::args::TraclusArgs;
+
+use super::super::geometry::trajectory::Trajectory;
+use super::super::objects::cluster::Cluster;
+use super::super::storage::{
+    clustered_trajectories::ClusteredTrajectories,
+    raw_trajectories::{Bucket, RawTrajectories},
 };
+use super::base_traclusdl::TraclusAlgorithm;
 
 use rayon::prelude::*;
 use rayon::slice::Iter;

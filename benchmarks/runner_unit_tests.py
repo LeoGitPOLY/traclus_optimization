@@ -22,7 +22,6 @@ PYTHON_SCRIPT   = os.path.join(PYTHON_IMPL_DIR, "Traclus_DL.py")
 RUST_EXECUTABLE = os.path.join(RUST_IMPL_DIR, "target", "release", "rust_impl")
 
 BENCH_SRC = os.path.join(INPUTS_DIR, "benchmarked_data")
-DATA_SRC = os.path.join(INPUTS_DIR, "data")
 
 PYTHON_BENCH_DST = os.path.join(PYTHON_IMPL_DIR, "benchmarked_data")
 RUST_BENCH_DST = os.path.join(RUST_IMPL_DIR, "benchmarked_data")
@@ -87,7 +86,7 @@ def get_files_with_all_substring(folder: str, substring: list[str]) -> list:
 
 def transfert_files_to_qgis_results(rust_mode: list):
     name_data = traclus_args.get_name().replace("_traclus", "").replace(".txt", ".tsv")
-    create_file(DATA_SRC, RESULTS_QGIS_DIR, name_data, "DL_INPUT.txt")
+    create_file(BENCH_SRC, RESULTS_QGIS_DIR, name_data, "DL_INPUT.txt")
 
     # For python output files; only one instance is generated for each type (corridor and segment)
     name_py_seg = get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
@@ -127,13 +126,10 @@ def file_information(impl: str) -> dict:
 
 
 def similaty_index() -> dict:
-    file_corridor_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["corridor"])[0]
-    file_corridor_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["corridor"])[0]
-
     file_segment_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
     file_segment_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old"])[0]
 
-    return calculate_similaty_index(file_corridor_py, file_segment_py, file_corridor_rust, file_segment_rust)
+    return calculate_similaty_index(file_segment_py, file_segment_rust)
 
 # =====================================================
 #                 BUILD STEP
@@ -252,6 +248,12 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         # TESTING ALL MODE RUST
         for mode in rust_mode: run_timed_once("rust", traclus_args, mode)
 
+        # Calculate similiarity index
+        similarity_index = similaty_index()
+        print(f"\nSimilarity Index for argument set {traclus_args.get_args()}: "
+          f"Similarity Index 1: {similarity_index['similarity_index_1']:.6f}, "
+          f"Similarity Index 2: {similarity_index['similarity_index_2']:.6f}\n")
+        
         transfert_files_to_qgis_results(rust_mode)
 
         print(f"=== Visual results are ready for argument set {traclus_args.get_args()} ===")
@@ -275,7 +277,7 @@ def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
     for  mode in rust_mode:
         outputs += run_timed_all("rust", traclus_args, mode)
         traclus_args.reset_arguments()
-    
+
     for output in outputs:
         print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}")
 
@@ -285,8 +287,8 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
     # list_of_sizes = [1000, 2000, 3000, 4000, 5000, 
                     #  6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 
                     #  14000, 15000, 16000, 17000, 18000, 19000, 20000]
-    list_of_sizes = [500]
-    max_index_python = 4
+    list_of_sizes = [7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000]
+    max_index_python = 0
 
     outputs_time = []
     outputs_similarity = []
@@ -341,10 +343,10 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [1],
+        'min_density':  [3],
         'max_angle':    [5,7],
         'seg_size':     [3000],
-        'path': ["up_the_bridges_DL_traclus.txt"],
+        'path': ["circle_around_DL_traclus.txt"],
     }
     rust_mode = [{'cmd': 'serial', 'name': 'Serial'}, 
                  {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]

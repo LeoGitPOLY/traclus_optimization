@@ -1,4 +1,4 @@
-use crate::geometry::{point::Point, trajectory::Trajectory, segment::Segment};
+use super::super::geometry::{point::Point, segment::Segment, trajectory::Trajectory};
 
 pub struct ClusterMember {
     pub traj_id: usize,

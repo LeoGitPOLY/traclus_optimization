@@ -1,12 +1,12 @@
-use crate::{
-    clustering::{
-        cluster::Cluster,
-        cluster_member::{ClusterMember, ClusterSeed},
-    },
-    geometry::{segment::Segment, trajectory::Trajectory},
-    io::args::TraclusArgs,
-    storage::{clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories},
+use super::super::geometry::{segment::Segment, trajectory::Trajectory};
+use super::super::objects::{
+    cluster::Cluster,
+    cluster_member::{ClusterMember, ClusterSeed},
 };
+use super::super::storage::{
+    clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
+};
+use crate::io::args::TraclusArgs;
 
 /// Base trait for TraClus algorithm implementations.
 ///
@@ -35,7 +35,6 @@ pub trait TraclusAlgorithm {
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
     );
-
 
     // ============================================================
     // Default Methods (Can Be Overridden If Needed)

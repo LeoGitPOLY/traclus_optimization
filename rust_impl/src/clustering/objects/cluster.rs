@@ -1,4 +1,4 @@
-use crate::clustering::cluster_member::{ClusterMember, ClusterSeed};
+use super::cluster_member::{ClusterMember, ClusterSeed};
 
 pub struct Cluster {
     pub seed: ClusterSeed,
