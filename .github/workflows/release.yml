@@ -39,28 +39,19 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      # eframe on Linux needs these system libraries (not needed for Win/Mac)
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
-            libxkbcommon-dev libssl-dev libgtk-3-dev
+            rust_impl/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust_impl/Cargo.lock') }}
 
       - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --manifest-path rust_impl/Cargo.toml
 
       - name: Prepare binary (Unix)
         if: runner.os != 'Windows'
-        run: cp target/${{ matrix.target }}/release/rust_impl ./${{ matrix.binary_name }}
+        run: cp rust_impl/target/${{ matrix.target }}/release/rust_impl ./${{ matrix.binary_name }}
 
       - name: Prepare binary (Windows)
         if: runner.os == 'Windows'
-        run: cp target/${{ matrix.target }}/release/rust_impl.exe ./${{ matrix.binary_name }}
+        run: cp rust_impl/target/${{ matrix.target }}/release/rust_impl.exe ./${{ matrix.binary_name }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
