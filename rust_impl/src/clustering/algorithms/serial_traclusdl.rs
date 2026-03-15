@@ -4,6 +4,7 @@ use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
 use super::base_traclusdl::TraclusAlgorithm;
+use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
 
 pub struct SerialTraclusDL {
@@ -28,8 +29,9 @@ impl TraclusAlgorithm for SerialTraclusDL {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
     ) {
-        self.complete_serial_clustering(raw_trajectories, clustered_trajectories);
+        self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
         self.create_corridors(clustered_trajectories);
     }
 }
@@ -45,11 +47,14 @@ impl SerialTraclusDL {
     /// # Arguments
     /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
     /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    /// * `emitter` - The event emitter for sending computation events
     fn complete_serial_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
     ) {
+        let mut total_traj_processed: usize = 0;
         for bucket in &raw_trajectories.traj_buckets {
             // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
             let nearby_trajs: Vec<&Trajectory> = raw_trajectories
@@ -64,6 +69,8 @@ impl SerialTraclusDL {
 
                 // Fill all segments to be treated as non-clustered later
                 clustered_trajectories.fill_non_clustered_segments(traj_seed);
+
+                total_traj_processed = self.tick_progress(emitter, total_traj_processed);
             }
         }
     }

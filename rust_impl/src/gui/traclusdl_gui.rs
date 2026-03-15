@@ -18,6 +18,7 @@ use crate::io::args_config::get_param_configs;
 impl eframe::App for TraclusDLApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.drain_events();
+        render_error_popup(ctx, self);
 
         // Request a repaint every frame while a task is running so the
         // progress display stays live without user interaction
@@ -143,13 +144,12 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             );
             ui.add_space(SPACE_BETWEEN_FIELD);
 
-            if ui
-                .add_sized(
-                    [BROWSE_BTN_WIDTH, BROWSE_BTN_HEIGHT],
-                    egui::Button::new("Browse File"),
-                )
-                .clicked()
-            {
+            let browse_response = ui.add_enabled(
+                !app.runner.is_running(),
+                egui::Button::new("Browse File")
+                    .min_size([BROWSE_BTN_WIDTH, BROWSE_BTN_HEIGHT].into()),
+            );
+            if browse_response.clicked() {
                 if let Some(path) = FileDialog::new()
                     .add_filter("Text file", &["txt"])
                     .pick_file()
@@ -426,45 +426,144 @@ fn render_output_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 fn render_action_bar(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     ui.set_min_width(CONTAINER_WIDTH);
 
-    let is_running = app.runner.is_running();
+    if app.runner.is_running() {
+        render_action_bar_running(ui, app);
+    } else {
+        render_action_bar_idle(ui, app);
+    }
+}
 
+// ── Idle state: Start Computation + Create Output ────────────────────────────
+
+fn render_action_bar_idle(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     ui.horizontal(|ui| {
-        if ui
-            .add_sized(
-                [ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT],
-                egui::Button::new("Start\nComputation"),
-            )
-            .clicked()
-        {
+        let start_response = ui.add_sized(
+            [ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT],
+            egui::Button::new("Start\nComputation"),
+        );
+        if start_response.clicked() {
             app.on_start_computation();
         }
 
-        ui.add_space(16.0);
-
-        ui.vertical(|ui| {
-            ui.add_space(4.0);
-            ui.label(RichText::new("Estimated time:").color(COLOR_LABEL));
-            ui.label(RichText::new("-- min --s").color(COLOR_TEXT));
-        });
-
-        // Stop + Create output flush to the right edge of CONTAINER_WIDTH
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui
-                .add_sized(
-                    [ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT],
-                    egui::Button::new("Create output"),
-                )
-                .clicked()
-            {
+            let create_response = ui.add_sized(
+                [ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT],
+                egui::Button::new("Create output"),
+            );
+            if create_response.clicked() {
                 println!("Create output clicked");
             }
-            ui.add_space(8.0);
+        });
+    });
+}
+
+// ── Running state: progress bar + time info + Stop button ────────────────────
+
+fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
+    let vm = app.current_vm();
+
+    let progress = if vm.num_total_traj > 0 {
+        vm.num_clustered_traj as f32 / vm.num_total_traj as f32
+    } else {
+        0.0
+    };
+
+    let elapsed_secs = vm.start_time_computation.elapsed().as_secs_f64();
+    let elapsed_str = format_duration(elapsed_secs);
+
+    let eta_str = if vm.estimated_time_remaining > 0.0 {
+        format_duration(vm.estimated_time_remaining)
+    } else {
+        "Estimating...".to_string()
+    };
+
+    // Row 1: progress bar spanning full width minus Stop button
+    ui.horizontal(|ui| {
+        // Stop button flush right
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ui
                 .add_sized([80.0, ACTION_BTN_HEIGHT], egui::Button::new("Stop"))
                 .clicked()
             {
                 println!("Stop clicked");
             }
+
+            // Progress bar fills remaining space to the left of Stop
+            let bar_width = ui.available_width() - 8.0;
+            ui.add(
+                egui::ProgressBar::new(progress)
+                    .desired_width(bar_width)
+                    .show_percentage(),
+            );
         });
     });
+
+    ui.add_space(4.0);
+
+    // Row 2: time labels
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Elapsed:").color(COLOR_LABEL));
+        ui.label(RichText::new(&elapsed_str).color(COLOR_TEXT));
+        ui.add_space(24.0);
+        ui.label(RichText::new("Remaining:").color(COLOR_LABEL));
+        ui.label(RichText::new(&eta_str).color(COLOR_TEXT));
+    });
+}
+
+// ─────────────────────────────────────────────
+// Duration formatting
+//
+// < 60 s  →  "42s"
+// < 1 h   →  "3m 07s"
+// >= 1 h  →  "1h 03m"
+// ─────────────────────────────────────────────
+
+fn format_duration(secs: f64) -> String {
+    let total = secs as u64;
+    if total < 60 {
+        format!("{}s", total)
+    } else if total < 3600 {
+        format!("{}m {:02}s", total / 60, total % 60)
+    } else {
+        format!("{}h {:02}m", total / 3600, (total % 3600) / 60)
+    }
+}
+
+// ─────────────────────────────────────────────
+// Error Popup
+// ─────────────────────────────────────────────
+
+fn render_error_popup(ctx: &egui::Context, app: &mut TraclusDLApp) {
+    let error_msg = match &app.current_vm().error_popup {
+        Some(msg) => msg.clone(),
+        None => return,
+    };
+
+    // Dim and block the entire UI behind the popup
+    egui::Area::new(egui::Id::new("error_modal_backdrop"))
+        .fixed_pos(egui::pos2(0.0, 0.0))
+        .order(egui::Order::PanelResizeLine)
+        .show(ctx, |ui| {
+            let screen = ctx.screen_rect();
+            ui.painter()
+                .rect_filled(screen, 0.0, egui::Color32::from_black_alpha(120));
+            // Consume all pointer input so nothing behind is clickable
+            ui.allocate_rect(screen, egui::Sense::click_and_drag());
+        });
+
+    egui::Window::new("Error")
+        .collapsible(false)
+        .resizable(false)
+        .fixed_size([360.0, 140.0])
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.add_space(8.0);
+            ui.label(RichText::new(&error_msg).color(COLOR_LABEL));
+            ui.add_space(12.0);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                if ui.button("  OK  ").clicked() {
+                    app.current_vm().error_popup = None;
+                }
+            });
+        });
 }

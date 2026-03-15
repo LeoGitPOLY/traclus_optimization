@@ -1,3 +1,4 @@
+use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
 
 use super::super::geometry::trajectory::Trajectory;
@@ -131,6 +132,7 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
     ) {
         // Phase 1: parallel discovery
         let results: Vec<Vec<Cluster>> = self.complete_parallel_clustering(raw_trajectories);
@@ -143,7 +145,7 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
             clustered_trajectories.add_list_cluster(clusters);
         }
 
-        // Phase 3: create corridors from clusters and finalize non-clustered segments
+        // Phase 4: create corridors from clusters and finalize non-clustered segments
         self.create_corridors(clustered_trajectories);
     }
 }

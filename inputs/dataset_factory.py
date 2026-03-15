@@ -17,6 +17,8 @@ SMALL_RADIUS_2 = Circle(Point(299157,5049817), 500)
 RIVE_SUD_POS = Circle(Point(305156,5042535), 30)
 LAVAL_POS = Circle(Point(287256,5045801), 30)
 
+EPSILON = 1e-1
+
 def generate_desire_line_shape(lines: int, start_shapes: list[RandomShape], end_shapes: list[RandomShape]) -> list[list]:
     """
     Generate desire lines with a random weight and coordinates inside a shape
@@ -87,6 +89,35 @@ def generate_vertical_parallel_lines(spacing: float, center: Point, height: floa
 
         start_point = Point(x, center.y - half_h)
         end_point   = Point(x, center.y + half_h)
+
+        weight = 1
+        lines.append([i, weight, start_point, end_point])
+
+    return lines
+
+def generate_horizontal_parallel_lines(spacing: float, center: Point, width: float, num_lines: int) -> list[list]:
+    """
+    Generate horizontal parallel lines spaced by `spacing`.
+
+    - spacing: vertical distance between lines
+    - center: center point of the whole set
+    - width: total width of each line
+    - num_lines: number of lines
+    """
+
+    if spacing <= 0 or num_lines <= 0:
+        return []
+
+    half_w = width / 2
+    lines = []
+
+    start_y = center.y - (num_lines - 1) * spacing / 2
+
+    for i in range(1, num_lines + 1):
+        y = start_y + i * spacing
+
+        start_point = Point(center.x - half_w, y)
+        end_point   = Point(center.x + half_w, y)
 
         weight = 1
         lines.append([i, weight, start_point, end_point])
@@ -213,19 +244,27 @@ def main():
 
     # Up_the_bridges: 500 lines
     filename = BENCHMARKS_DIR / "up_the_bridges_DL"
-    list_of_lines = generate_desire_line_shape(5000, [RIVE_SUD_POS], [MONTREAL_QUAD])
+    list_of_lines = generate_desire_line_shape(2000, [LAVAL_POS], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Circle_around: lines every 30 degrees
     filename = BENCHMARKS_DIR / "circle_around_DL"
-    list_of_lines = generate_desire_line_in_circle(10, SMALL_RADIUS_1.center, 1000)
+    list_of_lines = generate_desire_line_in_circle(5, SMALL_RADIUS_1.center, 1000 - EPSILON)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
     
     # Parallels lines: 10 lines
     filename = BENCHMARKS_DIR / "parallels_DL"
-    list_of_lines = generate_vertical_parallel_lines(20, SMALL_RADIUS_1.center, 1000, 10)
+    list_of_lines = generate_vertical_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 10)
+    save_to_tsv(list_of_lines, f"{filename}.tsv")
+    save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
+
+    # 90 degrees lines: 10 lines
+    filename = BENCHMARKS_DIR / "90_degrees_DL"
+    list_of_lines = generate_horizontal_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 11)
+    list_of_lines += generate_vertical_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 11)
+    for i in range(1, len(list_of_lines) + 1): list_of_lines[i-1][0] = i
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 

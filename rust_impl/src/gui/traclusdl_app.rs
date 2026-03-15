@@ -3,13 +3,14 @@
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
-use eframe::egui;
+use eframe::{App, egui};
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
+use crate::gui::app_events::AppEvent;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
-use crate::gui::app_events::{AppEvent};
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::GuiParallelRunner;
 
@@ -92,15 +93,29 @@ impl TraclusDLApp {
 
         match event {
             AppEvent::LoadComplete {
-                traj_count,
+                desire_line_count: dl_count,
                 correlation_percent,
             } => {
-                vm.num_dl = traj_count;
+                vm.num_dl = dl_count;
                 vm.percent_correlation = correlation_percent;
             }
 
+            AppEvent::ComputationStart { traj_count } => {
+                vm.num_total_traj = traj_count;
+                vm.num_clustered_traj = 0;
+                vm.start_time_computation = Instant::now();
+            }
+
             AppEvent::ComputationClusteringProgress { num_traj_done } => {
-                vm.output += &format!("Clustering progress: {} trajectories done.", num_traj_done);
+                vm.num_clustered_traj += num_traj_done;
+                vm.estimated_time_remaining = estimated_time_remaining(
+                    vm.start_time_computation,
+                    vm.num_clustered_traj as f64 / vm.num_total_traj as f64,
+                );
+                vm.output = format!(
+                    "Clustering progress: {}/{} trajectories done. Estimated time remaining: {:.2} seconds.",
+                    vm.num_clustered_traj, vm.num_total_traj, vm.estimated_time_remaining
+                );
             }
 
             AppEvent::ComputationComplete {
@@ -115,7 +130,7 @@ impl TraclusDLApp {
             }
 
             AppEvent::Error(msg) => {
-                vm.output = format!("<< Error >>: {}", msg);
+                vm.error_popup = Some(msg.to_string());
             }
         }
     }
@@ -142,6 +157,15 @@ fn num_cpus_detected() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1)
+}
+
+fn estimated_time_remaining(start: std::time::Instant, progress_percent: f64) -> f64 {
+    let real_elasped: f64 = start.elapsed().as_secs_f64();
+
+    if progress_percent <= 0.05 {
+        return 0.0; // avoid unreliable estimates in the very early stages
+    }
+    (real_elasped / progress_percent) - real_elasped
 }
 
 // ─────────────────────────────────────────────

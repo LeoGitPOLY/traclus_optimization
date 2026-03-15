@@ -44,14 +44,14 @@ fn get_number_of_cpus(args: &TraclusArgs) -> usize {
 fn main() -> std::io::Result<()> {
     let traclus_args: TraclusArgs = TraclusArgs::parse();
     print!(
-        "Starting TraclusDL Rust implementation with {:?}...\n",
+        "Starting TraclusDL Rust implementation with\n{:?}...\n",
         traclus_args
     );
 
     let num_computation_threads: usize = get_number_of_cpus(&traclus_args);
     let mut main_traclusdl: MainTraclusDL = MainTraclusDL::new(num_computation_threads);
 
-    // Subscribe all subscriber
+    // Subscribe all subscribers
     match traclus_args.interface_mode {
         InterfaceMode::Logger | InterfaceMode::GuiAndLogger => {
             let logger_rx: Receiver<AppEvent> = main_traclusdl.event.subscribe();

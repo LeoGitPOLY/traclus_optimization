@@ -1,7 +1,8 @@
 // view_model.rs - Data bound to the GUI fields (form state)
 
+use std::time::Instant;
+
 use crate::io::args::TraclusArgs;
-use crate::io::args_config::get_param_configs;
 
 // ─────────────────────────────────────────────
 // ArgsBuffer
@@ -14,15 +15,13 @@ pub struct ArgsBuffer {
     pub segment_size: String,
 }
 
-impl Default for ArgsBuffer {
-    fn default() -> Self {
-        // Initialise buffers from the same defaults as TraclusArgs
-        let cfg = get_param_configs();
+impl ArgsBuffer {
+    pub fn from_args(args: &TraclusArgs) -> Self {
         Self {
-            max_dist: cfg.max_dist.default.to_string(),
-            min_density: cfg.min_density.default.to_string(),
-            max_angle: cfg.max_angle.default.to_string(),
-            segment_size: cfg.segment_size.default.to_string(),
+            max_dist: args.max_dist.to_string(),
+            min_density: args.min_density.to_string(),
+            max_angle: args.max_angle.to_string(),
+            segment_size: args.segment_size.to_string(),
         }
     }
 }
@@ -40,35 +39,44 @@ pub struct ViewModel {
     pub num_dl: usize,
     pub percent_correlation: f64,
 
+    // Computation info section
+    pub num_computation_threads: usize,
+    pub num_clustered_traj: usize,
+    pub num_total_traj: usize,
+    pub start_time_computation: Instant,
+    pub estimated_time_remaining: f64,
+
     // Output section
     pub output: String,
+
+    // Error section
+    pub error_popup: Option<String>,
 }
 impl ViewModel {
     pub fn new(args: TraclusArgs) -> Self {
+        let args_buffer: ArgsBuffer = ArgsBuffer::from_args(&args);
         Self {
             args,
-            args_buffer: ArgsBuffer::default(),
+            args_buffer,
 
             input_name: String::new(),
             num_dl: 0,
             percent_correlation: 0.0,
 
+            num_computation_threads: 0,
+            num_total_traj: 0,
+            num_clustered_traj: 0,
+            start_time_computation: Instant::now(),
+            estimated_time_remaining: 0.0,
+
             output: String::new(),
+            error_popup: None,
         }
     }
 }
 
 impl Default for ViewModel {
     fn default() -> Self {
-        Self {
-            args: TraclusArgs::default(),
-            args_buffer: ArgsBuffer::default(),
-
-            input_name: String::new(),
-            num_dl: 0,
-            percent_correlation: 0.0,
-
-            output: String::new(),
-        }
+        Self::new(TraclusArgs::default())
     }
 }

@@ -14,7 +14,6 @@ use super::algorithms::base_traclusdl::TraclusAlgorithm;
 use super::algorithms::parallel_rayon_traclusdl::ParallelRayonTraclusDL;
 use super::algorithms::serial_traclusdl::SerialTraclusDL;
 
-
 pub struct MainTraclusDL {
     raw_storage: Option<RawTrajectories>,
     clust_storage: Option<ClusteredTrajectories>,
@@ -45,28 +44,33 @@ impl MainTraclusDL {
 
         // Emit information about the loaded data
         self.event.emit(AppEvent::LoadComplete {
-            traj_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
+            desire_line_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
             correlation_percent: 10.0, // TODO: compute actual correlation
         });
     }
 
     // Runs the clustering algorithm on the currently loaded raw storage and stores the clustered result.
     pub fn run_clustering(&mut self, args: &TraclusArgs) {
-        self.event
-            .emit(AppEvent::Error(AppError::IoError((format!("{:?}", args)))));
-
         if self.raw_storage.is_none() {
             self.event.emit(AppEvent::Error(AppError::NoRawStorage));
             return;
         }
 
+        self.event.emit(AppEvent::ComputationStart {
+            traj_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
+        });
+
         let raw_storage: &RawTrajectories = self.raw_storage.as_ref().unwrap();
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new();
 
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(args);
-        clustering_algorithm.db_scan_clustering(raw_storage, &mut clust_storage);
+        clustering_algorithm.db_scan_clustering(raw_storage, &mut clust_storage, &mut self.event);
 
         self.clust_storage = Some(clust_storage);
+
+        self.event.emit(AppEvent::Error(AppError::IoError(
+            (format!("Computation Done")),
+        )));
     }
 
     // Writes corridor and segment output files from the current clustered storage.
@@ -85,7 +89,8 @@ impl MainTraclusDL {
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new();
 
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(&args);
-        clustering_algorithm.db_scan_clustering(&raw_storage, &mut clust_storage);
+        let mut empty_event = ComputationEvent::new();
+        clustering_algorithm.db_scan_clustering(&raw_storage, &mut clust_storage, &mut empty_event);
 
         generate_corridor_file(&args, &clust_storage);
         generate_segment_file(&args, &clust_storage, SegmentOutputFormat::NewTraclus);

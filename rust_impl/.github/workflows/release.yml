@@ -1,0 +1,95 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: rust_impl.exe
+
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_name: rust_impl-mac-intel
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: rust_impl-mac-arm
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      # eframe on Linux needs these system libraries (not needed for Win/Mac)
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libxkbcommon-dev libssl-dev libgtk-3-dev
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare binary (Unix)
+        if: runner.os != 'Windows'
+        run: cp target/${{ matrix.target }}/release/rust_impl ./${{ matrix.binary_name }}
+
+      - name: Prepare binary (Windows)
+        if: runner.os == 'Windows'
+        run: cp target/${{ matrix.target }}/release/rust_impl.exe ./${{ matrix.binary_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary_name }}
+          path: ${{ matrix.binary_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Downloads
+            | Platform | File |
+            |---|---|
+            | Windows (64-bit) | `rust_impl.exe` |
+            | macOS Intel | `rust_impl-mac-intel` |
+            | macOS Apple Silicon (M1/M2/M3) | `rust_impl-mac-arm` |
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

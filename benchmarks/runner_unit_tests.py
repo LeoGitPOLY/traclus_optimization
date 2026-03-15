@@ -124,7 +124,6 @@ def file_information(impl: str) -> dict:
     
     return calculate_file_information(file_corridor, file_segment)
 
-
 def similaty_index() -> dict:
     file_segment_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
     file_segment_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old"])[0]
@@ -287,8 +286,8 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
     # list_of_sizes = [1000, 2000, 3000, 4000, 5000, 
                     #  6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 
                     #  14000, 15000, 16000, 17000, 18000, 19000, 20000]
-    list_of_sizes = [7000, 8000, 9000, 10000, 11000, 12000, 13000, 14000]
-    max_index_python = 0
+    list_of_sizes = [1000, 16000, 17000]
+    max_index_python = -1
 
     outputs_time = []
     outputs_similarity = []
@@ -343,16 +342,14 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [3],
-        'max_angle':    [5,7],
-        'seg_size':     [3000],
-        'path': ["circle_around_DL_traclus.txt"],
+        'min_density':  [1],
+        'max_angle':    [5],
+        'seg_size':     [150],
+        'path': ["90_degrees_DL_traclus.txt" ],
     }
-    rust_mode = [{'cmd': 'serial', 'name': 'Serial'}, 
-                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
+    rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'},
+                 {'cmd': 'serial', 'name': 'Serial'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
-    #'path':   ["circle_around_DL_traclus.txt", "90_degres_3_DL_traclus.txt", "small_radius_to_small_radius_DL_traclus.txt", "up_the_bridges_DL_traclus.txt"],
-    # "enquete_od_DL_500_traclus.txt"
 
     build_python_impl()
     build_rust_impl()

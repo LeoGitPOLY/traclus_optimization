@@ -28,7 +28,7 @@ impl Logger {
         while let Ok(event) = rx.recv() {
             match event {
                 AppEvent::LoadComplete {
-                    traj_count,
+                    desire_line_count: traj_count,
                     correlation_percent,
                 } => {
                     println!(
@@ -38,7 +38,13 @@ impl Logger {
                         correlation_percent
                     );
                 }
-
+                AppEvent::ComputationStart { traj_count } => {
+                    println!(
+                        "[LOG] COMPUTATION STARTED at {:?} — {} trajectories to cluster.",
+                        start_time.elapsed(),
+                        traj_count
+                    );
+                }
                 AppEvent::ComputationClusteringProgress { num_traj_done } => {
                     println!(
                         "[LOG] COMPUTATION CLUSTERING PROGRESS at {:?} — {} trajectories done.",

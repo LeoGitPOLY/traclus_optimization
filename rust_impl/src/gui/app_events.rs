@@ -1,5 +1,7 @@
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
 
+use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 // ─────────────────────────────────────────────
@@ -8,8 +10,12 @@ use std::sync::mpsc::{self, Receiver, Sender};
 #[derive(Debug, Clone)]
 pub enum AppEvent {
     LoadComplete {
-        traj_count: usize,
+        desire_line_count: usize,
         correlation_percent: f64,
+    },
+
+    ComputationStart {
+        traj_count: usize,
     },
 
     ComputationClusteringProgress {
