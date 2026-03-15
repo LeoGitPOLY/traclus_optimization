@@ -70,6 +70,7 @@ impl TraclusDLApp {
 
     pub fn on_start_computation(&mut self) {
         let args: TraclusArgs = self.current_vm().args.clone();
+        self.current_vm().output.clear();
 
         self.launch(move |t| {
             t.run_clustering(&args);
@@ -100,33 +101,38 @@ impl TraclusDLApp {
                 vm.percent_correlation = correlation_percent;
             }
 
-            AppEvent::ComputationStart { traj_count } => {
-                vm.num_total_traj = traj_count;
-                vm.num_clustered_traj = 0;
+            AppEvent::ComputationStart {
+                computation_type,
+                max_progress,
+                additional_info,
+            } => {
+                vm.total_to_compute = max_progress;
+                vm.num_computed = 0;
                 vm.start_time_computation = Instant::now();
+                vm.output += &format!(
+                    "Started {:?} computation. {}",
+                    computation_type,
+                    additional_info.unwrap_or_default()
+                )
+                .trim_end_matches('\n')
+                .to_string();
             }
 
-            AppEvent::ComputationClusteringProgress { num_traj_done } => {
-                vm.num_clustered_traj += num_traj_done;
-                vm.estimated_time_remaining = estimated_time_remaining(
+            AppEvent::ComputationProgress {
+                computation_type: _,
+                increment_progress,
+            } => {
+                vm.num_computed += increment_progress;
+                vm.estimated_time_total = estimated_time_total(
                     vm.start_time_computation,
-                    vm.num_clustered_traj as f64 / vm.num_total_traj as f64,
-                );
-                vm.output = format!(
-                    "Clustering progress: {}/{} trajectories done. Estimated time remaining: {:.2} seconds.",
-                    vm.num_clustered_traj, vm.num_total_traj, vm.estimated_time_remaining
+                    vm.num_computed as f64 / vm.total_to_compute as f64,
                 );
             }
 
             AppEvent::ComputationComplete {
-                total_corridors,
-                total_seg,
-                total_seg_outside_corridor,
+                computation_type: _,
             } => {
-                vm.output += &format!(
-                    "Computation complete: {} corridors, {} segments, {} segments outside corridor.",
-                    total_corridors, total_seg, total_seg_outside_corridor
-                );
+                vm.output += &format!(" -> Completed",);
             }
 
             AppEvent::Error(msg) => {
@@ -159,13 +165,13 @@ fn num_cpus_detected() -> usize {
         .unwrap_or(1)
 }
 
-fn estimated_time_remaining(start: std::time::Instant, progress_percent: f64) -> f64 {
+fn estimated_time_total(start: std::time::Instant, progress_percent: f64) -> f64 {
     let real_elasped: f64 = start.elapsed().as_secs_f64();
 
     if progress_percent <= 0.05 {
         return 0.0; // avoid unreliable estimates in the very early stages
     }
-    (real_elasped / progress_percent) - real_elasped
+    real_elasped / progress_percent
 }
 
 // ─────────────────────────────────────────────

@@ -2,7 +2,7 @@ use rayon::ThreadPool;
 
 use super::storage::clustered_trajectories::ClusteredTrajectories;
 use super::storage::raw_trajectories::RawTrajectories;
-use crate::gui::app_events::{AppError, AppEvent, ComputationEvent};
+use crate::gui::app_events::{AppError, AppEvent, ComputationEvent, ComputationType};
 
 use crate::io::args::{ExecutionMode, TraclusArgs};
 use crate::io::input_loader::parse_input_data;
@@ -56,10 +56,6 @@ impl MainTraclusDL {
             return;
         }
 
-        self.event.emit(AppEvent::ComputationStart {
-            traj_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
-        });
-
         let raw_storage: &RawTrajectories = self.raw_storage.as_ref().unwrap();
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new();
 
@@ -67,10 +63,6 @@ impl MainTraclusDL {
         clustering_algorithm.db_scan_clustering(raw_storage, &mut clust_storage, &mut self.event);
 
         self.clust_storage = Some(clust_storage);
-
-        self.event.emit(AppEvent::Error(AppError::IoError(
-            (format!("Computation Done")),
-        )));
     }
 
     // Writes corridor and segment output files from the current clustered storage.

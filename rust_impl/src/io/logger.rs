@@ -38,35 +38,37 @@ impl Logger {
                         correlation_percent
                     );
                 }
-                AppEvent::ComputationStart { traj_count } => {
-                    println!(
-                        "[LOG] COMPUTATION STARTED at {:?} — {} trajectories to cluster.",
-                        start_time.elapsed(),
-                        traj_count
-                    );
-                }
-                AppEvent::ComputationClusteringProgress { num_traj_done } => {
-                    println!(
-                        "[LOG] COMPUTATION CLUSTERING PROGRESS at {:?} — {} trajectories done.",
-                        start_time.elapsed(),
-                        num_traj_done
-                    );
-                }
-
-                AppEvent::ComputationComplete {
-                    total_corridors,
-                    total_seg,
-                    total_seg_outside_corridor,
+                AppEvent::ComputationStart {
+                    computation_type,
+                    max_progress,
+                    additional_info,
                 } => {
                     println!(
-                        "[LOG] COMPUTATION COMPLETE at {:?} — {} corridors, {} segments, {} segments outside corridor.",
+                        "[LOG] COMPUTATION STARTED at {:?} — {:?} with {} total steps. {}",
                         start_time.elapsed(),
-                        total_corridors,
-                        total_seg,
-                        total_seg_outside_corridor
+                        computation_type,
+                        max_progress,
+                        additional_info.unwrap_or_default()
                     );
                 }
-
+                AppEvent::ComputationProgress {
+                    computation_type,
+                    increment_progress,
+                } => {
+                    println!(
+                        "[LOG] {:?} progress: +{} steps at {:?}.",
+                        computation_type,
+                        increment_progress,
+                        start_time.elapsed()
+                    );
+                }
+                AppEvent::ComputationComplete { computation_type } => {
+                    println!(
+                        "[LOG] {:?} COMPLETED at {:?}.",
+                        computation_type,
+                        start_time.elapsed()
+                    );
+                }
                 AppEvent::Error(msg) => {
                     eprintln!("[LOG][ERROR] {}", msg);
                 }

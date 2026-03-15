@@ -41,10 +41,10 @@ pub struct ViewModel {
 
     // Computation info section
     pub num_computation_threads: usize,
-    pub num_clustered_traj: usize,
-    pub num_total_traj: usize,
+    pub num_computed: usize,
+    pub total_to_compute: usize,
     pub start_time_computation: Instant,
-    pub estimated_time_remaining: f64,
+    pub estimated_time_total: f64,
 
     // Output section
     pub output: String,
@@ -64,10 +64,10 @@ impl ViewModel {
             percent_correlation: 0.0,
 
             num_computation_threads: 0,
-            num_total_traj: 0,
-            num_clustered_traj: 0,
+            total_to_compute: 0,
+            num_computed: 0,
             start_time_computation: Instant::now(),
-            estimated_time_remaining: 0.0,
+            estimated_time_total: 0.0,
 
             output: String::new(),
             error_popup: None,

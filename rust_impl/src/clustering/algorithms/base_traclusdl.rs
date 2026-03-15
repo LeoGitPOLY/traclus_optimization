@@ -6,7 +6,7 @@ use super::super::objects::{
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
-use crate::gui::app_events::{AppEvent, ComputationEvent};
+use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
 
 const TICK_EVERY: usize = 25; // how many trajectories between progress events
@@ -191,8 +191,9 @@ pub trait TraclusAlgorithm {
 
     fn tick_progress(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
         if emitter.has_subscribers() && count % TICK_EVERY == 0 {
-            emitter.emit(AppEvent::ComputationClusteringProgress {
-                num_traj_done: TICK_EVERY,
+            emitter.emit(AppEvent::ComputationProgress {
+                computation_type: ComputationType::Clustering,
+                increment_progress: TICK_EVERY,
             });
         }
         count + 1

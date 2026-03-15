@@ -462,8 +462,8 @@ fn render_action_bar_idle(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     let vm = app.current_vm();
 
-    let progress = if vm.num_total_traj > 0 {
-        vm.num_clustered_traj as f32 / vm.num_total_traj as f32
+    let progress = if vm.total_to_compute > 0 {
+        vm.num_computed as f32 / vm.total_to_compute as f32
     } else {
         0.0
     };
@@ -471,8 +471,8 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     let elapsed_secs = vm.start_time_computation.elapsed().as_secs_f64();
     let elapsed_str = format_duration(elapsed_secs);
 
-    let eta_str = if vm.estimated_time_remaining > 0.0 {
-        format_duration(vm.estimated_time_remaining)
+    let eta_str = if vm.estimated_time_total > 0.0 {
+        format_duration(vm.estimated_time_total)
     } else {
         "Estimating...".to_string()
     };
