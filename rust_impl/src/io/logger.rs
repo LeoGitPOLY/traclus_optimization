@@ -41,14 +41,12 @@ impl Logger {
                 AppEvent::ComputationStart {
                     computation_type,
                     max_progress,
-                    additional_info,
                 } => {
                     println!(
-                        "[LOG] COMPUTATION STARTED at {:?} — {:?} with {} total steps. {}",
+                        "[LOG] COMPUTATION STARTED at {:?} — {:?} with {} total steps.",
                         start_time.elapsed(),
                         computation_type,
                         max_progress,
-                        additional_info.unwrap_or_default()
                     );
                 }
                 AppEvent::ComputationProgress {

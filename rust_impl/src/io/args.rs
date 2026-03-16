@@ -28,7 +28,7 @@ impl fmt::Display for ExecutionMode {
 // InterfaceMode  — which front-ends are active
 // ─────────────────────────────────────────────
 
-#[derive(Copy, Clone, Debug, ValueEnum)]
+#[derive(Copy, Clone, Debug, ValueEnum, PartialEq)]
 pub enum InterfaceMode {
     Gui,
     Logger,
@@ -58,7 +58,7 @@ fn default_interface_mode() -> InterfaceMode {
 // TraclusArgs
 // ─────────────────────────────────────────────
 
-#[derive(Clone, Parser, Debug)]
+#[derive(Clone, Parser, Debug, PartialEq)]
 #[command(author, version, about = "Traclus DL Optimized in Rust")]
 pub struct TraclusArgs {
     #[arg(short = 'f', long = "file", default_value = "")]

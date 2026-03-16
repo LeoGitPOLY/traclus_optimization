@@ -5,14 +5,14 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use eframe::{App, egui};
+use eframe::egui;
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
 use crate::gui::app_events::AppEvent;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
 use crate::io::args::TraclusArgs;
-use crate::utils::gui_parallel_runner::GuiParallelRunner;
+use crate::utils::gui_parallel_runner::{GuiParallelRunner, StopFlag};
 
 // ─────────────────────────────────────────────
 // Application State
@@ -53,7 +53,7 @@ impl TraclusDLApp {
     pub fn on_browse_done(&mut self, path: PathBuf) {
         let vm: &mut ViewModel = self.current_vm();
         vm.args.file = path.display().to_string();
-        vm.input_name = path
+        vm.args_buffer.input_name = path
             .file_name()
             .unwrap_or_default()
             .to_string_lossy()
@@ -63,18 +63,30 @@ impl TraclusDLApp {
         vm.percent_correlation = 0.0;
 
         let args: TraclusArgs = vm.args.clone();
-        self.launch(move |t| {
-            t.load_raw_storage(&args);
+        vm.args_when_loaded = args.clone();
+        self.launch(move |t, stop| {
+            t.load_raw_storage(&args, stop);
         });
     }
 
     pub fn on_start_computation(&mut self) {
         let args: TraclusArgs = self.current_vm().args.clone();
+        let args_when_loaded: TraclusArgs = self.current_vm().args_when_loaded.clone();
+        let needs_reload: bool = args != args_when_loaded;
+
         self.current_vm().output.clear();
 
-        self.launch(move |t| {
-            t.run_clustering(&args);
+        self.launch(move |t, stop| {
+            if needs_reload {
+                t.load_raw_storage(&args, stop.clone());
+            }
+            t.run_clustering(&args, stop);
         });
+    }
+
+    pub fn stop_computation(&mut self) {
+        self.runner.stop();
+        self.current_vm().output += " -> STOPPED \n";
     }
 
     // ─────────────────────────────────────────────
@@ -94,28 +106,25 @@ impl TraclusDLApp {
 
         match event {
             AppEvent::LoadComplete {
-                desire_line_count: dl_count,
+                desire_line_count,
                 correlation_percent,
             } => {
-                vm.num_dl = dl_count;
+                vm.num_dl = desire_line_count;
                 vm.percent_correlation = correlation_percent;
+                vm.input_name = vm.args_buffer.input_name.clone();
             }
 
             AppEvent::ComputationStart {
                 computation_type,
                 max_progress,
-                additional_info,
             } => {
                 vm.total_to_compute = max_progress;
                 vm.num_computed = 0;
                 vm.start_time_computation = Instant::now();
-                vm.output += &format!(
-                    "Started {:?} computation. {}",
-                    computation_type,
-                    additional_info.unwrap_or_default()
-                )
-                .trim_end_matches('\n')
-                .to_string();
+                vm.computation_type = computation_type.clone();
+                vm.output += &format!("Started {:?} computation ", computation_type,)
+                    .trim_end_matches('\n')
+                    .to_string();
             }
 
             AppEvent::ComputationProgress {
@@ -129,10 +138,11 @@ impl TraclusDLApp {
                 );
             }
 
-            AppEvent::ComputationComplete {
-                computation_type: _,
-            } => {
-                vm.output += &format!(" -> Completed",);
+            AppEvent::ComputationComplete { computation_type } => {
+                vm.num_computed = vm.total_to_compute;
+                if computation_type == vm.computation_type {
+                    vm.output += &format!(" -> Completed \n",);
+                }
             }
 
             AppEvent::Error(msg) => {
@@ -144,7 +154,7 @@ impl TraclusDLApp {
     /// Launches a task on the worker thread via GuiParallelRunner.
     pub fn launch<F>(&mut self, task: F)
     where
-        F: FnOnce(&mut MainTraclusDL) + Send + 'static,
+        F: FnOnce(&mut MainTraclusDL, StopFlag) + Send + 'static,
     {
         self.runner.try_run(Arc::clone(&self.main_traclus), task);
     }
@@ -164,14 +174,30 @@ fn num_cpus_detected() -> usize {
         .map(|n| n.get())
         .unwrap_or(1)
 }
-
 fn estimated_time_total(start: std::time::Instant, progress_percent: f64) -> f64 {
-    let real_elasped: f64 = start.elapsed().as_secs_f64();
+    let real_elapsed: f64 = start.elapsed().as_secs_f64();
 
-    if progress_percent <= 0.05 {
-        return 0.0; // avoid unreliable estimates in the very early stages
+    if progress_percent <= 0.1 {
+        return 0.0;
     }
-    real_elasped / progress_percent
+
+    let raw_estimate: f64 = real_elapsed / progress_percent;
+
+    // Multiplier fades from `initial_boost` at 10% progress down to 1.0 at `fade_until`
+    // Before fade_until : estimate is inflated   → shows a safe "high" value early on
+    // After  fade_until : raw estimate takes over → reflects reality
+    let initial_boost: f64 = 2.0; // how much to overestimate at the start
+    let fade_until: f64 = 0.5; // progress at which multiplier fully reaches 1.0
+
+    let multiplier: f64 = if progress_percent >= fade_until {
+        1.0
+    } else {
+        // Linear interpolation from initial_boost → 1.0 as progress goes 0.1 → fade_until
+        let t = (progress_percent - 0.1) / (fade_until - 0.1);
+        initial_boost + t * (1.0 - initial_boost)
+    };
+
+    raw_estimate * multiplier
 }
 
 // ─────────────────────────────────────────────

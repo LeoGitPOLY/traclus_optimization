@@ -1,49 +1,26 @@
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
+use super::super::objects::corridor::Corridor;
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
 use super::base_traclusdl::TraclusAlgorithm;
-use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
+
+use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
+use crate::utils::gui_parallel_runner::StopFlag;
 
 pub struct SerialTraclusDL {
     args: TraclusArgs,
-}
-
-impl TraclusAlgorithm for SerialTraclusDL {
-    // ============================================================
-    // Shared Data Accessors
-    // ============================================================
-    fn args(&self) -> &TraclusArgs {
-        &self.args
-    }
-
-    // ============================================================
-    // Required Method
-    // ============================================================
-
-    /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
-    /// Implements the main clustering logic for the Serial TraClusDL algorithm.
-    fn db_scan_clustering(
-        &self,
-        raw_trajectories: &RawTrajectories,
-        clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
-        emitter.emit(AppEvent::ComputationStart {
-            computation_type: ComputationType::Clustering,
-            max_progress: raw_trajectories.get_total_trajectories(),
-            additional_info: None,
-        });
-        self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
-        self.create_corridors(clustered_trajectories);
-    }
+    stop_flag: Option<StopFlag>,
 }
 
 impl SerialTraclusDL {
     pub fn new(args: TraclusArgs) -> Self {
-        Self { args }
+        Self {
+            args,
+            stop_flag: None,
+        }
     }
 
     /// Completes the serial clustering process by iterating over angle buckets
@@ -75,7 +52,12 @@ impl SerialTraclusDL {
                 // Fill all segments to be treated as non-clustered later
                 clustered_trajectories.fill_non_clustered_segments(traj_seed);
 
-                total_traj_processed = self.tick_progress(emitter, total_traj_processed);
+                total_traj_processed = self.tick_clustering(emitter, total_traj_processed);
+
+                // Check for stop signal to bail out early
+                if self.is_stopped() {
+                    return;
+                }
             }
         }
     }
@@ -118,7 +100,80 @@ impl SerialTraclusDL {
     /// Creates corridors for all clustered trajectories based on the clustering results
     /// # Arguments
     /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
-    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
-        clustered_trajectories.finalize_corridors(self.args());
+    fn create_corridors(
+        &self,
+        clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
+    ) {
+        let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
+
+        while let Some(completed_cluster) =
+            clustered_trajectories.pop_and_clean(self.args.min_density)
+        {
+            let index_corridor: usize = clustered_trajectories.corridors.len();
+            let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
+            clustered_trajectories.corridors.push(corridor);
+
+            let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
+            self.tick_remove_duplicates(emitter, num_last_elements, num_current_elements);
+            num_last_elements = num_current_elements;
+
+            // Check for stop signal to bail out early
+            if self.is_stopped() {
+                return;
+            }
+        }
+        clustered_trajectories.take_non_clustered_segments();
+    }
+}
+
+impl TraclusAlgorithm for SerialTraclusDL {
+    // ============================================================
+    // Shared Data Accessors
+    // ============================================================
+    fn args(&self) -> &TraclusArgs {
+        &self.args
+    }
+
+    fn stop_flag(&self) -> &Option<StopFlag> {
+        &self.stop_flag
+    }
+
+    fn set_stop_flag(&mut self, stop_flag: StopFlag) {
+        self.stop_flag = Some(stop_flag);
+    }
+
+    // ============================================================
+    // Required Method
+    // ============================================================
+
+    /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
+    /// Implements the main clustering logic for the Serial TraClusDL algorithm.
+    fn db_scan_clustering(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
+    ) {
+        // Phase 1: serial discovery
+        self.emit_start_clustering(raw_trajectories, emitter);
+        self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
+
+        if self.is_stopped() {
+            return;
+        }
+        self.emit_complete_clustering(emitter);
+
+        // Phase 2: serial fill in non-clustered segments
+        self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
+
+        // Phase 3: create corridors from clusters and finalize non-clustered segments
+        self.emit_start_remove_duplicates(clustered_trajectories, emitter);
+        self.create_corridors(clustered_trajectories, emitter);
+
+        if self.is_stopped() {
+            return;
+        }
+        self.emit_complete_remove_duplicates(emitter);
     }
 }

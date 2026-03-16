@@ -2,7 +2,10 @@
 
 use std::time::Instant;
 
-use crate::io::args::TraclusArgs;
+use crate::{
+    gui::app_events::ComputationType,
+    io::args::{self, TraclusArgs},
+};
 
 // ─────────────────────────────────────────────
 // ArgsBuffer
@@ -13,6 +16,8 @@ pub struct ArgsBuffer {
     pub min_density: String,
     pub max_angle: String,
     pub segment_size: String,
+
+    pub input_name: String,
 }
 
 impl ArgsBuffer {
@@ -22,6 +27,8 @@ impl ArgsBuffer {
             min_density: args.min_density.to_string(),
             max_angle: args.max_angle.to_string(),
             segment_size: args.segment_size.to_string(),
+
+            input_name: "".to_string(),
         }
     }
 }
@@ -38,13 +45,14 @@ pub struct ViewModel {
     pub input_name: String,
     pub num_dl: usize,
     pub percent_correlation: f64,
+    pub args_when_loaded: TraclusArgs,
 
     // Computation info section
-    pub num_computation_threads: usize,
     pub num_computed: usize,
     pub total_to_compute: usize,
     pub start_time_computation: Instant,
     pub estimated_time_total: f64,
+    pub computation_type: ComputationType,
 
     // Output section
     pub output: String,
@@ -55,19 +63,21 @@ pub struct ViewModel {
 impl ViewModel {
     pub fn new(args: TraclusArgs) -> Self {
         let args_buffer: ArgsBuffer = ArgsBuffer::from_args(&args);
+        let args_when_loaded: TraclusArgs = args.clone();
         Self {
             args,
             args_buffer,
+            args_when_loaded,
 
             input_name: String::new(),
             num_dl: 0,
             percent_correlation: 0.0,
 
-            num_computation_threads: 0,
             total_to_compute: 0,
             num_computed: 0,
             start_time_computation: Instant::now(),
             estimated_time_total: 0.0,
+            computation_type: ComputationType::NotComputing,
 
             output: String::new(),
             error_popup: None,

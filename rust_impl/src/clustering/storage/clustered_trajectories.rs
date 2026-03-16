@@ -3,6 +3,7 @@ use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
 use super::super::objects::corridor::Corridor;
 use super::super::storage::priority_queue::PriorityQueueCluster;
+use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
 
 pub struct ClusteredTrajectories {
@@ -30,12 +31,27 @@ impl ClusteredTrajectories {
         }
     }
 
-    pub fn finalize_corridors(&mut self, args: &TraclusArgs) {
+    pub fn finalize_corridors(&mut self, args: &TraclusArgs, emitter: &mut ComputationEvent) {
+        let mut num_last_elements: usize = self.clusters.get_size_elements();
+
         while let Some(completed_cluster) = self.clusters.pop_and_clean(args.min_density) {
             let index_corridor: usize = self.corridors.len();
             let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
             self.corridors.push(corridor);
+
+            emitter.emit(AppEvent::ComputationProgress {
+                computation_type: ComputationType::RemoveDuplicates,
+                increment_progress: num_last_elements - self.clusters.get_size_elements(),
+            });
+            num_last_elements = self.clusters.get_size_elements();
         }
+    }
+
+    pub fn pop_and_clean(&mut self, min_density: u32) -> Option<Box<Cluster>> {
+        self.clusters.pop_and_clean(min_density)
+    }
+
+    pub fn take_non_clustered_segments(&mut self) {
         self.non_clustered_segments = std::mem::take(&mut self.clusters.non_clustered_segments);
         self.clusters = PriorityQueueCluster::new();
     }
@@ -66,5 +82,9 @@ impl ClusteredTrajectories {
 
         // Merge the two iterators
         clustered.chain(non_clustered)
+    }
+
+    pub fn get_size_priority_queue(&self) -> usize {
+        self.clusters.get_size_elements()
     }
 }

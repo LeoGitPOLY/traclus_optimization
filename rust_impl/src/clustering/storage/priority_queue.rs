@@ -135,6 +135,10 @@ impl PriorityQueueCluster {
         }
     }
 
+    pub fn get_size_elements(&self) -> usize {
+        self.elements.len()
+    }
+
     #[allow(unused)]
     pub fn print_info(&self) {
         println!("PriorityQueueCluster info:");

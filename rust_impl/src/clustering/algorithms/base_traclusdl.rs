@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use super::super::geometry::{segment::Segment, trajectory::Trajectory};
 use super::super::objects::{
     cluster::Cluster,
@@ -8,6 +10,7 @@ use super::super::storage::{
 };
 use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
+use crate::utils::gui_parallel_runner::StopFlag;
 
 const TICK_EVERY: usize = 25; // how many trajectories between progress events
 
@@ -21,6 +24,9 @@ pub trait TraclusAlgorithm {
     // Shared Data Accessors
     // ============================================================
     fn args(&self) -> &TraclusArgs;
+
+    fn stop_flag(&self) -> &Option<StopFlag>;
+    fn set_stop_flag(&mut self, stop_flag: StopFlag);
 
     // ============================================================
     // Required Methods (Must Be Implemented by Implementations)
@@ -185,18 +191,55 @@ pub trait TraclusAlgorithm {
         self.cluster_reachable_segs(seed_member, nearby_trajs)
     }
 
+    /// Serially cycle through all trajectories and fill non-clustered segments
+    ///
+    /// # Arguments
+    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
+    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    fn fill_non_clustered_segments(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        clustered_trajectories: &mut ClusteredTrajectories,
+    ) {
+        for bucket in &raw_trajectories.traj_buckets {
+            for traj_seed in &bucket.trajectories {
+                clustered_trajectories.fill_non_clustered_segments(traj_seed);
+            }
+        }
+    }
+
     // ============================================================
     // Emitter Helpers (For Emitting Progress Events During Clustering)
     // ============================================================
 
-    fn tick_progress(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
-        if emitter.has_subscribers() && count % TICK_EVERY == 0 {
+    /// Returns true if a stop has been requested.
+    fn is_stopped(&self) -> bool {
+        if let Some(stop_flag) = self.stop_flag() {
+            return stop_flag.load(Ordering::Relaxed);
+        }
+        false
+    }
+
+    fn tick_clustering(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
+        if count % TICK_EVERY == 0 {
             emitter.emit(AppEvent::ComputationProgress {
                 computation_type: ComputationType::Clustering,
                 increment_progress: TICK_EVERY,
             });
         }
         count + 1
+    }
+
+    fn tick_remove_duplicates(
+        &self,
+        emitter: &mut ComputationEvent,
+        num_last_elements: usize,
+        num_current_elements: usize,
+    ) {
+        emitter.emit(AppEvent::ComputationProgress {
+            computation_type: ComputationType::RemoveDuplicates,
+            increment_progress: num_last_elements - num_current_elements,
+        });
     }
 
     fn emit_start_clustering(
@@ -207,7 +250,12 @@ pub trait TraclusAlgorithm {
         emitter.emit(AppEvent::ComputationStart {
             computation_type: ComputationType::Clustering,
             max_progress: raw_trajectories.get_total_trajectories(),
-            additional_info: None,
+        });
+    }
+
+    fn emit_complete_clustering(&self, emitter: &mut ComputationEvent) {
+        emitter.emit(AppEvent::ComputationComplete {
+            computation_type: ComputationType::Clustering,
         });
     }
 
@@ -218,8 +266,13 @@ pub trait TraclusAlgorithm {
     ) {
         emitter.emit(AppEvent::ComputationStart {
             computation_type: ComputationType::RemoveDuplicates,
-            max_progress: 0,
-            additional_info: None,
+            max_progress: clustered_trajectories.get_size_priority_queue(),
+        });
+    }
+
+    fn emit_complete_remove_duplicates(&self, emitter: &mut ComputationEvent) {
+        emitter.emit(AppEvent::ComputationComplete {
+            computation_type: ComputationType::RemoveDuplicates,
         });
     }
 }

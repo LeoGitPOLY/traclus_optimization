@@ -1,4 +1,3 @@
-use std::ffi::os_str::Display;
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
 use std::fmt;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -16,7 +15,6 @@ pub enum AppEvent {
     ComputationStart {
         computation_type: ComputationType,
         max_progress: usize,
-        additional_info: Option<String>,
     },
 
     ComputationProgress {
@@ -58,19 +56,19 @@ impl fmt::Display for AppError {
 // ─────────────────────────────────────────────
 // ComputationType enum : types of computations that can be performed
 // ─────────────────────────────────────────────
-#[derive(Debug, Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum ComputationType {
-    InputLoading,
     Clustering,
     RemoveDuplicates,
+    NotComputing, // default value for ViewModel when no computation is running
 }
 
-impl fmt::Display for ComputationType {
+impl fmt::Debug for ComputationType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            ComputationType::InputLoading => "Loading Input",
             ComputationType::Clustering => "Clustering",
             ComputationType::RemoveDuplicates => "Removing Duplicates",
+            ComputationType::NotComputing => "Not Computing",
         };
         write!(f, "{}", msg)
     }
@@ -97,8 +95,15 @@ impl ComputationEvent {
     }
 
     pub fn emit(&mut self, event: AppEvent) {
+        if !self.has_subscribers() {
+            return;
+        }
         // retain keeps only the senders whose send() succeeded
         self.subscribers.retain(|tx| tx.send(event.clone()).is_ok());
+    }
+
+    pub fn emit_error(&mut self, error: AppError) {
+        self.emit(AppEvent::Error(error));
     }
 
     pub fn has_subscribers(&self) -> bool {

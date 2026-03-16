@@ -345,7 +345,7 @@ if __name__ == "__main__":
         'min_density':  [1],
         'max_angle':    [5],
         'seg_size':     [150],
-        'path': ["90_degrees_DL_traclus.txt" ],
+        'path': ["enquete_od_DL_1000_traclus.txt" ],
     }
     rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'},
                  {'cmd': 'serial', 'name': 'Serial'}]

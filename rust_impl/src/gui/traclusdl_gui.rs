@@ -151,7 +151,7 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             );
             if browse_response.clicked() {
                 if let Some(path) = FileDialog::new()
-                    .add_filter("Text file", &["txt"])
+                    .add_filter("Text file", &["txt", "csv", "tsv"])
                     .pick_file()
                 {
                     app.on_browse_done(path);
@@ -485,7 +485,7 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                 .add_sized([80.0, ACTION_BTN_HEIGHT], egui::Button::new("Stop"))
                 .clicked()
             {
-                println!("Stop clicked");
+                app.stop_computation();
             }
 
             // Progress bar fills remaining space to the left of Stop
@@ -502,10 +502,11 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
     // Row 2: time labels
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Elapsed:").color(COLOR_LABEL));
+        ui.add_space(4.0);
+        ui.label(RichText::new("Elapsed: ").color(COLOR_LABEL));
         ui.label(RichText::new(&elapsed_str).color(COLOR_TEXT));
         ui.add_space(24.0);
-        ui.label(RichText::new("Remaining:").color(COLOR_LABEL));
+        ui.label(RichText::new("Total Estimate: ").color(COLOR_LABEL));
         ui.label(RichText::new(&eta_str).color(COLOR_TEXT));
     });
 }

@@ -1,8 +1,10 @@
 use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
+use crate::utils::gui_parallel_runner::StopFlag;
 
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
+use super::super::objects::corridor::Corridor;
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories,
     raw_trajectories::{Bucket, RawTrajectories},
@@ -14,11 +16,15 @@ use rayon::slice::Iter;
 
 pub struct ParallelRayonTraclusDL {
     args: TraclusArgs,
+    stop_flag: Option<StopFlag>,
 }
 
 impl ParallelRayonTraclusDL {
     pub fn new(args: TraclusArgs) -> Self {
-        Self { args }
+        Self {
+            args,
+            stop_flag: None,
+        }
     }
 
     /// Completes the parallel clustering using Rayon by iterating over angle buckets
@@ -51,30 +57,6 @@ impl ParallelRayonTraclusDL {
             })
             .collect()
     }
-    /// Trying a diffenrent approach to parallelization
-    ///
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
-    // fn complete_parallel_clustering_v2(
-    //     &self,
-    //     raw_trajectories: &RawTrajectories,
-    // ) -> Vec<Vec<Cluster>> {
-    //     // Parallelize over angle buckets using Rayon
-    //     let bucket_parallel_iter: Iter<'_, Bucket> = raw_trajectories.traj_buckets.par_iter();
-
-    //     // FOR EACH: GET THE ONLY DATA NEEDED
-    //     // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
-    //     let nearby_trajs: Vec<&Trajectory> = raw_trajectories
-    //         .iter_nearby_angle(bucket.angle_start)
-    //         .collect();
-
-    //     // Parallelize over trajectories in this bucket using Rayon
-    //     let traj_parallel_iter: Iter<'_, Trajectory> = bucket.trajectories.par_iter();
-    //     traj_parallel_iter
-    //         .map(|traj_seed| self.individual_trajectory_clustering(traj_seed, &nearby_trajs))
-    //         .collect::<Vec<_>>()
-    // }
 
     /// Same logic as the serial version — unchanged
     #[inline]
@@ -98,32 +80,43 @@ impl ParallelRayonTraclusDL {
         cluster_group
     }
 
-    /// Serially cycle through all trajectories and fill non-clustered segments
-    ///
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
-    fn fill_non_clustered_segments(
-        &self,
-        raw_trajectories: &RawTrajectories,
-        clustered_trajectories: &mut ClusteredTrajectories,
-    ) {
-        for bucket in &raw_trajectories.traj_buckets {
-            for traj_seed in &bucket.trajectories {
-                clustered_trajectories.fill_non_clustered_segments(traj_seed);
-            }
-        }
-    }
-
     /// Same logic as the serial version — unchanged
-    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
-        clustered_trajectories.finalize_corridors(self.args());
+    fn create_corridors(
+        &self,
+        clustered_trajectories: &mut ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
+    ) {
+        let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
+
+        while let Some(completed_cluster) =
+            clustered_trajectories.pop_and_clean(self.args.min_density)
+        {
+            let index_corridor: usize = clustered_trajectories.corridors.len();
+            let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
+            clustered_trajectories.corridors.push(corridor);
+
+            let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
+            self.tick_remove_duplicates(emitter, num_last_elements, num_current_elements);
+            num_last_elements = num_current_elements;
+        }
+        clustered_trajectories.take_non_clustered_segments();
     }
 }
 
 impl TraclusAlgorithm for ParallelRayonTraclusDL {
+    // ============================================================
+    // Shared Data Accessors
+    // ============================================================
     fn args(&self) -> &TraclusArgs {
         &self.args
+    }
+
+    fn stop_flag(&self) -> &Option<StopFlag> {
+        &self.stop_flag
+    }
+
+    fn set_stop_flag(&mut self, stop_flag: StopFlag) {
+        self.stop_flag = Some(stop_flag);
     }
 
     /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
@@ -135,7 +128,9 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         emitter: &mut ComputationEvent,
     ) {
         // Phase 1: parallel discovery
+        self.emit_start_clustering(raw_trajectories, emitter);
         let results: Vec<Vec<Cluster>> = self.complete_parallel_clustering(raw_trajectories);
+        self.emit_complete_clustering(emitter);
 
         // Phase 2: serial fill in non-clustered segments
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
@@ -146,6 +141,8 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         }
 
         // Phase 4: create corridors from clusters and finalize non-clustered segments
-        self.create_corridors(clustered_trajectories);
+        self.emit_start_remove_duplicates(clustered_trajectories, emitter);
+        self.create_corridors(clustered_trajectories, emitter);
+        self.emit_complete_remove_duplicates(emitter);
     }
 }

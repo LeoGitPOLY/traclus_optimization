@@ -49,7 +49,13 @@ fn main() -> std::io::Result<()> {
     );
 
     let num_computation_threads: usize = get_number_of_cpus(&traclus_args);
-    let mut main_traclusdl: MainTraclusDL = MainTraclusDL::new(num_computation_threads);
+
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_computation_threads)
+        .build_global()
+        .expect("Failed to build Rayon thread pool");
+
+    let mut main_traclusdl: MainTraclusDL = MainTraclusDL::new();
 
     // Subscribe all subscribers
     match traclus_args.interface_mode {
