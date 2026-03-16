@@ -82,3 +82,12 @@ route_A	3	48.8566	2.3522	48.8606	2.3376
 
 > A header row is automatically detected and skipped if the first line contains non-numeric values.  
 > Empty lines are ignored.
+
+## Feedback & Bug Reports
+
+Found a bug or have a suggestion for improvement?  
+Send an email to [leonard.pouliot@etud.polymtl.ca](mailto:leonard.pouliot@etud.polymtl.ca) with:
+
+- A short description of the bug or idea
+- Your platform (Windows / macOS Intel / macOS ARM)
+- The input file used _(if relevant)_

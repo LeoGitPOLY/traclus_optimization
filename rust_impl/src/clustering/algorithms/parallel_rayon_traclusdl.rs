@@ -128,6 +128,9 @@ impl ParallelRayonTraclusDL {
     }
 
     /// Same logic as the serial version — unchanged
+    /// Creates corridors for all clustered trajectories based on the clustering results
+    /// # Arguments
+    /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
     fn create_corridors(
         &self,
         clustered_trajectories: &mut ClusteredTrajectories,
@@ -145,6 +148,11 @@ impl ParallelRayonTraclusDL {
             let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
             self.tick_remove_duplicates(emitter, num_last_elements, num_current_elements);
             num_last_elements = num_current_elements;
+
+            // Check for stop signal to bail out early
+            if self.is_stopped() {
+                return;
+            }
         }
         clustered_trajectories.take_non_clustered_segments();
     }

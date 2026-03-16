@@ -98,6 +98,7 @@ impl TraclusDLApp {
 
     pub fn on_stop_computation(&mut self) {
         self.runner.stop();
+        self.current_vm().output += " -> STOPPED \n";
     }
 
     pub fn on_plus_vm(&mut self) {
@@ -139,6 +140,7 @@ impl TraclusDLApp {
                 vm.num_computed = 0;
                 vm.start_time_computation = Instant::now();
                 vm.computation_type = computation_type.clone();
+
                 vm.output += &format!("Started {:?} computation ", computation_type,)
                     .trim_end_matches('\n')
                     .to_string();
@@ -158,6 +160,7 @@ impl TraclusDLApp {
             AppEvent::ComputationComplete { computation_type } => {
                 vm.num_computed = vm.total_to_compute;
                 let elapsed = vm.start_time_computation.elapsed().as_secs_f64() as u64;
+
                 if computation_type == vm.computation_type {
                     vm.output += &format!(" -> Completed ({}s) \n", elapsed);
                 }
