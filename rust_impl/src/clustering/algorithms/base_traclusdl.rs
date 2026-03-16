@@ -218,7 +218,7 @@ pub trait TraclusAlgorithm {
     ) {
         emitter.emit(AppEvent::ComputationStart {
             computation_type: ComputationType::RemoveDuplicates,
-            max_progress: clustered_trajectories.get_total_clusters(),
+            max_progress: 0,
             additional_info: None,
         });
     }
