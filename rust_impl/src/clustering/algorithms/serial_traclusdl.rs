@@ -4,7 +4,7 @@ use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
 use super::base_traclusdl::TraclusAlgorithm;
-use crate::gui::app_events::ComputationEvent;
+use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
 
 pub struct SerialTraclusDL {
@@ -31,6 +31,11 @@ impl TraclusAlgorithm for SerialTraclusDL {
         clustered_trajectories: &mut ClusteredTrajectories,
         emitter: &mut ComputationEvent,
     ) {
+        emitter.emit(AppEvent::ComputationStart {
+            computation_type: ComputationType::Clustering,
+            max_progress: raw_trajectories.get_total_trajectories(),
+            additional_info: None,
+        });
         self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
         self.create_corridors(clustered_trajectories);
     }

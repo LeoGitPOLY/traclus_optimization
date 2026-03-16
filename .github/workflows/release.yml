@@ -56,7 +56,45 @@ jobs:
         if: runner.os == 'Windows'
         run: cp rust_impl/target/${{ matrix.target }}/release/rust_impl.exe ./${{ matrix.binary_name }}
 
-      - name: Upload artifact
+      - name: Create .app bundle (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          APP="rust_impl.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp ./${{ matrix.binary_name }} "$APP/Contents/MacOS/rust_impl"
+          chmod +x "$APP/Contents/MacOS/rust_impl"
+
+          cat > "$APP/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>rust_impl</string>
+            <key>CFBundleExecutable</key>
+            <string>rust_impl</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.yourname.rust-impl</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+          </dict>
+          </plist>
+          EOF
+
+          zip -r ${{ matrix.binary_name }}.zip "$APP"
+
+      - name: Upload artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary_name }}.zip
+          path: ${{ matrix.binary_name }}.zip
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.binary_name }}
@@ -82,8 +120,8 @@ jobs:
             | Platform | File |
             |---|---|
             | Windows (64-bit) | `rust_impl.exe` |
-            | macOS Intel | `rust_impl-mac-intel` |
-            | macOS Apple Silicon (M1/M2/M3) | `rust_impl-mac-arm` |
+            | macOS Intel (zip) | `rust_impl-mac-intel.zip` |
+            | macOS Apple Silicon M1/M2/M3 (zip) | `rust_impl-mac-arm.zip` |
           files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

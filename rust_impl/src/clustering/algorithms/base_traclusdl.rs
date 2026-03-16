@@ -186,7 +186,7 @@ pub trait TraclusAlgorithm {
     }
 
     // ============================================================
-    // Helper Methods (Can Be Used by Implementations)
+    // Emitter Helpers (For Emitting Progress Events During Clustering)
     // ============================================================
 
     fn tick_progress(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
@@ -197,5 +197,29 @@ pub trait TraclusAlgorithm {
             });
         }
         count + 1
+    }
+
+    fn emit_start_clustering(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        emitter: &mut ComputationEvent,
+    ) {
+        emitter.emit(AppEvent::ComputationStart {
+            computation_type: ComputationType::Clustering,
+            max_progress: raw_trajectories.get_total_trajectories(),
+            additional_info: None,
+        });
+    }
+
+    fn emit_start_remove_duplicates(
+        &self,
+        clustered_trajectories: &ClusteredTrajectories,
+        emitter: &mut ComputationEvent,
+    ) {
+        emitter.emit(AppEvent::ComputationStart {
+            computation_type: ComputationType::RemoveDuplicates,
+            max_progress: clustered_trajectories.get_total_clusters(),
+            additional_info: None,
+        });
     }
 }
