@@ -9,6 +9,7 @@ use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories,
     raw_trajectories::{Bucket, RawTrajectories},
 };
+use super::base_traclusdl::TICK_EVERY;
 use super::base_traclusdl::TraclusAlgorithm;
 
 use rayon::prelude::*;
@@ -56,6 +57,52 @@ impl ParallelRayonTraclusDL {
                     .collect::<Vec<_>>()
             })
             .collect()
+    }
+
+    fn complete_parallel_clustering_v2(
+        &self,
+        raw_trajectories: &RawTrajectories,
+        emitter: &mut ComputationEvent,
+    ) -> Vec<Vec<Cluster>> {
+        // Flatten all buckets into one iterator of (bucket_angle, trajectory) pairs
+        // Drains bucket order: first bucket exhausted, then second, etc.
+        let all_trajectories: Vec<(f64, &Trajectory)> = raw_trajectories
+            .traj_buckets
+            .iter()
+            .flat_map(|bucket| {
+                bucket
+                    .trajectories
+                    .iter()
+                    .map(move |traj| (bucket.angle_start, traj))
+            })
+            .collect();
+
+        let mut results: Vec<Vec<Cluster>> = Vec::new();
+
+        // Process one chunk of TICK_EVERY trajectories at a time
+        for chunk in all_trajectories.chunks(TICK_EVERY) {
+            // Stop early if requested
+            if self.is_stopped() {
+                break;
+            }
+
+            // Process this chunk in parallel — each trajectory gets its nearby set
+            let chunk_results: Vec<Vec<Cluster>> = chunk
+                .par_iter()
+                .map(|(angle_start, traj)| {
+                    let nearby_trajs: Vec<&Trajectory> =
+                        raw_trajectories.iter_nearby_angle(*angle_start).collect();
+                    self.individual_trajectory_clustering(traj, &nearby_trajs)
+                })
+                .collect();
+
+            results.extend(chunk_results);
+
+            // Tick after the chunk completes (count = actual chunk size, handles last chunk)
+            self.tick_clustering(emitter, chunk.len());
+        }
+
+        results
     }
 
     /// Same logic as the serial version — unchanged
@@ -126,10 +173,15 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
         emitter: &mut ComputationEvent,
-    ) {
+    ) -> bool {
         // Phase 1: parallel discovery
         self.emit_start_clustering(raw_trajectories, emitter);
-        let results: Vec<Vec<Cluster>> = self.complete_parallel_clustering(raw_trajectories);
+        let results: Vec<Vec<Cluster>> =
+            self.complete_parallel_clustering_v2(raw_trajectories, emitter);
+
+        if self.is_stopped() {
+            return false;
+        }
         self.emit_complete_clustering(emitter);
 
         // Phase 2: serial fill in non-clustered segments
@@ -143,6 +195,12 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         // Phase 4: create corridors from clusters and finalize non-clustered segments
         self.emit_start_remove_duplicates(clustered_trajectories, emitter);
         self.create_corridors(clustered_trajectories, emitter);
+
+        if self.is_stopped() {
+            return false;
+        }
         self.emit_complete_remove_duplicates(emitter);
+
+        return true;
     }
 }

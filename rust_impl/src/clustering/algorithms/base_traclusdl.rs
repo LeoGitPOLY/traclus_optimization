@@ -12,7 +12,7 @@ use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::StopFlag;
 
-const TICK_EVERY: usize = 25; // how many trajectories between progress events
+pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
 
 /// Base trait for TraClus algorithm implementations.
 ///
@@ -40,12 +40,15 @@ pub trait TraclusAlgorithm {
     /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
     /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
     /// * `emitter` - The event emitter for sending computation events
+    /// # Returns
+    /// * `true` if clustering completed successfully
+    /// * `false` if clustering was stopped early due to a stop signal
     fn db_scan_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
         emitter: &mut ComputationEvent,
-    );
+    ) -> bool;
 
     // ============================================================
     // Default Methods (Can Be Overridden If Needed)

@@ -10,14 +10,16 @@ pub struct ClusteredTrajectories {
     clusters: PriorityQueueCluster,
     pub corridors: Vec<Corridor>,
     pub non_clustered_segments: Vec<ClusterMember>,
+    pub args_snapshot: TraclusArgs,
 }
 
 impl ClusteredTrajectories {
-    pub fn new() -> Self {
+    pub fn new(args: &TraclusArgs) -> Self {
         Self {
             clusters: PriorityQueueCluster::new(),
             corridors: Vec::new(),
             non_clustered_segments: Vec::new(),
+            args_snapshot: args.clone(),
         }
     }
 
@@ -82,6 +84,23 @@ impl ClusteredTrajectories {
 
         // Merge the two iterators
         clustered.chain(non_clustered)
+    }
+
+    pub fn get_summary(&self) -> Vec<String> {
+        let total_clustered_segments: usize = self
+            .corridors
+            .iter()
+            .map(|c| c.cluster.get_all_members_iter().count())
+            .sum();
+        vec![
+            format!("=== ClusteredTrajectories Summary ==="),
+            format!("- Total corridors found: {}", self.corridors.len()),
+            format!("- Total clustered segments: {}", total_clustered_segments),
+            format!(
+                "- Total non-clustered segments: {}",
+                self.non_clustered_segments.len()
+            ),
+        ]
     }
 
     pub fn get_size_priority_queue(&self) -> usize {

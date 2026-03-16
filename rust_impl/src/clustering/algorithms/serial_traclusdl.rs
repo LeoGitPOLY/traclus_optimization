@@ -154,13 +154,13 @@ impl TraclusAlgorithm for SerialTraclusDL {
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
         emitter: &mut ComputationEvent,
-    ) {
+    ) -> bool {
         // Phase 1: serial discovery
         self.emit_start_clustering(raw_trajectories, emitter);
         self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
 
         if self.is_stopped() {
-            return;
+            return false;
         }
         self.emit_complete_clustering(emitter);
 
@@ -172,8 +172,9 @@ impl TraclusAlgorithm for SerialTraclusDL {
         self.create_corridors(clustered_trajectories, emitter);
 
         if self.is_stopped() {
-            return;
+            return false;
         }
         self.emit_complete_remove_duplicates(emitter);
+        return true;
     }
 }

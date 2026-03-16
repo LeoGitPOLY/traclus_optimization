@@ -1,61 +1,130 @@
 use crate::clustering::objects::cluster_member::ClusterMember;
 use crate::clustering::objects::corridor::Corridor;
 use crate::clustering::storage::clustered_trajectories::ClusteredTrajectories;
+use crate::gui::app_events::{AppError, ComputationEvent};
 use crate::io::args::TraclusArgs;
 use std::path::Path;
 
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{self, BufWriter, Write};
 
-pub enum SegmentOutputFormat {
+pub enum SegOutFormat {
     OldTraclus,
     NewTraclus,
 }
 
 // Generate the corridor output file to a text file
-pub fn generate_corridor_file(args: &TraclusArgs, clust_storage: &ClusteredTrajectories) {
+pub fn generate_corridor_file(
+    args: &TraclusArgs,
+    clust_storage: &ClusteredTrajectories,
+    emitter: &mut ComputationEvent,
+) -> Option<()> {
     let output_filename: String = build_corridor_output_filename(args);
 
-    let file: File = File::create(&output_filename).expect("Failed to create corridor output file");
+    let file: File = match File::create(&output_filename) {
+        Ok(f) => f,
+        Err(err) => {
+            emitter.emit_error(AppError::IoError(format!(
+                "Failed to create corridor output file: {}",
+                err
+            )));
+            return None;
+        }
+    };
+
     let mut writer: BufWriter<File> = BufWriter::new(file);
 
-    writeln!(writer, "name\tweight\tcoordinates").expect("Failed to write corridor header");
-
-    for corridor in &clust_storage.corridors {
-        write_single_corridor(&mut writer, corridor);
+    if let Err(err) = writeln!(writer, "name\tweight\tcoordinates") {
+        emitter.emit_error(AppError::IoError(format!(
+            "Failed to write corridor header: {}",
+            err
+        )));
+        return None;
     }
 
-    writer.flush().expect("Failed to flush corridor file");
+    for corridor in &clust_storage.corridors {
+        if let Err(err) = write_single_corridor(&mut writer, corridor) {
+            emitter.emit_error(AppError::IoError(format!(
+                "Failed to write corridor: {}",
+                err
+            )));
+            return None;
+        }
+    }
+
+    if let Err(err) = writer.flush() {
+        emitter.emit_error(AppError::IoError(format!(
+            "Failed to flush corridor file: {}",
+            err
+        )));
+        return None;
+    }
+
     println!("Corridor output written to: {}", output_filename);
+
+    Some(())
 }
 
 // Generate the segment output file to a text file
 pub fn generate_segment_file(
     args: &TraclusArgs,
     clust_storage: &ClusteredTrajectories,
-    format: SegmentOutputFormat,
-) {
-    let output_filename: String = build_segment_output_filename(args, &format);
+    format: SegOutFormat,
+    emitter: &mut ComputationEvent,
+) -> Option<()> {
+    let output_filename = build_segment_output_filename(args, &format);
 
-    let file: File = File::create(&output_filename).expect("Failed to create segment output file");
-    let mut writer: BufWriter<File> = BufWriter::new(file);
+    let file = match File::create(&output_filename) {
+        Ok(f) => f,
+        Err(err) => {
+            emitter.emit_error(AppError::IoError(format!(
+                "Failed to create segment output file: {}",
+                err
+            )));
+            return None;
+        }
+    };
 
-    write_segment_header(&mut writer, &format);
+    let mut writer = BufWriter::new(file);
+
+    if let Err(err) = write_segment_header(&mut writer, &format) {
+        emitter.emit_error(AppError::IoError(format!(
+            "Failed to write segment header: {}",
+            err
+        )));
+        return None;
+    }
 
     for (corridor_id, cluster_member) in clust_storage.get_all_cluster_members_iter() {
-        match format {
-            SegmentOutputFormat::OldTraclus => {
-                write_single_segment_old(&mut writer, corridor_id, cluster_member);
+        let result: io::Result<()> = match format {
+            SegOutFormat::OldTraclus => {
+                write_single_segment_old(&mut writer, corridor_id, cluster_member)
             }
-            SegmentOutputFormat::NewTraclus => {
-                write_single_segment_new(&mut writer, corridor_id, cluster_member);
+            SegOutFormat::NewTraclus => {
+                write_single_segment_new(&mut writer, corridor_id, cluster_member)
             }
+        };
+
+        if let Err(err) = result {
+            emitter.emit_error(AppError::IoError(format!(
+                "Failed to write segment: {}",
+                err
+            )));
+            return None;
         }
     }
 
-    writer.flush().expect("Failed to flush segment file");
+    if let Err(err) = writer.flush() {
+        emitter.emit_error(AppError::IoError(format!(
+            "Failed to flush segment file: {}",
+            err
+        )));
+        return None;
+    }
 
     println!("Segment output written to: {}", output_filename);
+
+    Some(())
 }
 
 fn build_corridor_output_filename(args: &TraclusArgs) -> String {
@@ -79,7 +148,7 @@ fn build_corridor_output_filename(args: &TraclusArgs) -> String {
     )
 }
 
-fn build_segment_output_filename(args: &TraclusArgs, format: &SegmentOutputFormat) -> String {
+fn build_segment_output_filename(args: &TraclusArgs, format: &SegOutFormat) -> String {
     let input_path: &Path = Path::new(&args.file);
     let basename: &str = input_path
         .file_stem()
@@ -89,8 +158,8 @@ fn build_segment_output_filename(args: &TraclusArgs, format: &SegmentOutputForma
     let parent_dir: &Path = input_path.parent().unwrap_or_else(|| Path::new("."));
 
     let suffix = match format {
-        SegmentOutputFormat::OldTraclus => "segmentlist_old",
-        SegmentOutputFormat::NewTraclus => "segmentlist_new",
+        SegOutFormat::OldTraclus => "segmentlist_old",
+        SegOutFormat::NewTraclus => "segmentlist",
     };
 
     format!(
@@ -111,7 +180,7 @@ fn write_single_segment_new(
     writer: &mut BufWriter<File>,
     corridor_id: i32,
     cluster_member: &ClusterMember,
-) {
+) -> io::Result<()> {
     let end_point = cluster_member.end_point();
     writeln!(
         writer,
@@ -126,7 +195,6 @@ fn write_single_segment_new(
         end_point.x,
         end_point.y
     )
-    .expect("Failed to write new segment");
 }
 
 // Format: {trajectory_id:segment_id}\t{weight}\t{angle}\t{corridor_id}\tLINESTRING({x1} {y1}, {x2} {y2})
@@ -134,7 +202,7 @@ fn write_single_segment_old(
     writer: &mut BufWriter<File>,
     corridor_id: i32,
     cluster_member: &ClusterMember,
-) {
+) -> io::Result<()> {
     let end_point = cluster_member.end_point();
     let start_str = cluster_member.start.x.to_string() + ":" + &cluster_member.start.y.to_string();
     let segment_id = cluster_member.traj_id.to_string() + ":" + &start_str;
@@ -151,11 +219,10 @@ fn write_single_segment_old(
         end_point.x,
         end_point.y
     )
-    .expect("Failed to write old segment");
 }
 
 // Format: {id}\t{weight}\tLINESTRING({x1} {y1}, {x2} {y2})
-fn write_single_corridor(writer: &mut BufWriter<File>, corridor: &Corridor) {
+fn write_single_corridor(writer: &mut BufWriter<File>, corridor: &Corridor) -> io::Result<()> {
     writeln!(
         writer,
         "{}\t{}\tLINESTRING({} {}, {} {})",
@@ -166,24 +233,21 @@ fn write_single_corridor(writer: &mut BufWriter<File>, corridor: &Corridor) {
         corridor.end.x,
         corridor.end.y
     )
-    .expect("Failed to write corridor");
 }
 
 // Writes the segment header based on the specified format.
 // Old Traclus: id weight angle corridor_id coordinates
 // New Traclus: corridor_id trajectory_id segment_id weight angle coordinates
-fn write_segment_header(writer: &mut BufWriter<File>, format: &SegmentOutputFormat) {
+fn write_segment_header(writer: &mut BufWriter<File>, format: &SegOutFormat) -> io::Result<()> {
     match format {
-        SegmentOutputFormat::OldTraclus => {
+        SegOutFormat::OldTraclus => {
             writeln!(writer, "id\tweight\tangle\tcorridor_id\tcoordinates")
-                .expect("Failed to write old segment header");
         }
-        SegmentOutputFormat::NewTraclus => {
+        SegOutFormat::NewTraclus => {
             writeln!(
                 writer,
                 "corridor_id\ttrajectory_id\tsegment_id\tweight\tangle\tcoordinates"
             )
-            .expect("Failed to write new segment header");
         }
     }
 }

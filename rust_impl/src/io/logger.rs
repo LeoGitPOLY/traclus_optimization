@@ -67,6 +67,11 @@ impl Logger {
                         start_time.elapsed()
                     );
                 }
+                AppEvent::PrintInfo { messages } => {
+                    for message in messages {
+                        println!("[LOG] {}", message);
+                    }
+                }
                 AppEvent::Error(msg) => {
                     eprintln!("[LOG][ERROR] {}", msg);
                 }

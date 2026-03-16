@@ -38,7 +38,7 @@ impl ArgsBuffer {
 // ─────────────────────────────────────────────
 
 pub struct ViewModel {
-    pub args: TraclusArgs,
+    pub args_selected: TraclusArgs,
     pub args_buffer: ArgsBuffer,
 
     // Input file info section
@@ -65,7 +65,7 @@ impl ViewModel {
         let args_buffer: ArgsBuffer = ArgsBuffer::from_args(&args);
         let args_when_loaded: TraclusArgs = args.clone();
         Self {
-            args,
+            args_selected: args,
             args_buffer,
             args_when_loaded,
 

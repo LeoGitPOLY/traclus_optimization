@@ -1,4 +1,5 @@
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
+use eframe::egui::{self, Color32};
 use std::fmt;
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -26,6 +27,10 @@ pub enum AppEvent {
         computation_type: ComputationType,
     },
 
+    PrintInfo {
+        messages: Vec<String>,
+    },
+
     /// Emitted on any unrecoverable error inside a task
     Error(AppError),
 }
@@ -45,7 +50,7 @@ impl fmt::Display for AppError {
         let msg = match self {
             AppError::NoRawStorage => "No desire line loaded. Please load a file first.",
             AppError::NoClustStorage => {
-                "No clustered trajectories available. Please run clustering first."
+                "No clustered trajectories available. Please run computation first."
             }
             AppError::IoError(msg) => msg,
         };
@@ -58,9 +63,10 @@ impl fmt::Display for AppError {
 // ─────────────────────────────────────────────
 #[derive(Clone, PartialEq, Eq)]
 pub enum ComputationType {
-    Clustering,
-    RemoveDuplicates,
-    NotComputing, // default value for ViewModel when no computation is running
+    Clustering = 1,
+    RemoveDuplicates = 2,
+    CreateOutputs = 3,
+    NotComputing = 0, // default value for ViewModel when no computation is running
 }
 
 impl fmt::Debug for ComputationType {
@@ -68,9 +74,21 @@ impl fmt::Debug for ComputationType {
         let msg = match self {
             ComputationType::Clustering => "Clustering",
             ComputationType::RemoveDuplicates => "Removing Duplicates",
+            ComputationType::CreateOutputs => "Creating Output Files",
             ComputationType::NotComputing => "Not Computing",
         };
         write!(f, "{}", msg)
+    }
+}
+
+impl ComputationType {
+    pub fn color(&self) -> egui::Color32 {
+        match self {
+            ComputationType::Clustering => Color32::from_rgb(39, 115, 38), // green
+            ComputationType::RemoveDuplicates => Color32::from_rgb(196, 148, 81), // light orange
+            ComputationType::CreateOutputs => Color32::from_rgb(0, 0, 255), // blue
+            ComputationType::NotComputing => Color32::from_rgb(128, 128, 128), // gray
+        }
     }
 }
 // ─────────────────────────────────────────────

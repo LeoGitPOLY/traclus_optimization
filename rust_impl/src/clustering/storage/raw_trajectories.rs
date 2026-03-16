@@ -105,6 +105,7 @@ impl RawTrajectories {
     pub fn get_total_trajectories(&self) -> usize {
         self.traj_buckets.iter().map(|b| b.trajectories.len()).sum()
     }
+
     #[allow(unused)]
     pub fn print_info(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {

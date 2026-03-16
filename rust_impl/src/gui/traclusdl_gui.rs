@@ -135,7 +135,7 @@ fn render_file_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             );
             ui.add_space(SPACE_BETWEEN_FIELD);
 
-            let mut pct_str = app.current_vm().percent_correlation.to_string();
+            let mut pct_str = format!("{:.1}%", app.current_vm().percent_correlation * 100.0);
             ui.add(
                 TextEdit::singleline(&mut pct_str)
                     .desired_width(PERCENT_CORR_WIDTH)
@@ -216,7 +216,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         commit_f64_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.max_angle,
-                            &mut vm.args.max_angle,
+                            &mut vm.args_selected.max_angle,
                             PARAM_FIELD_WIDTH,
                             cfg.max_angle.min,
                             cfg.max_angle.max,
@@ -227,7 +227,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         commit_u32_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.min_density,
-                            &mut vm.args.min_density,
+                            &mut vm.args_selected.min_density,
                             PARAM_FIELD_WIDTH,
                             cfg.min_density.min,
                             cfg.min_density.max,
@@ -238,7 +238,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         commit_f64_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.max_dist,
-                            &mut vm.args.max_dist,
+                            &mut vm.args_selected.max_dist,
                             PARAM_FIELD_WIDTH,
                             cfg.max_dist.min,
                             cfg.max_dist.max,
@@ -249,7 +249,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         commit_f64_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.segment_size,
-                            &mut vm.args.segment_size,
+                            &mut vm.args_selected.segment_size,
                             PARAM_FIELD_WIDTH,
                             cfg.segment_size.min,
                             cfg.segment_size.max,
@@ -276,7 +276,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             ui.allocate_ui(Vec2::new(add_col_width, ui.available_height()), |ui| {
                 ui.centered_and_justified(|ui| {
                     if ui.add_sized([36.0, 36.0], egui::Button::new("+")).clicked() {
-                        app.vm.push(crate::gui::view_model::ViewModel::default());
+                        app.on_plus_vm();
                     }
                 });
             });
@@ -367,14 +367,14 @@ fn render_computing_mode_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
             ui.radio_value(
-                &mut app.current_vm().args.mode,
+                &mut app.current_vm().args_selected.mode,
                 ExecutionMode::Serial,
                 RichText::new("Serial computing").color(COLOR_TEXT),
             );
             ui.add_space(40.0);
             let parallel_label = format!("Parallel computing ({} CPU detected)", app.detected_cpus);
             ui.radio_value(
-                &mut app.current_vm().args.mode,
+                &mut app.current_vm().args_selected.mode,
                 ExecutionMode::ParallelRayon,
                 RichText::new(parallel_label).color(COLOR_TEXT),
             );
@@ -451,7 +451,7 @@ fn render_action_bar_idle(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                 egui::Button::new("Create output"),
             );
             if create_response.clicked() {
-                println!("Create output clicked");
+                app.on_generate_outputs();
             }
         });
     });
@@ -461,6 +461,7 @@ fn render_action_bar_idle(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
 fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     let vm = app.current_vm();
+    let color_progress: egui::Color32 = vm.computation_type.color();
 
     let progress = if vm.total_to_compute > 0 {
         vm.num_computed as f32 / vm.total_to_compute as f32
@@ -485,7 +486,7 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                 .add_sized([80.0, ACTION_BTN_HEIGHT], egui::Button::new("Stop"))
                 .clicked()
             {
-                app.stop_computation();
+                app.on_stop_computation();
             }
 
             // Progress bar fills remaining space to the left of Stop
@@ -493,7 +494,8 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
             ui.add(
                 egui::ProgressBar::new(progress)
                     .desired_width(bar_width)
-                    .show_percentage(),
+                    .show_percentage()
+                    .fill(color_progress),
             );
         });
     });

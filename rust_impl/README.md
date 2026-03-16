@@ -2,7 +2,7 @@
 
 ## Downloading the Application
 
-Go to the [**Releases page**](../../releases/latest) of this repository.
+Go to the [**Releases page**](../../releases/v1.0.0) of this repository.
 Under **Assets**, download the file for your platform:
 
 | Platform                       | File to download          |
@@ -10,8 +10,6 @@ Under **Assets**, download the file for your platform:
 | Windows (64-bit)               | `rust_impl.exe`           |
 | macOS Intel                    | `rust_impl-mac-intel.zip` |
 | macOS Apple Silicon (M1/M2/M3) | `rust_impl-mac-arm.zip`   |
-
-No Git, no Cargo, no installation required — just download and run.
 
 ---
 
@@ -49,4 +47,38 @@ No Git, no Cargo, no installation required — just download and run.
 
 ## Data
 
-TODO: Explain where to find and place the data files required by the application.
+Sample input files are provided in the [`/data`](./data) folder of this repository:
+
+| File                     | Format                           |
+| ------------------------ | -------------------------------- |
+| `sample_with_header.txt` | Tab-separated, with a header row |
+| `sample_no_header.txt`   | Tab-separated, no header row     |
+
+### Accepted file format
+
+The application accepts **tab-separated** (`.txt`) or **comma-separated** (`.csv`) files.  
+Each data row must contain either **5 or 6 fields**:
+
+| Field     | Type    | Description                           |
+| --------- | ------- | ------------------------------------- |
+| `name`    | text    | _(optional)_ Label for the line       |
+| `weight`  | integer | Number of trips on this OD line       |
+| `x_start` | decimal | X coordinate of the origin point      |
+| `y_start` | decimal | Y coordinate of the origin point      |
+| `x_end`   | decimal | X coordinate of the destination point |
+| `y_end`   | decimal | Y coordinate of the destination point |
+
+**With name (6 fields):**
+
+```
+route_A	3	48.8566	2.3522	48.8606	2.3376
+```
+
+**Without name (5 fields):**
+
+```
+3	48.8566	2.3522	48.8606	2.3376
+```
+
+> A header row is automatically detected and skipped if the first line contains non-numeric values.  
+> Empty lines are ignored.

@@ -149,3 +149,12 @@ impl Default for TraclusArgs {
         }
     }
 }
+
+impl TraclusArgs {
+    pub fn print_small_summary(&self) -> String {
+        format!(
+            "TraclusArgs:, max_dist={}, min_density={}, max_angle={}, segment_size={}\n",
+            self.max_dist, self.min_density, self.max_angle, self.segment_size
+        )
+    }
+}

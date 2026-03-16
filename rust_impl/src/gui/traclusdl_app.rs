@@ -52,7 +52,7 @@ impl TraclusDLApp {
     // ─────────────────────────────────────────────
     pub fn on_browse_done(&mut self, path: PathBuf) {
         let vm: &mut ViewModel = self.current_vm();
-        vm.args.file = path.display().to_string();
+        vm.args_selected.file = path.display().to_string();
         vm.args_buffer.input_name = path
             .file_name()
             .unwrap_or_default()
@@ -61,8 +61,9 @@ impl TraclusDLApp {
 
         vm.num_dl = 0;
         vm.percent_correlation = 0.0;
+        vm.output.clear();
 
-        let args: TraclusArgs = vm.args.clone();
+        let args: TraclusArgs = vm.args_selected.clone();
         vm.args_when_loaded = args.clone();
         self.launch(move |t, stop| {
             t.load_raw_storage(&args, stop);
@@ -70,11 +71,14 @@ impl TraclusDLApp {
     }
 
     pub fn on_start_computation(&mut self) {
-        let args: TraclusArgs = self.current_vm().args.clone();
+        let args: TraclusArgs = self.current_vm().args_selected.clone();
         let args_when_loaded: TraclusArgs = self.current_vm().args_when_loaded.clone();
         let needs_reload: bool = args != args_when_loaded;
 
         self.current_vm().output.clear();
+        self.current_vm().output += "=== Starting clustering computation ===\n";
+        self.current_vm().output += &args.print_small_summary();
+        self.current_vm().output += "\n";
 
         self.launch(move |t, stop| {
             if needs_reload {
@@ -83,10 +87,23 @@ impl TraclusDLApp {
             t.run_clustering(&args, stop);
         });
     }
+    pub fn on_generate_outputs(&mut self) {
+        let vm: &mut ViewModel = self.current_vm();
+        let args: TraclusArgs = vm.args_selected.clone();
 
-    pub fn stop_computation(&mut self) {
+        self.launch(move |t, stop| {
+            t.generate_outputs(&args, stop);
+        });
+    }
+
+    pub fn on_stop_computation(&mut self) {
         self.runner.stop();
-        self.current_vm().output += " -> STOPPED \n";
+    }
+
+    pub fn on_plus_vm(&mut self) {
+        let vm: &mut ViewModel = self.current_vm();
+        vm.error_popup = Some("Functionality not implemented yet. Coming soon!".to_string());
+        // app.vm.push(crate::gui::view_model::ViewModel::default());
     }
 
     // ─────────────────────────────────────────────
@@ -140,9 +157,18 @@ impl TraclusDLApp {
 
             AppEvent::ComputationComplete { computation_type } => {
                 vm.num_computed = vm.total_to_compute;
+                let elapsed = vm.start_time_computation.elapsed().as_secs_f64() as u64;
                 if computation_type == vm.computation_type {
-                    vm.output += &format!(" -> Completed \n",);
+                    vm.output += &format!(" -> Completed ({}s) \n", elapsed);
                 }
+            }
+
+            AppEvent::PrintInfo { messages } => {
+                vm.output += "\n";
+                for message in messages {
+                    vm.output += &format!("{}\n", message);
+                }
+                vm.output += "\n";
             }
 
             AppEvent::Error(msg) => {

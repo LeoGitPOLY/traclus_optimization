@@ -232,7 +232,7 @@ def main():
 
     # Montreal_to_Montreal: 500 lines
     filename = BENCHMARKS_DIR / "montreal_to_montreal_DL"
-    list_of_lines = generate_desire_line_shape(500, [MONTREAL_QUAD], [MONTREAL_QUAD])
+    list_of_lines = generate_desire_line_shape(2000, [MONTREAL_QUAD], [MONTREAL_QUAD])
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
