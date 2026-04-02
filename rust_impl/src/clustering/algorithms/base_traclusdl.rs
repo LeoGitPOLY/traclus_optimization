@@ -8,7 +8,8 @@ use super::super::objects::{
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
-use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
+use crate::gui::app_events::{AppEvent, ComputationType};
+use crate::gui::event_singleton::emit;
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::StopFlag;
 
@@ -47,7 +48,6 @@ pub trait TraclusAlgorithm {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
     ) -> bool;
 
     // ============================================================
@@ -223,58 +223,45 @@ pub trait TraclusAlgorithm {
         false
     }
 
-    fn tick_clustering(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
-        if count % TICK_EVERY == 0 {
-            emitter.emit(AppEvent::ComputationProgress {
+    fn tick_clustering(&self, count: &mut usize) {
+        if *count % TICK_EVERY == 0 {
+            emit(AppEvent::ComputationProgress {
                 computation_type: ComputationType::Clustering,
                 increment_progress: TICK_EVERY,
             });
         }
-        count + 1
+        *count += 1;
     }
 
-    fn tick_remove_duplicates(
-        &self,
-        emitter: &mut ComputationEvent,
-        num_last_elements: usize,
-        num_current_elements: usize,
-    ) {
-        emitter.emit(AppEvent::ComputationProgress {
+    fn tick_remove_duplicates(&self, num_last_elements: usize, num_current_elements: usize) {
+        emit(AppEvent::ComputationProgress {
             computation_type: ComputationType::RemoveDuplicates,
             increment_progress: num_last_elements - num_current_elements,
         });
     }
 
-    fn emit_start_clustering(
-        &self,
-        raw_trajectories: &RawTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
-        emitter.emit(AppEvent::ComputationStart {
+    fn emit_start_clustering(&self, raw_trajectories: &RawTrajectories) {
+        emit(AppEvent::ComputationStart {
             computation_type: ComputationType::Clustering,
             max_progress: raw_trajectories.get_total_trajectories(),
         });
     }
 
-    fn emit_complete_clustering(&self, emitter: &mut ComputationEvent) {
-        emitter.emit(AppEvent::ComputationComplete {
+    fn emit_complete_clustering(&self) {
+        emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
     }
 
-    fn emit_start_remove_duplicates(
-        &self,
-        clustered_trajectories: &ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
-        emitter.emit(AppEvent::ComputationStart {
+    fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {
+        emit(AppEvent::ComputationStart {
             computation_type: ComputationType::RemoveDuplicates,
             max_progress: clustered_trajectories.get_size_priority_queue(),
         });
     }
 
-    fn emit_complete_remove_duplicates(&self, emitter: &mut ComputationEvent) {
-        emitter.emit(AppEvent::ComputationComplete {
+    fn emit_complete_remove_duplicates(&self) {
+        emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::RemoveDuplicates,
         });
     }

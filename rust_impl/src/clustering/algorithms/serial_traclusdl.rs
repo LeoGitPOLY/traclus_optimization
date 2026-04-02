@@ -6,7 +6,6 @@ use super::super::storage::{
 };
 use super::base_traclusdl::TraclusAlgorithm;
 
-use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::StopFlag;
 
@@ -34,7 +33,6 @@ impl SerialTraclusDL {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
     ) {
         let mut total_traj_processed: usize = 0;
         for bucket in &raw_trajectories.traj_buckets {
@@ -52,7 +50,7 @@ impl SerialTraclusDL {
                 // Fill all segments to be treated as non-clustered later
                 clustered_trajectories.fill_non_clustered_segments(traj_seed);
 
-                total_traj_processed = self.tick_clustering(emitter, total_traj_processed);
+                self.tick_clustering(&mut total_traj_processed);
 
                 // Check for stop signal to bail out early
                 if self.is_stopped() {
@@ -100,11 +98,7 @@ impl SerialTraclusDL {
     /// Creates corridors for all clustered trajectories based on the clustering results
     /// # Arguments
     /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
-    fn create_corridors(
-        &self,
-        clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
+    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
         let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
 
         while let Some(completed_cluster) =
@@ -115,7 +109,7 @@ impl SerialTraclusDL {
             clustered_trajectories.corridors.push(corridor);
 
             let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
-            self.tick_remove_duplicates(emitter, num_last_elements, num_current_elements);
+            self.tick_remove_duplicates(num_last_elements, num_current_elements);
             num_last_elements = num_current_elements;
 
             // Check for stop signal to bail out early
@@ -153,28 +147,27 @@ impl TraclusAlgorithm for SerialTraclusDL {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
     ) -> bool {
         // Phase 1: serial discovery
-        self.emit_start_clustering(raw_trajectories, emitter);
-        self.complete_serial_clustering(raw_trajectories, clustered_trajectories, emitter);
+        self.emit_start_clustering(raw_trajectories);
+        self.complete_serial_clustering(raw_trajectories, clustered_trajectories);
 
         if self.is_stopped() {
             return false;
         }
-        self.emit_complete_clustering(emitter);
+        self.emit_complete_clustering();
 
         // Phase 2: serial fill in non-clustered segments
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
 
         // Phase 3: create corridors from clusters and finalize non-clustered segments
-        self.emit_start_remove_duplicates(clustered_trajectories, emitter);
-        self.create_corridors(clustered_trajectories, emitter);
+        self.emit_start_remove_duplicates(clustered_trajectories);
+        self.create_corridors(clustered_trajectories);
 
         if self.is_stopped() {
             return false;
         }
-        self.emit_complete_remove_duplicates(emitter);
+        self.emit_complete_remove_duplicates();
         return true;
     }
 }

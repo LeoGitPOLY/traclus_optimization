@@ -3,7 +3,7 @@ use crate::clustering::geometry::point::Point;
 use crate::clustering::geometry::trajectory::Trajectory;
 use crate::clustering::storage::raw_trajectories::RawTrajectories;
 use crate::gui::app_events::AppError;
-use crate::gui::app_events::ComputationEvent;
+use crate::gui::event_singleton::emit_error;
 use crate::io::args::TraclusArgs;
 
 use std::fs;
@@ -117,14 +117,11 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
     })
 }
 
-pub fn parse_input_data(
-    args: &TraclusArgs,
-    emitter: &mut ComputationEvent,
-) -> Option<RawTrajectories> {
+pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
     let content = match read_file(&args.file) {
         Ok(c) => c,
         Err(err) => {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to read input file: {}",
                 err
             )));
@@ -147,7 +144,7 @@ pub fn parse_input_data(
         let od_line = match parse_line_to_od(line, index + 1) {
             Ok(od) => od,
             Err(err) => {
-                emitter.emit_error(AppError::IoError(format!("{}", err)));
+                emit_error(AppError::IoError(format!("{}", err)));
                 return None;
             }
         };

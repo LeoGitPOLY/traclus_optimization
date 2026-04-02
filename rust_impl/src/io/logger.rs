@@ -8,13 +8,15 @@ use std::thread;
 use std::time::Instant;
 
 use crate::gui::app_events::AppEvent;
+use crate::gui::event_singleton::subscribe as singleton_subscribe;
 
 pub struct Logger;
 
 impl Logger {
     /// Spawn the logger thread.
     /// `rx` is the Receiver obtained from EventBus::subscribe().
-    pub fn start(rx: Receiver<AppEvent>) {
+    pub fn start() {
+        let rx: Receiver<AppEvent> = singleton_subscribe();
         thread::Builder::new()
             .name("traclus-logger".to_string())
             .spawn(move || Self::run(rx))

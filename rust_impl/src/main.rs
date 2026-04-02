@@ -1,11 +1,9 @@
 use crate::clustering::main_traclusdl::MainTraclusDL;
-use crate::gui::app_events::AppEvent;
 use crate::gui::traclusdl_app::start_gui;
 use crate::io::args::{InterfaceMode, TraclusArgs};
 use crate::io::logger::Logger;
 
 use clap::Parser;
-use std::sync::mpsc::Receiver;
 use std::thread::available_parallelism;
 
 mod clustering;
@@ -13,11 +11,9 @@ mod gui;
 mod io;
 mod utils;
 
-// TODO: see if it's the logical or physical cores that limits
-
 /// Returns how many threads Rayon should use for computation.
 /// Reserves CPUs for the UI threads that will be active.
-fn get_number_of_cpus(args: &TraclusArgs) -> usize {
+fn build_thread_pool(args: &TraclusArgs) -> usize {
     let available: usize = available_parallelism().map(|n| n.get()).unwrap_or(2).max(1);
 
     let reserved: usize = match args.interface_mode {
@@ -28,6 +24,10 @@ fn get_number_of_cpus(args: &TraclusArgs) -> usize {
     };
 
     let computation: usize = available.saturating_sub(reserved).max(1);
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(computation)
+        .build_global()
+        .expect("Failed to build Rayon thread pool");
 
     println!(
         "Available CPUs: {}, reserved for UI/Logger: {}, used for computation: {}",
@@ -36,32 +36,20 @@ fn get_number_of_cpus(args: &TraclusArgs) -> usize {
 
     computation
 }
-
 // ─────────────────────────────────────────────
 // Entry point
 // ─────────────────────────────────────────────
 
 fn main() -> std::io::Result<()> {
     let traclus_args: TraclusArgs = TraclusArgs::parse();
-    print!(
-        "Starting TraclusDL Rust implementation with\n{:?}...\n",
-        traclus_args
-    );
+    let main_traclusdl: MainTraclusDL = MainTraclusDL::new();
 
-    let num_computation_threads: usize = get_number_of_cpus(&traclus_args);
-
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(num_computation_threads)
-        .build_global()
-        .expect("Failed to build Rayon thread pool");
-
-    let mut main_traclusdl: MainTraclusDL = MainTraclusDL::new();
+    build_thread_pool(&traclus_args);
 
     // Subscribe all subscribers
     match traclus_args.interface_mode {
         InterfaceMode::Logger | InterfaceMode::GuiAndLogger => {
-            let logger_rx: Receiver<AppEvent> = main_traclusdl.event.subscribe();
-            Logger::start(logger_rx);
+            Logger::start();
         }
         _ => {}
     }

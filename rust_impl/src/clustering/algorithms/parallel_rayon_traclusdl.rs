@@ -1,4 +1,3 @@
-use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
 use crate::utils::gui_parallel_runner::StopFlag;
 
@@ -62,7 +61,6 @@ impl ParallelRayonTraclusDL {
     fn complete_parallel_clustering_v2(
         &self,
         raw_trajectories: &RawTrajectories,
-        emitter: &mut ComputationEvent,
     ) -> Vec<Vec<Cluster>> {
         // Flatten all buckets into one iterator of (bucket_angle, trajectory) pairs
         // Drains bucket order: first bucket exhausted, then second, etc.
@@ -99,7 +97,7 @@ impl ParallelRayonTraclusDL {
             results.extend(chunk_results);
 
             // Tick after the chunk completes (count = actual chunk size, handles last chunk)
-            self.tick_clustering(emitter, chunk.len());
+            self.tick_clustering(&mut chunk.len());
         }
 
         results
@@ -131,11 +129,7 @@ impl ParallelRayonTraclusDL {
     /// Creates corridors for all clustered trajectories based on the clustering results
     /// # Arguments
     /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
-    fn create_corridors(
-        &self,
-        clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
+    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
         let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
 
         while let Some(completed_cluster) =
@@ -146,7 +140,7 @@ impl ParallelRayonTraclusDL {
             clustered_trajectories.corridors.push(corridor);
 
             let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
-            self.tick_remove_duplicates(emitter, num_last_elements, num_current_elements);
+            self.tick_remove_duplicates(num_last_elements, num_current_elements);
             num_last_elements = num_current_elements;
 
             // Check for stop signal to bail out early
@@ -180,17 +174,15 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
     ) -> bool {
         // Phase 1: parallel discovery
-        self.emit_start_clustering(raw_trajectories, emitter);
-        let results: Vec<Vec<Cluster>> =
-            self.complete_parallel_clustering_v2(raw_trajectories, emitter);
+        self.emit_start_clustering(raw_trajectories);
+        let results: Vec<Vec<Cluster>> = self.complete_parallel_clustering_v2(raw_trajectories);
 
         if self.is_stopped() {
             return false;
         }
-        self.emit_complete_clustering(emitter);
+        self.emit_complete_clustering();
 
         // Phase 2: serial fill in non-clustered segments
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
@@ -201,13 +193,13 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         }
 
         // Phase 4: create corridors from clusters and finalize non-clustered segments
-        self.emit_start_remove_duplicates(clustered_trajectories, emitter);
-        self.create_corridors(clustered_trajectories, emitter);
+        self.emit_start_remove_duplicates(clustered_trajectories);
+        self.create_corridors(clustered_trajectories);
 
         if self.is_stopped() {
             return false;
         }
-        self.emit_complete_remove_duplicates(emitter);
+        self.emit_complete_remove_duplicates();
 
         return true;
     }

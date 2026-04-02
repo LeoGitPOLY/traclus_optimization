@@ -9,6 +9,7 @@ use eframe::egui;
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
 use crate::gui::app_events::AppEvent;
+use crate::gui::event_singleton::subscribe;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
 use crate::io::args::TraclusArgs;
@@ -34,7 +35,7 @@ impl TraclusDLApp {
     // TraclusDLApp::new is private — construction only via start_gui
     fn new(args: TraclusArgs, main_traclusdl: MainTraclusDL) -> Self {
         let main_traclus: Arc<Mutex<MainTraclusDL>> = Arc::new(Mutex::new(main_traclusdl));
-        let event_rx: Receiver<AppEvent> = main_traclus.lock().unwrap().event.subscribe();
+        let event_rx: Receiver<AppEvent> = subscribe();
 
         Self {
             vm: vec![ViewModel::new(args)],
