@@ -2,8 +2,8 @@ use crate::clustering::geometry::input_od_line::InputODLine;
 use crate::clustering::geometry::point::Point;
 use crate::clustering::geometry::trajectory::Trajectory;
 use crate::clustering::storage::raw_trajectories::RawTrajectories;
-use crate::gui::app_events::AppError;
-use crate::gui::event_singleton::emit_error;
+use crate::utils::events::app_events::AppError;
+use crate::utils::events::event_singleton::emit_error;
 use crate::io::args::TraclusArgs;
 
 use std::fs;

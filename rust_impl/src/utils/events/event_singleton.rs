@@ -3,7 +3,7 @@ use std::sync::{
     mpsc::{self, Receiver, Sender},
 };
 
-use crate::gui::app_events::{AppError, AppEvent};
+use super::app_events::{AppError, AppEvent};
 
 static SUBSCRIBERS: Mutex<Vec<Sender<AppEvent>>> = Mutex::new(Vec::new());
 static NUM_SUBSCRIBERS: Mutex<usize> = Mutex::new(0);

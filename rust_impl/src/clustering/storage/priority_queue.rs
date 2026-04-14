@@ -1,9 +1,14 @@
-// TODO: the sum of distances could be calculated only when needed, to optimize performance
 // Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
+
+// TODO (optimization): the sum of distances could be calculated only when needed, to optimize performance
+// TODO (optimization): CLAUDE.AI CHAT
+
 use super::super::objects::{cluster::Cluster, cluster_member::ClusterMember};
 use std::{cmp::Ordering, collections::HashSet};
 
 pub struct PriorityQueueCluster {
+    // TODO (optimization): CLAUDE.AI CHAT
+    // Box should be remove completly, derefencing adds overhead
     pub elements: Vec<Box<Cluster>>,
     pub non_clustered_segments: Vec<ClusterMember>,
     is_sorted: bool,
@@ -33,12 +38,17 @@ impl PriorityQueueCluster {
             })
     }
 
+    // TODO (optimization): CLAUDE.AI CHAT
+    // Might not need to parallelize this, already almost in order (maybe for first iteration or when really big)
     fn sort_by_weight_and_distance(&mut self) {
         self.elements
             .sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| Self::compare_clusters(a, b));
         self.is_sorted = true;
     }
 
+    // TODO (optimization): CLAUDE.AI CHAT
+    // (5) Replace HashSet<(usize, usize)> with FxHashSet
+    // (new chat) head + indexing removing need of remove(0)
     pub fn pop_and_clean(&mut self, threshold: u32) -> Option<Box<Cluster>> {
         if self.elements.is_empty() {
             return None;
@@ -57,6 +67,8 @@ impl PriorityQueueCluster {
         Some(first)
     }
 
+    // TODO (optimization): CLAUDE.AI CHAT
+    // (4) Pre alocated size for Hasset
     fn collect_used_traj_ids(cluster: &Cluster) -> HashSet<(usize, usize)> {
         let mut set: HashSet<(usize, usize)> = HashSet::new();
 
@@ -129,6 +141,8 @@ impl PriorityQueueCluster {
     }
 
     #[inline]
+    // TODO (optimization): CLAUDE.AI CHAT
+    // (3) self.non_clustered_segments.retain(|seg| !used.contains(&(seg.traj_id, seg.segment_id)));
     fn remove_reversed_indexes<T>(vec: &mut Vec<T>, indexes: &Vec<usize>) {
         for &index in indexes.iter().rev() {
             vec.remove(index);

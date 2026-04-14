@@ -1,8 +1,8 @@
 use super::storage::clustered_trajectories::ClusteredTrajectories;
 use super::storage::raw_trajectories::RawTrajectories;
-use crate::gui::app_events::{AppError, AppEvent, ComputationType};
+use crate::utils::events::app_events::{AppError, AppEvent, ComputationType};
 
-use crate::gui::event_singleton::{emit, emit_error};
+use crate::utils::events::event_singleton::{emit, emit_error};
 use crate::io::args::{ExecutionMode, TraclusArgs};
 use crate::io::input_loader::parse_input_data;
 use crate::io::output_writer::{SegOutFormat, generate_corridor_file, generate_segment_file};

@@ -8,8 +8,8 @@ use std::time::Instant;
 use eframe::egui;
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
-use crate::gui::app_events::AppEvent;
-use crate::gui::event_singleton::subscribe;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::subscribe;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
 use crate::io::args::TraclusArgs;

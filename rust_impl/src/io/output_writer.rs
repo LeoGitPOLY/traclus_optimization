@@ -1,8 +1,8 @@
 use crate::clustering::objects::cluster_member::ClusterMember;
 use crate::clustering::objects::corridor::Corridor;
 use crate::clustering::storage::clustered_trajectories::ClusteredTrajectories;
-use crate::gui::app_events::AppError;
-use crate::gui::event_singleton::emit_error;
+use crate::utils::events::app_events::AppError;
+use crate::utils::events::event_singleton::emit_error;
 use crate::io::args::TraclusArgs;
 use std::path::Path;
 

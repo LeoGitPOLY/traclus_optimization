@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use crate::{gui::app_events::ComputationType, io::args::TraclusArgs};
+use crate::{utils::events::app_events::ComputationType, io::args::TraclusArgs};
 
 // ─────────────────────────────────────────────
 // ArgsBuffer

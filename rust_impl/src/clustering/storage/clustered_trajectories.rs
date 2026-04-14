@@ -3,8 +3,8 @@ use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
 use super::super::objects::corridor::Corridor;
 use super::super::storage::priority_queue::PriorityQueueCluster;
-use crate::gui::app_events::{AppEvent, ComputationType};
-use crate::gui::event_singleton::emit;
+use crate::utils::events::app_events::{AppEvent, ComputationType};
+use crate::utils::events::event_singleton::emit;
 use crate::io::args::TraclusArgs;
 
 pub struct ClusteredTrajectories {

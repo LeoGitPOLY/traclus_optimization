@@ -7,8 +7,8 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 use std::time::Instant;
 
-use crate::gui::app_events::AppEvent;
-use crate::gui::event_singleton::subscribe as singleton_subscribe;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::subscribe as singleton_subscribe;
 
 pub struct Logger;
 

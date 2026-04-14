@@ -263,7 +263,6 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         if traclus_args.iter_arguments() is False:
             break
 
-
 def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
     remove_and_copy_input_file(traclus_args)
     outputs = []
@@ -279,7 +278,6 @@ def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
 
     for output in outputs:
         print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}")
-
 
 def run_averaged_multi_OD(args: dict, rust_mode: list):
     base_file = "enquete_od_DL_$NB$_traclus.txt"
@@ -334,6 +332,8 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
     for output in outputs_similarity:
         print(f"{output['size']};{output['similarity_index_1']:.6f};{output['similarity_index_2']:.6f}".replace(".", ","))
 
+def verify_solution():
+    pass
 # =====================================================
 #                 MAIN
 # =====================================================

@@ -1,5 +1,7 @@
 use std::sync::atomic::Ordering;
 
+use eframe::egui::debug_text::print;
+
 use super::super::geometry::{segment::Segment, trajectory::Trajectory};
 use super::super::objects::{
     cluster::Cluster,
@@ -8,9 +10,9 @@ use super::super::objects::{
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
-use crate::gui::app_events::{AppEvent, ComputationType};
-use crate::gui::event_singleton::emit;
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::{AppEvent, ComputationType};
+use crate::utils::events::event_singleton::emit;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
@@ -100,9 +102,15 @@ pub trait TraclusAlgorithm {
                 continue;
             }
 
+            // emit(AppEvent::PrintInfo {
+            //     messages: vec![format!(
+            //         "Checking distance from seed to trajectory {}, {}: ",
+            //         nearby_traj.id, segment_id
+            //     )],
+            // });
             // Add qualifying segment as a candidate
-            let segment = nearby_traj.segment(segment_id).unwrap();
-            let candidate = ClusterMember::new(
+            let segment: &Segment = nearby_traj.segment(segment_id).unwrap();
+            let candidate: ClusterMember = ClusterMember::new(
                 nearby_traj.id,
                 segment_id,
                 nearby_traj.weight,
