@@ -1,22 +1,30 @@
 from collections import defaultdict
 
 SEGMENT_ID_INDEX = 0
+ANGLE_INDEX = 2
 CORRIDOR_ID_INDEX = 3
+COORDINATE_INDEX = 4
+
+Point = tuple[int, int]
 
 # =====================================================
 #               TEXT FILE MEASUREMENTS
 # =====================================================
 
+# Return the number of corridors: number of lines in the file - 1 (header)
 def number_of_corridors(file_path_corridors: str) -> int:
     with open(file_path_corridors, 'r') as file:
         lines = file.readlines()
         return len(lines) - 1  # Subtract 1 for the header line
 
+# Return the number of segments: number of lines in the file - 1 (header)
 def number_of_segments(file_path_segments: str) -> int:
     with open(file_path_segments, 'r') as file:
         lines = file.readlines()
         return len(lines) - 1  # Subtract 1 for the header line
 
+# Return the number of non-clustered segments: 
+# Count the segments where the 'corridor_id' column is '-1'
 def number_of_non_clustered_segments(file_path_segments: str) -> int:
     nb_non_clustered = 0
     with open(file_path_segments, 'r') as file:
@@ -24,12 +32,14 @@ def number_of_non_clustered_segments(file_path_segments: str) -> int:
         
         for line in lines[1:]:  # Skip the header line
             columns = line.strip().split('\t')
-            if columns[CORRIDOR_ID_INDEX] == '-1':  # Check the 'is_clustered' column
+            if columns[CORRIDOR_ID_INDEX] == '-1':  # Check the 'corridor_id' column
                 nb_non_clustered += 1
 
         return nb_non_clustered
 
-
+# Generate a list of dictionary containing segments informations
+# Return structure: dict of lists, where each list contains dicts with keys:
+# traj_id (int), angle (float), start (tuple[int, int]), end (tuple[int, int]), corridor_id (int)
 def generate_dict_segments(file_path_segments: str) -> dict:
     dict_of_list = defaultdict(list)
 
@@ -39,22 +49,33 @@ def generate_dict_segments(file_path_segments: str) -> dict:
         for line in lines[1:]:  # Skip the header line
             columns = line.strip().split('\t')
             segment_id_full = columns[SEGMENT_ID_INDEX]
-            corridor_id = columns[CORRIDOR_ID_INDEX]
+            full_coordinates = columns[COORDINATE_INDEX]
 
-            traj_id = segment_id_full.split(':')[0]
+            angle = float(columns[ANGLE_INDEX])
+            corridor_id = int(columns[CORRIDOR_ID_INDEX])
+
+            traj_id = int(segment_id_full.split(':')[0])
             start_x = int(float(segment_id_full.split(':')[1].replace(',', '.')))
             start_y = int(float(segment_id_full.split(':')[2].replace(',', '.')))
 
+            # Extract end point from LINESTRING(start.x start.y, end.x end.y) in full_coordinates
+            linestring = full_coordinates.replace('LINESTRING(', '').replace(')', '')
+            end_part = linestring.split(',')[1]
+            end_coords = end_part.strip().split(' ')
+            end_x = int(float(end_coords[0].replace(',', '.')))
+            end_y = int(float(end_coords[1].replace(',', '.')))
+
             dict_of_list[traj_id].append({
                 "traj_id": traj_id,
-                "start_x": start_x,
-                "start_y": start_y,
+                "angle": angle,
+                "start": (start_x, start_y),
+                "end": (end_x, end_y),
                 "corridor_id": corridor_id
             })
 
     return dict_of_list
 
-def compare_clustered_seg_dict(reference_dict: dict, comparison_dict: dict) -> None:
+def compare_clustered_seg_dict(reference_dict: dict, comparison_dict: dict) -> tuple:
     nb_corr_both_clustered = 0
     nb_corr_both_non_clustered = 0
     only_clustered_reference = 0
@@ -82,8 +103,10 @@ def compare_element(element: dict, comparison_list: list) -> tuple:
     THRESHOLD = 5  # Define a threshold for matching coordinates
 
     for comp_element in comparison_list:
-        is_match = (abs(element['start_x'] - comp_element['start_x']) <= THRESHOLD and 
-                    abs(element['start_y'] - comp_element['start_y']) <= THRESHOLD)
+        is_match = (
+            abs(element['start'][0] - comp_element['start'][0]) <= THRESHOLD and
+            abs(element['start'][1] - comp_element['start'][1]) <= THRESHOLD
+        )
         if is_match:
             correspondings.append(comp_element)
             
@@ -96,11 +119,11 @@ def compare_element(element: dict, comparison_list: list) -> tuple:
         return (0, 0, 0)  # Multiple matches found
     
     corresponding = correspondings[0]
-    if element['corridor_id'] != '-1' and corresponding['corridor_id'] != '-1':
+    if element['corridor_id'] != -1 and corresponding['corridor_id'] != -1:
         return (1, 0, 0)  # Both clustered
-    elif element['corridor_id'] == '-1' and corresponding['corridor_id'] == '-1':
+    elif element['corridor_id'] == -1 and corresponding['corridor_id'] == -1:
         return (0, 1, 0)  # Both non-clustered
-    elif element['corridor_id'] != '-1' and corresponding['corridor_id'] == '-1':
+    elif element['corridor_id'] != -1 and corresponding['corridor_id'] == -1:
         return (0, 0, 1)  # Only clustered in reference
     
     return (0, 0, 0)
@@ -148,3 +171,9 @@ def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> 
         "similarity_index_2": similarity_index_2
     }
     
+def calculate_exact_output_information(file_path_seg_rust_old: str, file_path_seg_rust_new: str) -> dict:
+    dict_segments_py = generate_dict_segments(file_path_seg_rust_old)
+    dict_segments_rust = generate_dict_segments(file_path_seg_rust_new)
+
+    comparison_result_py = compare_clustered_seg_dict(dict_segments_py, dict_segments_rust)
+
