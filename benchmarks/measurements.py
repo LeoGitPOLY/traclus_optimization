@@ -1,11 +1,24 @@
 from collections import defaultdict
+import pandas as pd
 
-SEGMENT_ID_INDEX = 0
-ANGLE_INDEX = 2
-CORRIDOR_ID_INDEX = 3
-COORDINATE_INDEX = 4
 
 Point = tuple[int, int]
+
+class SegmentInfo:
+    def __init__(self, traj_id: int, segment_id: int, 
+                 angle: float, start: Point, end: Point, corridor_id: int):
+        self.traj_id = traj_id
+        self.segment_id = segment_id
+        self.angle = angle
+        self.start = start
+        self.end = end
+        self.corridor_id = corridor_id
+
+    def __repr__(self):
+        return f"SegmentInfo(traj_id={self.traj_id}, segment_id={self.segment_id}, angle={self.angle}, start={self.start}, end={self.end}, corridor_id={self.corridor_id})"
+
+OLD_ORDER = {"segment_id": 0, "angle": 2, "corridor_id": 3, "coordinate": 4}
+NEW_ORDER = {"corridor_id": 0, "traj_id": 1, "segment_id": 2, "angle": 4, "coordinate": 5}
 
 # =====================================================
 #               TEXT FILE MEASUREMENTS
@@ -25,14 +38,14 @@ def number_of_segments(file_path_segments: str) -> int:
 
 # Return the number of non-clustered segments: 
 # Count the segments where the 'corridor_id' column is '-1'
-def number_of_non_clustered_segments(file_path_segments: str) -> int:
+def number_of_non_clustered_segments(file_path_segments: str, old_order: dict = OLD_ORDER) -> int:
     nb_non_clustered = 0
     with open(file_path_segments, 'r') as file:
         lines = file.readlines()
         
         for line in lines[1:]:  # Skip the header line
             columns = line.strip().split('\t')
-            if columns[CORRIDOR_ID_INDEX] == '-1':  # Check the 'corridor_id' column
+            if columns[old_order["corridor_id"]] == '-1':  # Check the 'corridor_id' column
                 nb_non_clustered += 1
 
         return nb_non_clustered
@@ -40,7 +53,7 @@ def number_of_non_clustered_segments(file_path_segments: str) -> int:
 # Generate a list of dictionary containing segments informations
 # Return structure: dict of lists, where each list contains dicts with keys:
 # traj_id (int), angle (float), start (tuple[int, int]), end (tuple[int, int]), corridor_id (int)
-def generate_dict_segments(file_path_segments: str) -> dict:
+def generate_dict_segments(file_path_segments: str, order:dict = OLD_ORDER) -> dict:
     dict_of_list = defaultdict(list)
 
     with open(file_path_segments, 'r') as file:
@@ -48,33 +61,43 @@ def generate_dict_segments(file_path_segments: str) -> dict:
         
         for line in lines[1:]:  # Skip the header line
             columns = line.strip().split('\t')
-            segment_id_full = columns[SEGMENT_ID_INDEX]
-            full_coordinates = columns[COORDINATE_INDEX]
+            segment_id_full = columns[order["segment_id"]]
+            full_coordinates = columns[order["coordinate"]]
 
-            angle = float(columns[ANGLE_INDEX])
-            corridor_id = int(columns[CORRIDOR_ID_INDEX])
+            angle = float(columns[order["angle"]])
+            corridor_id = int(columns[order["corridor_id"]])
 
-            traj_id = int(segment_id_full.split(':')[0])
-            start_x = int(float(segment_id_full.split(':')[1].replace(',', '.')))
-            start_y = int(float(segment_id_full.split(':')[2].replace(',', '.')))
+            if order == OLD_ORDER:
+                traj_id = int(segment_id_full.split(':')[0])
+                segment_id = None
+            else:
+                traj_id = int(columns[order["traj_id"]])
+                segment_id = int(segment_id_full)
 
             # Extract end point from LINESTRING(start.x start.y, end.x end.y) in full_coordinates
             linestring = full_coordinates.replace('LINESTRING(', '').replace(')', '')
+            
+            start_part = linestring.split(',')[0]
+            start_coords = start_part.strip().split(' ')
             end_part = linestring.split(',')[1]
             end_coords = end_part.strip().split(' ')
-            end_x = int(float(end_coords[0].replace(',', '.')))
-            end_y = int(float(end_coords[1].replace(',', '.')))
 
-            dict_of_list[traj_id].append({
-                "traj_id": traj_id,
-                "angle": angle,
-                "start": (start_x, start_y),
-                "end": (end_x, end_y),
-                "corridor_id": corridor_id
-            })
+            start_x = float(start_coords[0].replace(',', '.'))
+            start_y = float(start_coords[1].replace(',', '.'))
+            end_x = float(end_coords[0].replace(',', '.'))
+            end_y = float(end_coords[1].replace(',', '.'))
+
+            dict_of_list[traj_id].append(
+                SegmentInfo(traj_id, segment_id, angle, 
+                            (start_x, start_y), (end_x, end_y), corridor_id)
+            )
 
     return dict_of_list
 
+# Give the count of: 
+# - segments that are clustered in both implementations
+# - segments that are non-clustered in both implementations
+# - segments that are only clustered in reference but non-clustered in comparison
 def compare_clustered_seg_dict(reference_dict: dict, comparison_dict: dict) -> tuple:
     nb_corr_both_clustered = 0
     nb_corr_both_non_clustered = 0
@@ -97,7 +120,8 @@ def compare_clustered_seg_dict(reference_dict: dict, comparison_dict: dict) -> t
     
     return (nb_corr_both_clustered, nb_corr_both_non_clustered, only_clustered_reference)
 
-
+# Compare one segment element given a threshold for matching coordinates
+# For python vs Rust
 def compare_element(element: dict, comparison_list: list) -> tuple:
     correspondings = []
     THRESHOLD = 5  # Define a threshold for matching coordinates
@@ -128,6 +152,97 @@ def compare_element(element: dict, comparison_list: list) -> tuple:
     
     return (0, 0, 0)
 
+# =====================================================
+#               RUST VS RUST OUTPUT COMPARISON
+# =====================================================
+# Compare two values with a numeric tolerance. Returns (is_ok, updated_offset).
+def _check_value_mismatch(ref_val, cmp_val, current_offset: float, context: str, max_offset: float = 10**(-1)) -> tuple[bool, float]:
+    if str(ref_val) == str(cmp_val):
+        return True, current_offset
+
+    try:
+        delta = abs(float(ref_val) - float(cmp_val))
+        new_offset = max(current_offset, delta)
+        if new_offset > max_offset:
+            print(f"\tNot equal. Required offset {new_offset} exceeds max_offset {max_offset}.")
+            print(f"\t{context}: reference={ref_val!r}, comparison={cmp_val!r}")
+            return False, new_offset
+        return True, new_offset
+    except (TypeError, ValueError):
+        print(f"\tNot equal (non-numeric mismatch).")
+        print(f"\t{context}: reference={ref_val!r}, comparison={cmp_val!r}")
+        return False, current_offset
+    
+# Check if both segments files have the same content
+# Compute a numeric delta for precision mismatches below a given threshold (max_offset)
+def is_same_output_file(reference_path: str, comparison_path: str) -> bool:
+
+    ref_df = pd.read_csv(reference_path, sep='\t')
+    cmp_df = pd.read_csv(comparison_path, sep='\t')
+
+    # 1. Check column names and order
+    if list(ref_df.columns) != list(cmp_df.columns):
+        print(f"\tColumn mismatch:\n  reference : {list(ref_df.columns)}\n  comparison: {list(cmp_df.columns)}")
+        return False
+
+    # 2. Check line by line
+    for i in range(max(len(ref_df), len(cmp_df))):
+        ref_row = ref_df.iloc[i] if i < len(ref_df) else None
+        cmp_row = cmp_df.iloc[i] if i < len(cmp_df) else None
+
+        for col in ref_df.columns:
+            ref_val = ref_row[col] if ref_row is not None else None
+            cmp_val = cmp_row[col] if cmp_row is not None else None
+
+            if str(ref_val) != str(cmp_val):
+                print(f"\tRow {i} column '{col}' mismatch:")
+                print(f"\tReference: {ref_val!r} and comparison: {cmp_val!r}")
+                return False
+    return True
+
+def is_same_output_dict(reference_dict: dict, comparison_dict: dict) -> bool:
+    ref_keys = set(reference_dict.keys())
+    cmp_keys = set(comparison_dict.keys())
+
+    current_offset = 0
+    # 1. Iterate over trajectories
+    for traj_id in sorted(ref_keys | cmp_keys):
+        ref_segs = reference_dict.get(traj_id, [])
+        cmp_segs = comparison_dict.get(traj_id, [])
+
+        ref_segs = sorted(ref_segs, key=lambda s: (s.segment_id is None, s.segment_id))
+        cmp_segs = sorted(cmp_segs, key=lambda s: (s.segment_id is None, s.segment_id))
+
+        # 2. Iterate over segments
+        for j in range(max(len(ref_segs), len(cmp_segs))):
+            ref_seg = ref_segs[j] if j < len(ref_segs) else None
+            cmp_seg = cmp_segs[j] if j < len(cmp_segs) else None
+
+            if ref_seg is None or cmp_seg is None:
+                print(f"\tSegment count mismatch at traj_id={traj_id}, segment index {j}: reference={ref_seg}, comparison={cmp_seg}")
+                return False
+
+            # 4. Compare all fields
+            fields = {
+                "traj_id":    (ref_seg.traj_id,    cmp_seg.traj_id),
+                "segment_id": (ref_seg.segment_id, cmp_seg.segment_id),
+                "angle":      (ref_seg.angle,      cmp_seg.angle),
+                "start_x":      (ref_seg.start[0],      cmp_seg.start[0]),
+                "start_y":      (ref_seg.start[1],      cmp_seg.start[1]),
+                "end_x":        (ref_seg.end[0],         cmp_seg.end[0]),
+                "end_y":        (ref_seg.end[1],         cmp_seg.end[1]),
+                "corridor_id":(ref_seg.corridor_id,cmp_seg.corridor_id),
+            }
+
+            for field, (ref_val, cmp_val) in fields.items():
+                context = f"traj_id={traj_id}, segment_index={j}, field='{field}'"
+                ok, current_offset = _check_value_mismatch(ref_val, cmp_val, current_offset, context)
+
+                if not ok: return False
+
+    if current_offset > 0:
+        print(f"\tDicts are equal with a maximum offset of {current_offset}.")
+    return True
 
 
 # =====================================================
@@ -171,9 +286,19 @@ def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> 
         "similarity_index_2": similarity_index_2
     }
     
-def calculate_exact_output_information(file_path_seg_rust_old: str, file_path_seg_rust_new: str) -> dict:
-    dict_segments_py = generate_dict_segments(file_path_seg_rust_old)
-    dict_segments_rust = generate_dict_segments(file_path_seg_rust_new)
+def calculate_exact_output_information(file_path_seg_rust_stable: str, file_path_seg_rust_new: str) -> dict:
+    list_of_dict_rust_stable = generate_dict_segments(file_path_seg_rust_stable, order=NEW_ORDER)
+    list_of_dict_rust_new = generate_dict_segments(file_path_seg_rust_new, order=NEW_ORDER)
+    
+    # 1. Check file output content similarity
+    if is_same_output_file(file_path_seg_rust_stable, file_path_seg_rust_new):
+        print("✅ SAME OUTPUT: The two files have the same content.")
+    else:
+        print("❌ DIFFERENT OUTPUT: The two files have different content.")
 
-    comparison_result_py = compare_clustered_seg_dict(dict_segments_py, dict_segments_rust)
+    # 2. Check dict output content similarity
+    if is_same_output_dict(list_of_dict_rust_stable, list_of_dict_rust_new):
+        print("✅ SAME DICTS: The two dictionaries have the same content.")
+    else:
+        print("❌ DIFFERENT DICTS: The two dictionaries have different content.")
 
