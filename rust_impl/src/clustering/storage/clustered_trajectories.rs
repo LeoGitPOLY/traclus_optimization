@@ -37,9 +37,9 @@ impl ClusteredTrajectories {
     pub fn finalize_corridors(&mut self, args: &TraclusArgs) {
         let mut num_last_elements: usize = self.clusters.get_size_elements();
 
-        while let Some(completed_cluster) = self.clusters.pop_and_clean(args.min_density) {
+        while let Some(completed_cluster) = self.clusters.pop_and_clean(&args) {
             let index_corridor: usize = self.corridors.len();
-            let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
+            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
             self.corridors.push(corridor);
 
             emit(AppEvent::ComputationProgress {
@@ -50,8 +50,8 @@ impl ClusteredTrajectories {
         }
     }
 
-    pub fn pop_and_clean(&mut self, min_density: u32) -> Option<Box<Cluster>> {
-        self.clusters.pop_and_clean(min_density)
+    pub fn pop_and_clean(&mut self, args: &TraclusArgs) -> Option<Cluster> {
+        self.clusters.pop_and_clean(&args)
     }
 
     pub fn take_non_clustered_segments(&mut self) {

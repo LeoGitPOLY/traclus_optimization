@@ -12,7 +12,7 @@ use super::super::storage::{
 };
 use crate::io::args::TraclusArgs;
 use crate::utils::events::app_events::{AppEvent, ComputationType};
-use crate::utils::events::event_singleton::emit;
+use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
@@ -253,12 +253,14 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::Clustering,
             max_progress: raw_trajectories.get_total_trajectories(),
         });
+        emit_timed_perf("Clustering", true);
     }
 
     fn emit_complete_clustering(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
+        emit_timed_perf("Clustering", false);
     }
 
     fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {
@@ -266,11 +268,13 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::RemoveDuplicates,
             max_progress: clustered_trajectories.get_size_priority_queue(),
         });
+        emit_timed_perf("Removing_Duplicates", true);
     }
 
     fn emit_complete_remove_duplicates(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::RemoveDuplicates,
         });
+        emit_timed_perf("Removing_Duplicates", false);
     }
 }

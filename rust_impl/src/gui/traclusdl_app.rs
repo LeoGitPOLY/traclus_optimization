@@ -8,11 +8,11 @@ use std::time::Instant;
 use eframe::egui;
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
-use crate::utils::events::app_events::AppEvent;
-use crate::utils::events::event_singleton::subscribe;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::subscribe;
 use crate::utils::gui_parallel_runner::{GuiParallelRunner, StopFlag};
 
 // ─────────────────────────────────────────────
@@ -178,6 +178,8 @@ impl TraclusDLApp {
             AppEvent::Error(msg) => {
                 vm.error_popup = Some(msg.to_string());
             }
+            
+            _ => {}
         }
     }
 

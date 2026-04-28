@@ -1,4 +1,5 @@
 use crate::io::args::TraclusArgs;
+use crate::utils::events::event_singleton::emit_timed_perf;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 use super::super::geometry::trajectory::Trajectory;
@@ -132,11 +133,9 @@ impl ParallelRayonTraclusDL {
     fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
         let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
 
-        while let Some(completed_cluster) =
-            clustered_trajectories.pop_and_clean(self.args.min_density)
-        {
+        while let Some(completed_cluster) = clustered_trajectories.pop_and_clean(&self.args) {
             let index_corridor: usize = clustered_trajectories.corridors.len();
-            let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
+            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
             clustered_trajectories.corridors.push(corridor);
 
             let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
@@ -188,9 +187,11 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
 
         // Phase 3: serial commit (regroup clusters)
+        emit_timed_perf("Commiting_Results", true);
         for clusters in results {
             clustered_trajectories.add_list_cluster(clusters);
         }
+        emit_timed_perf("Commiting_Results", false);
 
         // Phase 4: create corridors from clusters and finalize non-clustered segments
         self.emit_start_remove_duplicates(clustered_trajectories);

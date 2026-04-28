@@ -8,3 +8,4 @@ clap = { version = "4.5.57", features = ["derive"] }
 rayon = "1.10"
 eframe = "0.27"
 rfd = "0.14"   # file picker
+rustc-hash = "1"

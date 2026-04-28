@@ -430,16 +430,16 @@ def verify_solution_and_performance_gain():
     args_small_samples = {
         'max_dist':     [600, 800, 1000] * 2,
         'min_density':  [1500],
-        'max_angle':    [5, 4, 3] * 4,
+        'max_angle':    [5, 4, 3] * 2,
         'seg_size':     [1000, 900, 800] * 2,
         'path': ["enquete_od_DL_5000_traclus.txt" ],
     }
     args_big_samples = {
-        'max_dist':     [600] * 2,
+        'max_dist':     [600] * 6,
         'min_density':  [2666],
-        'max_angle':    [7] * 2,
-        'seg_size':     [3000] * 2,
-        'path': ["enquete_od_DL_8000_traclus.txt" ],
+        'max_angle':    [5] * 6,
+        'seg_size':     [3000] * 6,
+        'path': ["enquete_od_DL_9000_traclus.txt" ],
     }
 
     args = ArgumentsTraclus("benchmarked_data", args_small_samples)

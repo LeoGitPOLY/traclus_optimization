@@ -1,6 +1,9 @@
-use std::sync::{
-    Mutex, MutexGuard,
-    mpsc::{self, Receiver, Sender},
+use std::{
+    sync::{
+        Mutex, MutexGuard,
+        mpsc::{self, Receiver, Sender},
+    },
+    time::Instant,
 };
 
 use super::app_events::{AppError, AppEvent};
@@ -15,6 +18,13 @@ pub fn subscribe() -> Receiver<AppEvent> {
     rx
 }
 
+pub fn shutdown() {
+    let mut subscribers = SUBSCRIBERS.lock().unwrap();
+    subscribers.clear();
+
+    *NUM_SUBSCRIBERS.lock().unwrap() = 0;
+}
+
 pub fn emit(event: AppEvent) {
     if *NUM_SUBSCRIBERS.lock().unwrap() == 0 {
         return;
@@ -27,4 +37,12 @@ pub fn emit(event: AppEvent) {
 
 pub fn emit_error(error: AppError) {
     emit(AppEvent::Error(error));
+}
+
+pub fn emit_timed_perf(event_label: &'static str, is_start: bool) {
+    emit(AppEvent::PerfTimer {
+        event_label,
+        exact_instant: Instant::now(),
+        is_start,
+    });
 }

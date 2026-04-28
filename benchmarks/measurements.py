@@ -286,19 +286,23 @@ def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> 
         "similarity_index_2": similarity_index_2
     }
     
-def calculate_exact_output_information(file_path_seg_rust_stable: str, file_path_seg_rust_new: str) -> dict:
+def calculate_exact_output_information(file_path_seg_rust_stable: str, file_path_seg_rust_new: str):
     list_of_dict_rust_stable = generate_dict_segments(file_path_seg_rust_stable, order=NEW_ORDER)
     list_of_dict_rust_new = generate_dict_segments(file_path_seg_rust_new, order=NEW_ORDER)
     
     # 1. Check file output content similarity
     if is_same_output_file(file_path_seg_rust_stable, file_path_seg_rust_new):
         print("✅ SAME OUTPUT: The two files have the same content.")
+        return
     else:
         print("❌ DIFFERENT OUTPUT: The two files have different content.")
 
     # 2. Check dict output content similarity
     if is_same_output_dict(list_of_dict_rust_stable, list_of_dict_rust_new):
         print("✅ SAME DICTS: The two dictionaries have the same content.")
+        return
     else:
         print("❌ DIFFERENT DICTS: The two dictionaries have different content.")
 
+
+    # 3. Calculate more check latter ... 

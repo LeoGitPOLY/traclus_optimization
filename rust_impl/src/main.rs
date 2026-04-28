@@ -2,9 +2,10 @@ use crate::clustering::main_traclusdl::MainTraclusDL;
 use crate::gui::traclusdl_app::start_gui;
 use crate::io::args::{InterfaceMode, TraclusArgs};
 use crate::io::logger::Logger;
+use crate::utils::events::event_singleton;
 
 use clap::Parser;
-use std::thread::available_parallelism;
+use std::thread::{JoinHandle, available_parallelism};
 
 mod clustering;
 mod gui;
@@ -47,12 +48,10 @@ fn main() -> std::io::Result<()> {
     build_thread_pool(&traclus_args);
 
     // Subscribe all subscribers
-    match traclus_args.interface_mode {
-        InterfaceMode::Logger | InterfaceMode::GuiAndLogger => {
-            Logger::start();
-        }
-        _ => {}
-    }
+    let logger_handle: Option<JoinHandle<()>> = match traclus_args.interface_mode {
+        InterfaceMode::Logger | InterfaceMode::GuiAndLogger => Some(Logger::start()),
+        _ => None,
+    };
 
     // Route to the appropriate front-end
     match traclus_args.interface_mode {
@@ -62,6 +61,12 @@ fn main() -> std::io::Result<()> {
         InterfaceMode::Logger | InterfaceMode::Performance => {
             main_traclusdl.run_full_traclus(traclus_args);
         }
+    }
+
+    // Correctly stop events and logger thread
+    event_singleton::shutdown();
+    if let Some(handle) = logger_handle {
+        handle.join().expect("Logger thread panicked");
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
 use eframe::egui::{self, Color32};
-use std::fmt;
+use std::{fmt, time::Instant};
 
 // ─────────────────────────────────────────────
 // AppEvent enum : events emitted by MainTraclusDL to report progress and results
@@ -28,6 +28,12 @@ pub enum AppEvent {
 
     PrintInfo {
         messages: Vec<String>,
+    },
+
+    PerfTimer{
+        event_label: &'static str,
+        exact_instant: Instant,
+        is_start: bool,
     },
 
     /// Emitted on any unrecoverable error inside a task
