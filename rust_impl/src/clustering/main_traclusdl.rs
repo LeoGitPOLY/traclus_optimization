@@ -88,20 +88,20 @@ impl MainTraclusDL {
     /// Commmand line entry point for running the full TraclusDL algorithm
     /// No GUI involved, No overhead of statistics, just pure algorithm execution
     pub fn run_full_traclus(&self, args: TraclusArgs) {
-        emit_timed_perf("Input_Parsing", true);
+        emit_timed_perf("Input_Parsing", true, None);
         let raw_storage: RawTrajectories =
             parse_input_data(&args).expect("Failed to parse input data");
-        emit_timed_perf("Input_Parsing", false);
+        emit_timed_perf("Input_Parsing", false, None);
 
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(&args);
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(&args);
         clustering_algorithm.db_scan_clustering(&raw_storage, &mut clust_storage);
 
-        emit_timed_perf("Output_Writing", true);
+        emit_timed_perf("Output_Writing", true, None);
         generate_corridor_file(&args, &clust_storage);
         generate_segment_file(&args, &clust_storage, SegOutFormat::NewTraclus);
         generate_segment_file(&args, &clust_storage, SegOutFormat::OldTraclus);
-        emit_timed_perf("Output_Writing", false);
+        emit_timed_perf("Output_Writing", false, None);
     }
 
     fn get_proper_algorithm(args: &TraclusArgs) -> Box<dyn TraclusAlgorithm> {

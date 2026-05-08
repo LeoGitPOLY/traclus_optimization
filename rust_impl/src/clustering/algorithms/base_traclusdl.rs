@@ -253,14 +253,14 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::Clustering,
             max_progress: raw_trajectories.get_total_trajectories(),
         });
-        emit_timed_perf("Clustering", true);
+        emit_timed_perf("Clustering", true, None);
     }
 
     fn emit_complete_clustering(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
-        emit_timed_perf("Clustering", false);
+        emit_timed_perf("Clustering", false, None);
     }
 
     fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {
@@ -268,13 +268,13 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::RemoveDuplicates,
             max_progress: clustered_trajectories.get_size_priority_queue(),
         });
-        emit_timed_perf("Removing_Duplicates", true);
+        emit_timed_perf("Removing_Duplicates", true, None);
     }
 
     fn emit_complete_remove_duplicates(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::RemoveDuplicates,
         });
-        emit_timed_perf("Removing_Duplicates", false);
+        emit_timed_perf("Removing_Duplicates", false, None);
     }
 }

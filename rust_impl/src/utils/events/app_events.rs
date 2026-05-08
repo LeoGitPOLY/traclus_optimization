@@ -31,9 +31,10 @@ pub enum AppEvent {
     },
 
     PerfTimer{
-        event_label: &'static str,
+        event_label: String,
         exact_instant: Instant,
         is_start: bool,
+        thread_index: Option<usize>,
     },
 
     /// Emitted on any unrecoverable error inside a task

@@ -1,4 +1,5 @@
 use std::{
+    os::windows::thread,
     sync::{
         Mutex, MutexGuard,
         mpsc::{self, Receiver, Sender},
@@ -39,10 +40,11 @@ pub fn emit_error(error: AppError) {
     emit(AppEvent::Error(error));
 }
 
-pub fn emit_timed_perf(event_label: &'static str, is_start: bool) {
+pub fn emit_timed_perf(event_label: &str, is_start: bool, thread_index: Option<usize>) {
     emit(AppEvent::PerfTimer {
-        event_label,
+        event_label: event_label.to_string(),
         exact_instant: Instant::now(),
         is_start,
+        thread_index,
     });
 }

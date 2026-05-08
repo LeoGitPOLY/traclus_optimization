@@ -1,7 +1,7 @@
 // logger.rs - Event subscriber that prints AppEvents to stdout
 //
 // The logger runs on its own dedicated std::thread
-// CPU usage is kept low with zero busy-wait — the thread parks completely between events.
+// CPU usage stays near zero — the thread is parked while waiting for events.
 
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
@@ -12,40 +12,35 @@ use crate::utils::events::app_events::AppEvent;
 use crate::utils::events::event_singleton::subscribe as singleton_subscribe;
 
 struct PerfRecord {
-    label: &'static str,
+    display_label: String,
     elapsed_ms: f64,
     instances: usize,
-    parent: Option<&'static str>,
-    children: Vec<&'static str>,
+    children: Vec<String>,
 }
+
 impl PerfRecord {
-    fn new(label: &'static str, parent: Option<&'static str>) -> Self {
+    fn new(display_label: String) -> Self {
         Self {
-            label,
+            display_label,
             elapsed_ms: 0.0,
             instances: 0,
-            parent,
             children: Vec::new(),
         }
     }
 }
 
-struct ActivePerfTimer {
-    instant: Instant,
-    parent: Option<&'static str>,
+pub struct Logger {
+    active_timers: Vec<(String, Instant)>,
+    root_elements: Vec<String>,
+    all_elements: HashMap<String, PerfRecord>,
 }
-impl ActivePerfTimer {
-    fn new(instant: Instant, parent: Option<&'static str>) -> Self {
-        Self { instant, parent }
-    }
-}
-pub struct Logger;
 
 impl Logger {
     /// Spawn the logger thread.
-    /// `rx` is the Receiver obtained from EventBus::subscribe().
+    /// `rx` is the Receiver returned by EventBus::subscribe().
     pub fn start() -> JoinHandle<()> {
         let rx: Receiver<AppEvent> = singleton_subscribe();
+
         thread::Builder::new()
             .name("traclus-logger".to_string())
             .spawn(move || Self::run(rx))
@@ -55,11 +50,13 @@ impl Logger {
     fn run(rx: Receiver<AppEvent>) {
         let start_time: Instant = Instant::now();
 
-        let mut active_timers: Vec<(&'static str, ActivePerfTimer)> = Vec::new();
-        let mut records: HashMap<&'static str, PerfRecord> = HashMap::new();
-        let mut root_order: Vec<&'static str> = Vec::new();
+        let mut logger: Logger = Logger {
+            active_timers: Vec::new(),
+            root_elements: Vec::new(),
+            all_elements: HashMap::new(),
+        };
 
-        // recv() parks the thread with zero CPU usage until an event arrives
+        // recv() parks the thread with zero CPU usage until an event is received
         while let Ok(event) = rx.recv() {
             match event {
                 AppEvent::LoadComplete {
@@ -73,6 +70,7 @@ impl Logger {
                         correlation_percent
                     );
                 }
+
                 AppEvent::ComputationStart {
                     computation_type,
                     max_progress,
@@ -84,6 +82,7 @@ impl Logger {
                         max_progress,
                     );
                 }
+
                 AppEvent::ComputationProgress {
                     computation_type,
                     increment_progress,
@@ -95,6 +94,7 @@ impl Logger {
                         start_time.elapsed()
                     );
                 }
+
                 AppEvent::ComputationComplete { computation_type } => {
                     println!(
                         "[LOG] {:?} COMPLETED at {:?}.",
@@ -102,50 +102,29 @@ impl Logger {
                         start_time.elapsed()
                     );
                 }
+
                 AppEvent::PrintInfo { messages } => {
                     for message in messages {
                         println!("[LOG] {}", message);
                     }
                 }
+
                 AppEvent::PerfTimer {
                     event_label,
                     exact_instant,
                     is_start,
+                    thread_index,
                 } => {
+                    let mut full_label: String = event_label.clone();
+
+                    if let Some(tid) = thread_index {
+                        full_label = format!("{}(tid:{})", event_label, tid);
+                    }
+
                     if is_start {
-                        // Starting timer: get parent task + push onto active stack
-                        let parent: Option<&str> = active_timers.last().map(|(l, _)| *l);
-                        active_timers
-                            .push((event_label, ActivePerfTimer::new(exact_instant, parent)));
+                        logger.handle_timer_start(event_label, full_label, exact_instant);
                     } else {
-                        // Ending timer: pop from active stack, calculate elapsed, and update records
-                        if let Some(pos) = active_timers.iter().position(|(l, _)| *l == event_label)
-                        {
-                            let (_, timer) = active_timers.remove(pos);
-                            let elapsed_ms: f64 =
-                                exact_instant.duration_since(timer.instant).as_secs_f64() * 1000.0;
-
-                            let record: &mut PerfRecord =
-                                records.entry(event_label).or_insert_with(|| {
-                                    if timer.parent.is_none() {
-                                        root_order.push(event_label);
-                                    }
-                                    PerfRecord::new(event_label, timer.parent)
-                                });
-                            record.elapsed_ms += elapsed_ms;
-                            record.instances += 1;
-
-                            if let Some(parent_label) = timer.parent {
-                                let parent_record: &mut PerfRecord =
-                                    records.entry(parent_label).or_insert_with(|| {
-                                        root_order.push(parent_label);
-                                        PerfRecord::new(parent_label, None)
-                                    });
-                                if !parent_record.children.contains(&event_label) {
-                                    parent_record.children.push(event_label);
-                                }
-                            }
-                        }
+                        logger.handle_timer_end(event_label, full_label, exact_instant);
                     }
                 }
 
@@ -154,101 +133,114 @@ impl Logger {
                 }
             }
         }
-        Self::print_summary(&records, &root_order);
+
+        logger.print_summary();
     }
 
-    fn print_summary(records: &HashMap<&'static str, PerfRecord>, root_order: &[&'static str]) {
-        println!("\n[PERF] ───────────── SUMMARY ─────────────");
-
-        let total: f64 = root_order
+    fn handle_timer_start(
+        &mut self,
+        event_label: String,
+        full_label: String,
+        exact_instant: Instant,
+    ) {
+        // Find the current parent timer from the active stack
+        // If none exists, this timer is a root-level task
+        let parent_name: String = self
+            .active_timers
             .iter()
-            .filter_map(|l| records.get(l))
-            .map(|r| r.elapsed_ms)
-            .sum();
+            .rev()
+            .find(|(label, _)| label != &event_label)
+            .map(|(label, _)| label.clone())
+            .unwrap_or_else(|| "".to_string());
 
-        for &label in root_order {
-            Self::print_record(records, label, total, 0);
+        let parent: Option<&mut PerfRecord> = self.all_elements.get_mut(&parent_name);
+
+        if let Some(parent) = parent {
+            if !parent.children.contains(&full_label) {
+                parent.children.push(full_label.clone());
+            }
+        } else {
+            self.root_elements.push(full_label.clone());
         }
 
-        println!("[PERF] ───────────────────────────────────");
-        println!("[PERF] {:<30}: {:>10.3} ms", "TOTAL", total);
+        self.active_timers
+            .push((event_label.clone(), exact_instant));
+
+        // Create the record immediately so children can safely reference it
+        // Elapsed time and instance count are updated when the timer ends
+        if !self.all_elements.contains_key(&full_label) {
+            let record_element: PerfRecord = PerfRecord::new(full_label.clone());
+            self.all_elements.insert(full_label, record_element);
+        }
     }
 
-    fn print_record(
-        records: &HashMap<&'static str, PerfRecord>,
-        label: &'static str,
-        total: f64,
-        depth: usize,
+    fn handle_timer_end(
+        &mut self,
+        event_label: String,
+        full_label: String,
+        exact_instant: Instant,
     ) {
-        let Some(record) = records.get(label) else {
-            return;
-        };
+        // Remove timer from the active stack, compute elapsed time,
+        // then update the associated performance record
+        let position: usize = self
+            .active_timers
+            .iter()
+            .position(|(label, _)| *label == event_label)
+            .expect("Timer end received for event with no matching start");
 
-        let indent = "  ".repeat(depth);
-        let label_width = 30usize.saturating_sub(depth * 2);
-        let percent_of_total = (record.elapsed_ms / total) * 100.0;
-        let instance_tag = if record.instances > 1 {
+        let (_, timer): (String, Instant) = self.active_timers.remove(position);
+        let record_element: &mut PerfRecord = self.all_elements.get_mut(&full_label).unwrap();
+        let elapsed_ms: f64 = exact_instant.duration_since(timer).as_secs_f64() * 1000.0;
+
+        record_element.elapsed_ms += elapsed_ms;
+        record_element.instances += 1;
+    }
+
+    fn print_summary(&self) {
+        println!("\n[PERF] ──────────────── SUMMARY ────────────────");
+
+        let total_ms: f64 = self
+            .root_elements
+            .iter()
+            .filter_map(|label| self.all_elements.get(label))
+            .map(|record| record.elapsed_ms)
+            .sum();
+
+        for root in &self.root_elements {
+            self.print_parent(root, total_ms, 0);
+        }
+
+        println!("[PERF] ─────────────────────────────────────────");
+        println!("[PERF] {:<35}: {:>10.3} ms", "TOTAL", total_ms);
+    }
+
+    fn print_parent(&self, parent_label: &String, parent_ms: f64, depth: usize) {
+        let parent_record: &PerfRecord = self.all_elements.get(parent_label).unwrap();
+
+        Self::print_record(parent_record, parent_ms, depth);
+
+        for child in &parent_record.children {
+            self.print_parent(child, parent_record.elapsed_ms, depth + 1);
+        }
+    }
+
+    fn print_record(record: &PerfRecord, parent_ms: f64, depth: usize) {
+        let indent: String = "   ".repeat(depth);
+
+        let label: String = format!("{}{}", indent, record.display_label);
+
+        let instance_tag: String = if record.instances > 1 {
             format!(" ×{}", record.instances)
         } else {
             String::new()
         };
 
-        if depth == 0 {
-            println!(
-                "[PERF] {}{:<width$}: {:>10.3} ms ({:>6.2}% of total){}",
-                indent,
-                record.label,
-                record.elapsed_ms,
-                percent_of_total,
-                instance_tag,
-                width = label_width,
-            );
-        } else {
-            let parent_ms = record
-                .parent
-                .and_then(|p| records.get(p))
-                .map(|p| p.elapsed_ms)
-                .unwrap_or(record.elapsed_ms);
-            let percent_of_parent = (record.elapsed_ms / parent_ms) * 100.0;
-            println!(
-                "[PERF] {}{:<width$}: {:>10.3} ms ({:>6.2}% of parent){}",
-                indent,
-                record.label,
-                record.elapsed_ms,
-                percent_of_parent,
-                instance_tag,
-                width = label_width,
-            );
-        }
-
-        // Recurse into children.
-        if !record.children.is_empty() {
-            let children_ms: f64 = record
-                .children
-                .iter()
-                .filter_map(|l| records.get(l))
-                .map(|r| r.elapsed_ms)
-                .sum();
-
-            for &child_label in &record.children {
-                Self::print_record(records, child_label, total, depth + 1);
-            }
-
-            // "Other" = time the parent spent outside of any tracked child.
-            let other_ms = record.elapsed_ms - children_ms;
-            if other_ms > 0.001 {
-                let indent_child = "  ".repeat(depth + 1);
-                let child_width = 30usize.saturating_sub((depth + 1) * 2);
-                let other_pct_parent = (other_ms / record.elapsed_ms) * 100.0;
-                println!(
-                    "[PERF] {}{:<width$}: {:>10.3} ms ({:>6.2}% of parent)",
-                    indent_child,
-                    "(other)",
-                    other_ms,
-                    other_pct_parent,
-                    width = child_width,
-                );
-            }
-        }
+        println!(
+            "[PERF] {:<40}: {:>10.3} ms ({:>6.2}%){}",
+            label,
+            record.elapsed_ms,
+            (record.elapsed_ms / parent_ms) * 100.0,
+            instance_tag
+        );
     }
 }

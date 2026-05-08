@@ -187,11 +187,11 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
 
         // Phase 3: serial commit (regroup clusters)
-        emit_timed_perf("Commiting_Results", true);
+        emit_timed_perf("Commiting_Results", true, None);
         for clusters in results {
             clustered_trajectories.add_list_cluster(clusters);
         }
-        emit_timed_perf("Commiting_Results", false);
+        emit_timed_perf("Commiting_Results", false, None);
 
         // Phase 4: create corridors from clusters and finalize non-clustered segments
         self.emit_start_remove_duplicates(clustered_trajectories);
