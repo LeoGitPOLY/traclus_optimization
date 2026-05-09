@@ -102,7 +102,7 @@ impl PriorityQueueCluster {
         if self.elements.len() < PARALLEL_THRESHOLD {
             mode = ExecutionMode::Serial;
         }
-
+        emit_timed_perf("Clean_All_Clusters_Section", true, None);
         let remove_indexes: Vec<usize> = match mode {
             ExecutionMode::ParallelRayon => {
                 let chunk_size: usize = (self.elements.len() / rayon::current_num_threads()).max(1);
@@ -122,8 +122,11 @@ impl PriorityQueueCluster {
                 Self::clean_section_cluster_serial(&mut self.elements, used, args, 0)
             }
         };
+        emit_timed_perf("Clean_All_Clusters_Section", false, None);
 
+        emit_timed_perf("Remove_Indexes_All", true, None);
         Self::remove_indexes(&mut self.elements, &remove_indexes);
+        emit_timed_perf("Remove_Indexes_All", false, None);
     }
 
     #[inline]
@@ -133,7 +136,7 @@ impl PriorityQueueCluster {
         args: &TraclusArgs,
         index_offset: usize,
     ) -> Vec<usize> {
-        let thread_index = rayon::current_thread_index();
+        let thread_index: Option<usize> = rayon::current_thread_index();
         emit_timed_perf("Clean_Clusters_serial", true, thread_index);
 
         let mut remove_indexes: Vec<usize> = Vec::new();

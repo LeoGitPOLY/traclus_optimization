@@ -19,7 +19,7 @@ pub fn directional_correlation(raw: &RawTrajectories) -> f64 {
         return 0.0;
     }
 
-    let n = raw.traj_buckets.len();
+    let n: usize = raw.traj_buckets.len();
     if n == 0 {
         return 0.0;
     }

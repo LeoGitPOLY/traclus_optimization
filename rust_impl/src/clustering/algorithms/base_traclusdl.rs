@@ -1,7 +1,4 @@
 use std::sync::atomic::Ordering;
-
-use eframe::egui::debug_text::print;
-
 use super::super::geometry::{segment::Segment, trajectory::Trajectory};
 use super::super::objects::{
     cluster::Cluster,

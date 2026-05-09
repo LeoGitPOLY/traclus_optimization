@@ -470,9 +470,9 @@ if __name__ == "__main__":
     args_cli = parse_args()
     args_values = {
         'max_dist':     [600],
-        'min_density':  [1],
+        'min_density':  [300],
         'max_angle':    [5],
-        'seg_size':     [150],
+        'seg_size':     [1000],
         'path': ["enquete_od_DL_1000_traclus.txt" ],
     }
     rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'},

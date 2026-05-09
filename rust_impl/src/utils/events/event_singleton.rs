@@ -1,5 +1,4 @@
 use std::{
-    os::windows::thread,
     sync::{
         Mutex, MutexGuard,
         mpsc::{self, Receiver, Sender},
