@@ -1,4 +1,3 @@
-use std::sync::atomic::Ordering;
 use super::super::geometry::{segment::Segment, trajectory::Trajectory};
 use super::super::objects::{
     cluster::Cluster,
@@ -11,6 +10,7 @@ use crate::io::args::TraclusArgs;
 use crate::utils::events::app_events::{AppEvent, ComputationType};
 use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
+use std::sync::atomic::Ordering;
 
 pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
 
@@ -99,12 +99,6 @@ pub trait TraclusAlgorithm {
                 continue;
             }
 
-            // emit(AppEvent::PrintInfo {
-            //     messages: vec![format!(
-            //         "Checking distance from seed to trajectory {}, {}: ",
-            //         nearby_traj.id, segment_id
-            //     )],
-            // });
             // Add qualifying segment as a candidate
             let segment: &Segment = nearby_traj.segment(segment_id).unwrap();
             let candidate: ClusterMember = ClusterMember::new(
@@ -248,16 +242,16 @@ pub trait TraclusAlgorithm {
     fn emit_start_clustering(&self, raw_trajectories: &RawTrajectories) {
         emit(AppEvent::ComputationStart {
             computation_type: ComputationType::Clustering,
-            max_progress: raw_trajectories.get_total_trajectories(),
+            max_progress: raw_trajectories.get_num_trajectories(),
         });
-        emit_timed_perf("Clustering", true, None);
+        emit_timed_perf("Clustering_All", true, None);
     }
 
     fn emit_complete_clustering(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
-        emit_timed_perf("Clustering", false, None);
+        emit_timed_perf("Clustering_All", false, None);
     }
 
     fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {

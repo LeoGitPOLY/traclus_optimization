@@ -7,6 +7,8 @@ use super::super::storage::{
 use super::base_traclusdl::TraclusAlgorithm;
 
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::emit;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub struct SerialTraclusDL {
@@ -46,9 +48,6 @@ impl SerialTraclusDL {
                 let clusters: Vec<Cluster> =
                     self.individual_trajectory_clustering(traj_seed, &nearby_trajs);
                 clustered_trajectories.add_list_cluster(clusters);
-
-                // Fill all segments to be treated as non-clustered later
-                clustered_trajectories.fill_non_clustered_segments(traj_seed);
 
                 self.tick_clustering(&mut total_traj_processed);
 

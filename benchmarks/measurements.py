@@ -128,13 +128,12 @@ def compare_element(element: dict, comparison_list: list) -> tuple:
 
     for comp_element in comparison_list:
         is_match = (
-            abs(element['start'][0] - comp_element['start'][0]) <= THRESHOLD and
-            abs(element['start'][1] - comp_element['start'][1]) <= THRESHOLD
+            abs(element.start[0] - comp_element.start[0]) <= THRESHOLD and
+            abs(element.start[1] - comp_element.start[1]) <= THRESHOLD
         )
         if is_match:
             correspondings.append(comp_element)
             
-    
     if len(correspondings) == 0:
         print(f"Element {element} is missing in comparison list.")
         return (0, 0, 0)  # No match found
@@ -143,18 +142,15 @@ def compare_element(element: dict, comparison_list: list) -> tuple:
         return (0, 0, 0)  # Multiple matches found
     
     corresponding = correspondings[0]
-    if element['corridor_id'] != -1 and corresponding['corridor_id'] != -1:
+    if element.corridor_id != -1 and corresponding.corridor_id != -1:
         return (1, 0, 0)  # Both clustered
-    elif element['corridor_id'] == -1 and corresponding['corridor_id'] == -1:
+    elif element.corridor_id == -1 and corresponding.corridor_id == -1:
         return (0, 1, 0)  # Both non-clustered
-    elif element['corridor_id'] != -1 and corresponding['corridor_id'] == -1:
+    elif element.corridor_id != -1 and corresponding.corridor_id == -1:
         return (0, 0, 1)  # Only clustered in reference
     
     return (0, 0, 0)
 
-# =====================================================
-#               RUST VS RUST OUTPUT COMPARISON
-# =====================================================
 # Compare two values with a numeric tolerance. Returns (is_ok, updated_offset).
 def _check_value_mismatch(ref_val, cmp_val, current_offset: float, context: str, max_offset: float = 10**(-1)) -> tuple[bool, float]:
     if str(ref_val) == str(cmp_val):
@@ -249,25 +245,26 @@ def is_same_output_dict(reference_dict: dict, comparison_dict: dict) -> bool:
 #               STATISTICS CALCULATIONS
 # =====================================================
 
-def calculate_file_information(file_path_corr_py: str, file_path_seg_py: str) -> dict:
+def calculate_file_information(reference_path_corr: str, comparison_path_corr: str) -> dict:
     info = {
-        "number_of_corridors": number_of_corridors(file_path_corr_py),
-        "number_of_segments": number_of_segments(file_path_seg_py),
-        "number_of_non_clustered_segments": number_of_non_clustered_segments(file_path_seg_py)
+        "number_of_corridors": number_of_corridors(reference_path_corr),
+        "number_of_segments": number_of_segments(comparison_path_corr),
+        "number_of_non_clustered_segments": number_of_non_clustered_segments(comparison_path_corr)
     }
     return info
 
-def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> dict:
-    dict_segments_py = generate_dict_segments(file_path_seg_py)
-    dict_segments_rust = generate_dict_segments(file_path_seg_rust)
+def calculate_similarity_index(reference_path_seg: str, comparison_path_seg: str, format:str = "old_format") -> dict:
+    order = OLD_ORDER if format == "old_format" else NEW_ORDER
+    ref_dict_segments = generate_dict_segments(reference_path_seg, order=order)
+    comp_dict_segments = generate_dict_segments(comparison_path_seg, order=order)
 
-    comparison_result_py = compare_clustered_seg_dict(dict_segments_py, dict_segments_rust)
-    comparison_result_rust = compare_clustered_seg_dict(dict_segments_rust, dict_segments_py)
+    ref_results = compare_clustered_seg_dict(ref_dict_segments, comp_dict_segments)
+    comp_results = compare_clustered_seg_dict(comp_dict_segments, ref_dict_segments)
 
-    nb_both_clustered = comparison_result_py[0] # Should be the same as comparison_result_rust[0]
-    nb_both_non_clustered = comparison_result_py[1] # Should be the same as comparison_result_rust[1]
-    nb_only_clustered_py = comparison_result_py[2] 
-    nb_only_clustered_rust = comparison_result_rust[2]
+    nb_both_clustered = ref_results[0] # Should be the same as comparison_result_rust[0]
+    nb_both_non_clustered = ref_results[1] # Should be the same as comparison_result_rust[1]
+    nb_only_clustered_py = ref_results[2] 
+    nb_only_clustered_rust = comp_results[2]
 
     total_both = nb_both_clustered + nb_both_non_clustered
 
@@ -286,18 +283,20 @@ def calculate_similaty_index(file_path_seg_py: str, file_path_seg_rust: str) -> 
         "similarity_index_2": similarity_index_2
     }
     
-def calculate_exact_output_information(file_path_seg_rust_stable: str, file_path_seg_rust_new: str):
-    list_of_dict_rust_stable = generate_dict_segments(file_path_seg_rust_stable, order=NEW_ORDER)
-    list_of_dict_rust_new = generate_dict_segments(file_path_seg_rust_new, order=NEW_ORDER)
-    
+def calculate_exact_output_information(reference_path_seg: str, comparison_path_seg: str, format:str = "old_format") -> None:
+
     # 1. Check file output content similarity
-    if is_same_output_file(file_path_seg_rust_stable, file_path_seg_rust_new):
+    if is_same_output_file(reference_path_seg, comparison_path_seg):
         print("✅ SAME OUTPUT: The two files have the same content.")
         return
     else:
         print("❌ DIFFERENT OUTPUT: The two files have different content.")
 
     # 2. Check dict output content similarity
+    order = OLD_ORDER if format == "old_format" else NEW_ORDER
+    list_of_dict_rust_stable = generate_dict_segments(reference_path_seg, order=order)
+    list_of_dict_rust_new = generate_dict_segments(comparison_path_seg, order=order)
+
     if is_same_output_dict(list_of_dict_rust_stable, list_of_dict_rust_new):
         print("✅ SAME DICTS: The two dictionaries have the same content.")
         return
@@ -306,3 +305,4 @@ def calculate_exact_output_information(file_path_seg_rust_stable: str, file_path
 
 
     # 3. Calculate more check latter ... 
+    

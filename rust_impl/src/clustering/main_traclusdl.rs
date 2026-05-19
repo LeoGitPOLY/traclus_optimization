@@ -37,7 +37,7 @@ impl MainTraclusDL {
 
         // Emit information about the loaded data
         emit(AppEvent::LoadComplete {
-            desire_line_count: self.raw_storage.as_ref().unwrap().get_total_trajectories(),
+            desire_line_count: self.raw_storage.as_ref().unwrap().get_num_trajectories(),
             correlation_percent: directional_correlation(self.raw_storage.as_ref().unwrap()),
         });
     }

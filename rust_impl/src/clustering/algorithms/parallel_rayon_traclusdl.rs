@@ -89,9 +89,15 @@ impl ParallelRayonTraclusDL {
             let chunk_results: Vec<Vec<Cluster>> = chunk
                 .par_iter()
                 .map(|(angle_start, traj)| {
+                    let thread_index: Option<usize> = rayon::current_thread_index();
+                    emit_timed_perf("Clustering", true, thread_index);
+
                     let nearby_trajs: Vec<&Trajectory> =
                         raw_trajectories.iter_nearby_angle(*angle_start).collect();
-                    self.individual_trajectory_clustering(traj, &nearby_trajs)
+                    let clusters: Vec<Cluster> =
+                        self.individual_trajectory_clustering(traj, &nearby_trajs);
+                    emit_timed_perf("Clustering", false, thread_index);
+                    clusters
                 })
                 .collect();
 

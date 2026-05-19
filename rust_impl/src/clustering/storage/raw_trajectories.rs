@@ -1,18 +1,6 @@
-use std::i16::MAX;
-
-use eframe::App;
-
-use crate::utils::events::{app_events::AppEvent, event_singleton::emit};
-
 use super::super::geometry::trajectory::Trajectory;
 
-// TODO:
-// - bucket size should be a fraction of the max angle threshold used in clustering
-//   (e.g., if max angle is 5 degrees, bucket size could be 2.5 degrees to reduce sending to much neighboring buckets)
-//     - Change constructor accordingly (easy)
-//     - Change iter_nearby_angle accordingly (a bit more complex)
-
-const BUCKET_SIZE: f64 = 0.5;
+const BUCKET_SIZE: f64 = 0.5; // degrees, must evenly divide 360.0
 
 pub struct Bucket {
     pub angle_start: f64, // (inclusive)
@@ -37,10 +25,13 @@ impl RawTrajectories {
     }
 
     fn create_buckets(bucket_size: f64) -> Vec<Bucket> {
+        let num_buckets: usize = (360.0 / bucket_size).round() as usize;
         assert!(bucket_size > 0.0 && bucket_size <= 360.0);
-        assert!(360.0 % bucket_size == 0.0, "Bucket size must be even");
+        assert!(
+            (num_buckets as f64 * bucket_size - 360.0).abs() < 1e-9,
+            "Bucket size must evenly divide 360"
+        );
 
-        let num_buckets: usize = (360.0 / bucket_size).ceil() as usize;
         let mut buckets: Vec<Bucket> = Vec::with_capacity(num_buckets);
 
         for i in 0..num_buckets {
@@ -102,7 +93,7 @@ impl RawTrajectories {
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
 
-    pub fn get_total_trajectories(&self) -> usize {
+    pub fn get_num_trajectories(&self) -> usize {
         self.traj_buckets.iter().map(|b| b.trajectories.len()).sum()
     }
 

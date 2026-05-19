@@ -5,7 +5,7 @@ import argparse
 import shutil
 from time import perf_counter
 from arguments_traclus import ArgumentsTraclus
-from measurements import calculate_exact_output_information, calculate_file_information, calculate_similaty_index
+from measurements import calculate_exact_output_information, calculate_file_information, calculate_similarity_index
 
 # =====================================================
 #                 PATH CONSTANTS
@@ -40,7 +40,7 @@ def parse_args():
 
     parser.add_argument(
         "-m", "--mode",
-        choices=["visual", "time", "multi-od", "verify"],
+        choices=["visual", "time", "multi-od", "verify", "verify-sim"],
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
@@ -185,17 +185,23 @@ def file_information(impl: str, mode: dict = {"name": "NONE"}) -> dict:
     
     return calculate_file_information(file_corridor, file_segment)
 
-def similaty_index() -> dict:
-    file_segment_py = PYTHON_BENCH_DST + "/" + get_files_with_all_substring(PYTHON_BENCH_DST, ["segment"])[0]
-    file_segment_rust = RUST_BENCH_DST + "/" + get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old"])[0]
+def full_output_similarity_python_vs_rust(mode: dict = {"name": "ParallelRayon"}) -> dict:
+    _, file_segment_py = get_python_output_files()
+    _, file_segment_rust, _ = get_rust_output_files(mode['name'])
 
-    return calculate_similaty_index(file_segment_py, file_segment_rust)
+    calculate_exact_output_information(file_segment_py, file_segment_rust)
+    print(calculate_similarity_index(file_segment_py, file_segment_rust))
+    return calculate_similarity_index(file_segment_py, file_segment_rust)
 
 def full_output_similarity_rust() -> dict:
-    file_segment_stable = get_stable_rust_output_files("ParallelRayon")[2]
-    file_segment_new = get_rust_output_files("ParallelRayon")[2]
+    _, _, file_segment_stable= get_stable_rust_output_files("ParallelRayon")
+    _, _, file_segment_new = get_rust_output_files("ParallelRayon")
 
-    return calculate_exact_output_information(file_segment_stable, file_segment_new)
+    calculate_exact_output_information(file_segment_stable, file_segment_new, "new_format")
+    print(calculate_similarity_index(file_segment_stable, file_segment_new, "new_format"))
+
+
+
 
 # =====================================================
 #                 BUILD STEP
@@ -322,9 +328,7 @@ def run_timed_all(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE
         if args.iter_arguments() is False:
             break  
 
-    print("=" * 20)
-    print(f"\nTotal {impl} mode {mode['name']} execution time: {total_time:.6f} seconds \n")
-    print("=" * 20)
+    print(f"\n[Total {impl} mode {mode['name']} execution time: {total_time:.6f} seconds ]\n")
     return outputs
 
 # =====================================================
@@ -343,7 +347,7 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         for mode in rust_mode: run_timed_once("rust", traclus_args, mode)
 
         # Calculate similiarity index
-        similarity_index = similaty_index()
+        similarity_index = full_output_similarity_python_vs_rust()
         print(f"\nSimilarity Index for argument set {traclus_args.get_args()}: "
           f"Similarity Index 1: {similarity_index['similarity_index_1']:.6f}, "
           f"Similarity Index 2: {similarity_index['similarity_index_2']:.6f}\n")
@@ -373,12 +377,19 @@ def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
     for output in outputs:
         print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}")
 
-def run_averaged_multi_OD(args: dict, rust_mode: list):
+def run_averaged_multi_OD():
+    args_values = {
+        'max_dist':     [600],
+        'max_angle':    [5,7],
+        'seg_size':     [3000],
+    }
+    # ,
+    rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
+                {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
+    
     base_file = "enquete_od_DL_$NB$_traclus.txt"
-    # list_of_sizes = [1000, 2000, 3000, 4000, 5000, 
-                    #  6000, 7000, 8000, 9000, 10000, 11000, 12000, 13000, 
-                    #  14000, 15000, 16000, 17000, 18000, 19000, 20000]
-    list_of_sizes = [1000, 16000, 17000]
+    list_of_sizes = [2000, 4000, 6000, 8000, 10000, 12000, 
+                     14000, 16000, 18000, 20000]
     max_index_python = -1
 
     outputs_time = []
@@ -388,14 +399,13 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
         for (index,size) in enumerate(list_of_sizes):
             file_name = base_file.replace("$NB$", str(size))
             
-            args_copy = args.copy()
+            args_copy = args_values.copy()
             args_copy['path'] = [file_name]
             args_copy['min_density'] = [size//3]
             traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
 
             print(f"\n======== Running implementations for {file_name} ===========")
 
-            current_outputs = {}
             # TESTING PYTHON
             if index <= max_index_python:
                 outputs_time += run_timed_all("python", traclus_args)
@@ -408,7 +418,7 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
 
             # Calculate similiarity index
             if index <= max_index_python:
-                similarity_index = similaty_index()
+                similarity_index = full_output_similarity_python_vs_rust()
                 outputs_similarity.append({"size":size, **similarity_index})
   
             
@@ -426,23 +436,43 @@ def run_averaged_multi_OD(args: dict, rust_mode: list):
     for output in outputs_similarity:
         print(f"{output['size']};{output['similarity_index_1']:.6f};{output['similarity_index_2']:.6f}".replace(".", ","))
 
+def verify_similarity_index():
+    args_order_verify = {
+        'max_dist':     [600],
+        'min_density':  [666],
+        'max_angle':    [5],
+        'seg_size':     [3000],
+        'path': ["enquete_od_DL_2000_traclus.txt" ],
+    }
+    args = ArgumentsTraclus("benchmarked_data", args_order_verify)
+    rust_mode = {'cmd': 'serial', 'name': 'Serial'}
+
+    while True:
+        run_timed_once("rust", args, rust_mode)
+        run_timed_once("python", args)
+
+        full_output_similarity_python_vs_rust(rust_mode)
+
+        if args.iter_arguments() is False:
+            break 
+
 def verify_solution_and_performance_gain():
     args_small_samples = {
         'max_dist':     [600, 800, 1000] * 2,
         'min_density':  [1500],
         'max_angle':    [5, 4, 3] * 2,
         'seg_size':     [1000, 900, 800] * 2,
-        'path': ["enquete_od_DL_5000_traclus.txt" ],
+        'path': ["enquete_od_DL_4000_traclus.txt" ],
     }
     args_big_samples = {
-        'max_dist':     [600] * 6,
+        'max_dist':     [600] * 2,
         'min_density':  [2666],
-        'max_angle':    [5] * 6,
-        'seg_size':     [3000] * 6,
+        'max_angle':    [5] * 2,
+        'seg_size':     [3000] * 2,
         'path': ["enquete_od_DL_9000_traclus.txt" ],
     }
 
-    args = ArgumentsTraclus("benchmarked_data", args_small_samples)
+    args = ArgumentsTraclus("benchmarked_data", args_big_samples)
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
 
     nb, tot_time_stable, tot_time_new = 0, 0, 0
@@ -471,12 +501,12 @@ if __name__ == "__main__":
     args_values = {
         'max_dist':     [600],
         'min_density':  [300],
-        'max_angle':    [5],
+        'max_angle':    [5,7],
         'seg_size':     [1000],
         'path': ["enquete_od_DL_1000_traclus.txt" ],
     }
-    rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'},
-                 {'cmd': 'serial', 'name': 'Serial'}]
+    rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
+                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
 
     build_python_impl()
@@ -490,6 +520,10 @@ if __name__ == "__main__":
     elif args_cli.mode == "time":
         time_testing(traclus_args, rust_mode)
     elif args_cli.mode == "multi-od":
-        run_averaged_multi_OD(args_values, rust_mode)
+        run_averaged_multi_OD()
     elif args_cli.mode == "verify":
         verify_solution_and_performance_gain()
+    elif args_cli.mode == "verify-sim":
+        verify_similarity_index()
+
+   
