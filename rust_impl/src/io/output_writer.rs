@@ -1,7 +1,8 @@
 use crate::clustering::objects::cluster_member::ClusterMember;
 use crate::clustering::objects::corridor::Corridor;
 use crate::clustering::storage::clustered_trajectories::ClusteredTrajectories;
-use crate::gui::app_events::{AppError, ComputationEvent};
+use crate::utils::events::app_events::AppError;
+use crate::utils::events::event_singleton::emit_error;
 use crate::io::args::TraclusArgs;
 use std::path::Path;
 
@@ -17,14 +18,13 @@ pub enum SegOutFormat {
 pub fn generate_corridor_file(
     args: &TraclusArgs,
     clust_storage: &ClusteredTrajectories,
-    emitter: &mut ComputationEvent,
 ) -> Option<()> {
     let output_filename: String = build_corridor_output_filename(args);
 
     let file: File = match File::create(&output_filename) {
         Ok(f) => f,
         Err(err) => {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to create corridor output file: {}",
                 err
             )));
@@ -35,7 +35,7 @@ pub fn generate_corridor_file(
     let mut writer: BufWriter<File> = BufWriter::new(file);
 
     if let Err(err) = writeln!(writer, "name\tweight\tcoordinates") {
-        emitter.emit_error(AppError::IoError(format!(
+        emit_error(AppError::IoError(format!(
             "Failed to write corridor header: {}",
             err
         )));
@@ -44,7 +44,7 @@ pub fn generate_corridor_file(
 
     for corridor in &clust_storage.corridors {
         if let Err(err) = write_single_corridor(&mut writer, corridor) {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to write corridor: {}",
                 err
             )));
@@ -53,7 +53,7 @@ pub fn generate_corridor_file(
     }
 
     if let Err(err) = writer.flush() {
-        emitter.emit_error(AppError::IoError(format!(
+        emit_error(AppError::IoError(format!(
             "Failed to flush corridor file: {}",
             err
         )));
@@ -70,14 +70,13 @@ pub fn generate_segment_file(
     args: &TraclusArgs,
     clust_storage: &ClusteredTrajectories,
     format: SegOutFormat,
-    emitter: &mut ComputationEvent,
 ) -> Option<()> {
     let output_filename = build_segment_output_filename(args, &format);
 
     let file = match File::create(&output_filename) {
         Ok(f) => f,
         Err(err) => {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to create segment output file: {}",
                 err
             )));
@@ -88,7 +87,7 @@ pub fn generate_segment_file(
     let mut writer = BufWriter::new(file);
 
     if let Err(err) = write_segment_header(&mut writer, &format) {
-        emitter.emit_error(AppError::IoError(format!(
+        emit_error(AppError::IoError(format!(
             "Failed to write segment header: {}",
             err
         )));
@@ -106,7 +105,7 @@ pub fn generate_segment_file(
         };
 
         if let Err(err) = result {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to write segment: {}",
                 err
             )));
@@ -115,7 +114,7 @@ pub fn generate_segment_file(
     }
 
     if let Err(err) = writer.flush() {
-        emitter.emit_error(AppError::IoError(format!(
+        emit_error(AppError::IoError(format!(
             "Failed to flush segment file: {}",
             err
         )));

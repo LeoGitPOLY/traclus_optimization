@@ -8,10 +8,11 @@ use std::time::Instant;
 use eframe::egui;
 
 use crate::clustering::main_traclusdl::MainTraclusDL;
-use crate::gui::app_events::AppEvent;
 use crate::gui::style::*;
 use crate::gui::view_model::ViewModel;
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::subscribe;
 use crate::utils::gui_parallel_runner::{GuiParallelRunner, StopFlag};
 
 // ─────────────────────────────────────────────
@@ -34,7 +35,7 @@ impl TraclusDLApp {
     // TraclusDLApp::new is private — construction only via start_gui
     fn new(args: TraclusArgs, main_traclusdl: MainTraclusDL) -> Self {
         let main_traclus: Arc<Mutex<MainTraclusDL>> = Arc::new(Mutex::new(main_traclusdl));
-        let event_rx: Receiver<AppEvent> = main_traclus.lock().unwrap().event.subscribe();
+        let event_rx: Receiver<AppEvent> = subscribe();
 
         Self {
             vm: vec![ViewModel::new(args)],
@@ -80,6 +81,7 @@ impl TraclusDLApp {
         self.current_vm().output += &args.print_small_summary();
         self.current_vm().output += "\n";
 
+        self.current_vm().args_when_loaded = args.clone();
         self.launch(move |t, stop| {
             if needs_reload {
                 t.load_raw_storage(&args, stop.clone());
@@ -177,6 +179,8 @@ impl TraclusDLApp {
             AppEvent::Error(msg) => {
                 vm.error_popup = Some(msg.to_string());
             }
+
+            _ => {}
         }
     }
 

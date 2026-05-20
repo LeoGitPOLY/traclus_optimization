@@ -1,7 +1,6 @@
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
 use eframe::egui::{self, Color32};
-use std::fmt;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::{fmt, time::Instant};
 
 // ─────────────────────────────────────────────
 // AppEvent enum : events emitted by MainTraclusDL to report progress and results
@@ -29,6 +28,13 @@ pub enum AppEvent {
 
     PrintInfo {
         messages: Vec<String>,
+    },
+
+    PerfTimer{
+        event_label: String,
+        exact_instant: Instant,
+        is_start: bool,
+        thread_index: Option<usize>,
     },
 
     /// Emitted on any unrecoverable error inside a task
@@ -89,42 +95,5 @@ impl ComputationType {
             ComputationType::CreateOutputs => Color32::from_rgb(0, 0, 255), // blue
             ComputationType::NotComputing => Color32::from_rgb(128, 128, 128), // gray
         }
-    }
-}
-// ─────────────────────────────────────────────
-// Event : a simple fan-out broadcast channel for AppEvents
-// ─────────────────────────────────────────────
-
-pub struct ComputationEvent {
-    subscribers: Vec<Sender<AppEvent>>,
-}
-
-impl ComputationEvent {
-    pub fn new() -> Self {
-        Self {
-            subscribers: Vec::new(),
-        }
-    }
-
-    pub fn subscribe(&mut self) -> Receiver<AppEvent> {
-        let (tx, rx) = mpsc::channel();
-        self.subscribers.push(tx);
-        rx
-    }
-
-    pub fn emit(&mut self, event: AppEvent) {
-        if !self.has_subscribers() {
-            return;
-        }
-        // retain keeps only the senders whose send() succeeded
-        self.subscribers.retain(|tx| tx.send(event.clone()).is_ok());
-    }
-
-    pub fn emit_error(&mut self, error: AppError) {
-        self.emit(AppEvent::Error(error));
-    }
-
-    pub fn has_subscribers(&self) -> bool {
-        !self.subscribers.is_empty()
     }
 }

@@ -12,18 +12,18 @@ use crate::clustering::storage::raw_trajectories::RawTrajectories;
 /// # Arguments
 /// * `raw` - The raw trajectories to analyze
 pub fn directional_correlation(raw: &RawTrajectories) -> f64 {
-    let total = raw.get_total_trajectories();
+    let total = raw.get_num_trajectories();
 
     // Edge cases
     if total == 0 {
         return 0.0;
     }
 
-    let n = raw.traj_buckets.len();
+    let n: usize = raw.traj_buckets.len();
     if n == 0 {
         return 0.0;
     }
-    
+
     // Only one bucket → always 1.0
     if n == 1 {
         return 1.0;

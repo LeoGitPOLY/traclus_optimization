@@ -2,9 +2,9 @@ use crate::clustering::geometry::input_od_line::InputODLine;
 use crate::clustering::geometry::point::Point;
 use crate::clustering::geometry::trajectory::Trajectory;
 use crate::clustering::storage::raw_trajectories::RawTrajectories;
-use crate::gui::app_events::AppError;
-use crate::gui::app_events::ComputationEvent;
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::AppError;
+use crate::utils::events::event_singleton::emit_error;
 
 use std::fs;
 use std::io;
@@ -43,9 +43,11 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!(
-                    "Failed to parse line {}: expected format is \
-                     'name weight x_start y_start x_end y_end' or \
-                     'weight x_start y_start x_end y_end', got: {}",
+                    "Failed to parse line {}: \n\
+                    Expected format is: \n\
+                    \t'name, weight, x_start, y_start, x_end, y_end' or \n\
+                    \t'weight, x_start, y_start, x_end, y_end'\n\
+                    got:\n{}",
                     index, line
                 ),
             ));
@@ -117,14 +119,11 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
     })
 }
 
-pub fn parse_input_data(
-    args: &TraclusArgs,
-    emitter: &mut ComputationEvent,
-) -> Option<RawTrajectories> {
+pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
     let content = match read_file(&args.file) {
         Ok(c) => c,
         Err(err) => {
-            emitter.emit_error(AppError::IoError(format!(
+            emit_error(AppError::IoError(format!(
                 "Failed to read input file: {}",
                 err
             )));
@@ -132,7 +131,8 @@ pub fn parse_input_data(
         }
     };
 
-    let mut trajectory_storage = RawTrajectories::new(args.max_angle);
+    let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
+    let mut number_point_lines: i32 = 0;
     for (index, line) in content.lines().enumerate() {
         let line = line.trim();
 
@@ -147,13 +147,26 @@ pub fn parse_input_data(
         let od_line = match parse_line_to_od(line, index + 1) {
             Ok(od) => od,
             Err(err) => {
-                emitter.emit_error(AppError::IoError(format!("{}", err)));
+                emit_error(AppError::IoError(format!("{}", err)));
                 return None;
             }
         };
 
+        if od_line.start == od_line.end {
+            number_point_lines += 1;
+            continue;
+        }
+
         let trajectory: Trajectory = Trajectory::new(od_line, args.segment_size);
         trajectory_storage.add_trajectory(trajectory);
+    }
+
+    if number_point_lines > 0 {
+        emit_error(AppError::IoError(format!(
+            "WARNING: {} lines were ignored because they represent points (start and end are the same).\n\
+            Consider removing these lines from the input file.",
+            number_point_lines
+        )));
     }
 
     Some(trajectory_storage)

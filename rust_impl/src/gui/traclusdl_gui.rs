@@ -557,7 +557,7 @@ fn render_error_popup(ctx: &egui::Context, app: &mut TraclusDLApp) {
     egui::Window::new("Error")
         .collapsible(false)
         .resizable(false)
-        .fixed_size([360.0, 140.0])
+        .fixed_size([500.0, 300.0])
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .show(ctx, |ui| {
             ui.add_space(8.0);

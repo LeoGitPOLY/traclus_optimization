@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use super::super::geometry::{segment::Segment, trajectory::Trajectory};
 use super::super::objects::{
     cluster::Cluster,
@@ -8,9 +6,11 @@ use super::super::objects::{
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
-use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
 use crate::io::args::TraclusArgs;
+use crate::utils::events::app_events::{AppEvent, ComputationType};
+use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
+use std::sync::atomic::Ordering;
 
 pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
 
@@ -47,7 +47,6 @@ pub trait TraclusAlgorithm {
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
     ) -> bool;
 
     // ============================================================
@@ -101,8 +100,8 @@ pub trait TraclusAlgorithm {
             }
 
             // Add qualifying segment as a candidate
-            let segment = nearby_traj.segment(segment_id).unwrap();
-            let candidate = ClusterMember::new(
+            let segment: &Segment = nearby_traj.segment(segment_id).unwrap();
+            let candidate: ClusterMember = ClusterMember::new(
                 nearby_traj.id,
                 segment_id,
                 nearby_traj.weight,
@@ -223,59 +222,50 @@ pub trait TraclusAlgorithm {
         false
     }
 
-    fn tick_clustering(&self, emitter: &mut ComputationEvent, count: usize) -> usize {
-        if count % TICK_EVERY == 0 {
-            emitter.emit(AppEvent::ComputationProgress {
+    fn tick_clustering(&self, count: &mut usize) {
+        if *count % TICK_EVERY == 0 {
+            emit(AppEvent::ComputationProgress {
                 computation_type: ComputationType::Clustering,
                 increment_progress: TICK_EVERY,
             });
         }
-        count + 1
+        *count += 1;
     }
 
-    fn tick_remove_duplicates(
-        &self,
-        emitter: &mut ComputationEvent,
-        num_last_elements: usize,
-        num_current_elements: usize,
-    ) {
-        emitter.emit(AppEvent::ComputationProgress {
+    fn tick_remove_duplicates(&self, num_last_elements: usize, num_current_elements: usize) {
+        emit(AppEvent::ComputationProgress {
             computation_type: ComputationType::RemoveDuplicates,
             increment_progress: num_last_elements - num_current_elements,
         });
     }
 
-    fn emit_start_clustering(
-        &self,
-        raw_trajectories: &RawTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
-        emitter.emit(AppEvent::ComputationStart {
+    fn emit_start_clustering(&self, raw_trajectories: &RawTrajectories) {
+        emit(AppEvent::ComputationStart {
             computation_type: ComputationType::Clustering,
-            max_progress: raw_trajectories.get_total_trajectories(),
+            max_progress: raw_trajectories.get_num_trajectories(),
         });
+        emit_timed_perf("Clustering_All", true, None);
     }
 
-    fn emit_complete_clustering(&self, emitter: &mut ComputationEvent) {
-        emitter.emit(AppEvent::ComputationComplete {
+    fn emit_complete_clustering(&self) {
+        emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
+        emit_timed_perf("Clustering_All", false, None);
     }
 
-    fn emit_start_remove_duplicates(
-        &self,
-        clustered_trajectories: &ClusteredTrajectories,
-        emitter: &mut ComputationEvent,
-    ) {
-        emitter.emit(AppEvent::ComputationStart {
+    fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {
+        emit(AppEvent::ComputationStart {
             computation_type: ComputationType::RemoveDuplicates,
             max_progress: clustered_trajectories.get_size_priority_queue(),
         });
+        emit_timed_perf("Removing_Duplicates", true, None);
     }
 
-    fn emit_complete_remove_duplicates(&self, emitter: &mut ComputationEvent) {
-        emitter.emit(AppEvent::ComputationComplete {
+    fn emit_complete_remove_duplicates(&self) {
+        emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::RemoveDuplicates,
         });
+        emit_timed_perf("Removing_Duplicates", false, None);
     }
 }

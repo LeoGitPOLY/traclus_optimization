@@ -1,5 +1,4 @@
-pub mod traclusdl_app;
-pub mod app_events;
-mod view_model;
-mod traclusdl_gui;
 mod style;
+pub mod traclusdl_app;
+mod traclusdl_gui;
+mod view_model;

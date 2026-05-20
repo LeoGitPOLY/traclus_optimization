@@ -1,12 +1,21 @@
-// TODO: the sum of distances could be calculated only when needed, to optimize performance
 // Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
+
+// TODO (optimization): the sum of distances could be calculated only when needed, to optimize performance
+
+use crate::{
+    io::args::{ExecutionMode, TraclusArgs},
+    utils::events::event_singleton::emit_timed_perf,
+};
+
 use super::super::objects::{cluster::Cluster, cluster_member::ClusterMember};
-use std::{cmp::Ordering, collections::HashSet};
+use rayon::{iter::Enumerate, prelude::*, slice::ChunksMut};
+use rustc_hash::FxHashSet;
+use std::cmp::Ordering;
 
 pub struct PriorityQueueCluster {
-    pub elements: Vec<Box<Cluster>>,
+    pub elements: Vec<Cluster>,
     pub non_clustered_segments: Vec<ClusterMember>,
-    is_sorted: bool,
+    is_initialy_sorted: bool,
 }
 
 impl PriorityQueueCluster {
@@ -14,51 +23,68 @@ impl PriorityQueueCluster {
         Self {
             elements: Vec::new(),
             non_clustered_segments: Vec::new(),
-            is_sorted: false,
+            is_initialy_sorted: false,
         }
     }
 
     pub fn push(&mut self, cluster: Cluster) {
-        self.is_sorted = false;
-        self.elements.push(Box::new(cluster));
+        self.is_initialy_sorted = false;
+        self.elements.push(cluster);
     }
 
+    // Ordering: first by total weight (descending), then by sum of distances (ascending)
+    // First cluster to use will be at the end of the vector
     fn compare_clusters(a: &Cluster, b: &Cluster) -> Ordering {
-        b.total_weight
-            .cmp(&a.total_weight) // descending order for weight
+        a.total_weight
+            .cmp(&b.total_weight) // ascending order for weight
             .then_with(|| {
-                a.sum_distance
-                    .partial_cmp(&b.sum_distance) // ascending order for distance
+                b.sum_distance
+                    .partial_cmp(&a.sum_distance) // descending for distance
                     .unwrap_or(Ordering::Equal)
             })
     }
 
+    // TODO (optimization): CLAUDE.AI CHAT
+    // Might not need to parallelize this, already almost in order (maybe for first iteration or when really big)
     fn sort_by_weight_and_distance(&mut self) {
         self.elements
-            .sort_by(|a: &Box<Cluster>, b: &Box<Cluster>| Self::compare_clusters(a, b));
-        self.is_sorted = true;
+            .sort_by(|a: &Cluster, b: &Cluster| Self::compare_clusters(a, b));
+        self.is_initialy_sorted = true;
     }
 
-    pub fn pop_and_clean(&mut self, threshold: u32) -> Option<Box<Cluster>> {
+    pub fn pop_and_clean(&mut self, args: &TraclusArgs) -> Option<Cluster> {
         if self.elements.is_empty() {
             return None;
         }
-        if !self.is_sorted {
+        if !self.is_initialy_sorted {
+            emit_timed_perf("Sort_by_WeightDistance", true, None);
             self.sort_by_weight_and_distance();
+            emit_timed_perf("Sort_by_WeightDistance", false, None);
         }
 
-        let first: Box<Cluster> = self.elements.remove(0); // TODO: optimize later with something not O(n)
-        let used_ids: HashSet<(usize, usize)> = Self::collect_used_traj_ids(&first);
+        emit_timed_perf("Take_First_Element", true, None);
+        let last: Cluster = self.elements.pop().unwrap();
+        let used_ids: FxHashSet<(usize, usize)> = Self::collect_used_traj_ids(&last);
+        emit_timed_perf("Take_First_Element", false, None);
 
-        self.clean_remaining_clusters(&used_ids, threshold);
+        emit_timed_perf("Clean_Remaining_Clusters", true, None);
+        self.clean_remaining_clusters(&used_ids, args);
+        emit_timed_perf("Clean_Remaining_Clusters", false, None);
+
+        emit_timed_perf("Clean_NonClustered_Segments", true, None);
         self.clean_non_clustered_segments(&used_ids);
-        self.sort_by_weight_and_distance();
+        emit_timed_perf("Clean_NonClustered_Segments", false, None);
 
-        Some(first)
+        emit_timed_perf("Sort_by_WeightDistance", true, None);
+        self.sort_by_weight_and_distance();
+        emit_timed_perf("Sort_by_WeightDistance", false, None);
+
+        Some(last)
     }
 
-    fn collect_used_traj_ids(cluster: &Cluster) -> HashSet<(usize, usize)> {
-        let mut set: HashSet<(usize, usize)> = HashSet::new();
+    fn collect_used_traj_ids(cluster: &Cluster) -> FxHashSet<(usize, usize)> {
+        let mut set: FxHashSet<(usize, usize)> =
+            FxHashSet::with_capacity_and_hasher(cluster.members.len() + 1, Default::default());
 
         set.insert((cluster.seed.cm.traj_id, cluster.seed.cm.segment_id));
 
@@ -69,23 +95,65 @@ impl PriorityQueueCluster {
         set
     }
 
-    fn clean_remaining_clusters(&mut self, used: &HashSet<(usize, usize)>, threshold: u32) {
+    fn clean_remaining_clusters(&mut self, used: &FxHashSet<(usize, usize)>, args: &TraclusArgs) {
+        const PARALLEL_THRESHOLD: usize = 10; // TODO: remove from here
+        let mut mode: ExecutionMode = args.mode;
+
+        if self.elements.len() < PARALLEL_THRESHOLD {
+            mode = ExecutionMode::Serial;
+        }
+        emit_timed_perf("Clean_All_Clusters_Section", true, None);
+        let remove_indexes: Vec<usize> = match mode {
+            ExecutionMode::ParallelRayon => {
+                let chunk_size: usize = (self.elements.len() / rayon::current_num_threads()).max(1);
+                let chunk_iter: Enumerate<ChunksMut<'_, Cluster>> =
+                    self.elements.par_chunks_mut(chunk_size).enumerate();
+
+                chunk_iter
+                    .map(|(chunk_idx, chunk)| {
+                        let base: usize = chunk_idx * chunk_size;
+                        Self::clean_section_cluster_serial(chunk, used, args, base)
+                    })
+                    .flatten()
+                    .collect()
+            }
+
+            ExecutionMode::Serial => {
+                Self::clean_section_cluster_serial(&mut self.elements, used, args, 0)
+            }
+        };
+        emit_timed_perf("Clean_All_Clusters_Section", false, None);
+
+        emit_timed_perf("Remove_Indexes_All", true, None);
+        Self::remove_indexes(&mut self.elements, &remove_indexes);
+        emit_timed_perf("Remove_Indexes_All", false, None);
+    }
+
+    #[inline]
+    fn clean_section_cluster_serial(
+        elements: &mut [Cluster],
+        used: &FxHashSet<(usize, usize)>,
+        args: &TraclusArgs,
+        index_offset: usize,
+    ) -> Vec<usize> {
+        let thread_index: Option<usize> = rayon::current_thread_index();
+        emit_timed_perf("Clean_Clusters_serial", true, thread_index);
+
         let mut remove_indexes: Vec<usize> = Vec::new();
 
-        for (index, cluster) in self.elements.iter_mut().enumerate() {
-            if Self::clean_individual_cluster(cluster, used, threshold) {
-                remove_indexes.push(index);
+        for (index, cluster) in elements.iter_mut().enumerate() {
+            if Self::clean_individual_cluster(cluster, used, args.min_density) {
+                remove_indexes.push(index_offset + index);
             }
         }
-
-        // Remove clusters in reverse order to avoid index shifting
-        Self::remove_reversed_indexes(&mut self.elements, &remove_indexes);
+        emit_timed_perf("Clean_Clusters_serial", false, thread_index);
+        remove_indexes
     }
 
     #[inline]
     fn clean_individual_cluster(
         cluster: &mut Cluster,
-        used: &HashSet<(usize, usize)>,
+        used: &FxHashSet<(usize, usize)>,
         threshold: u32,
     ) -> bool {
         // If the seed is now used, remove the entire cluster
@@ -108,13 +176,11 @@ impl PriorityQueueCluster {
             }
         }
 
-        // Remove clusters members in reverse order to avoid index shifting
-        Self::remove_reversed_indexes(&mut cluster.members, &remove_indexes);
+        Self::remove_indexes(&mut cluster.members, &remove_indexes);
         return false;
     }
 
-    #[inline]
-    fn clean_non_clustered_segments(&mut self, used: &HashSet<(usize, usize)>) {
+    fn clean_non_clustered_segments(&mut self, used: &FxHashSet<(usize, usize)>) {
         let mut remove_indexes: Vec<usize> = Vec::new();
 
         // Check each non-clustered segment is now used, remove if so
@@ -124,15 +190,18 @@ impl PriorityQueueCluster {
             }
         }
 
-        // Remove segments in reverse order to avoid index shifting
-        Self::remove_reversed_indexes(&mut self.non_clustered_segments, &remove_indexes);
+        Self::remove_indexes(&mut self.non_clustered_segments, &remove_indexes);
     }
 
     #[inline]
-    fn remove_reversed_indexes<T>(vec: &mut Vec<T>, indexes: &Vec<usize>) {
-        for &index in indexes.iter().rev() {
-            vec.remove(index);
-        }
+    fn remove_indexes<T>(vec: &mut Vec<T>, indexes: &[usize]) {
+        let to_remove: FxHashSet<usize> = indexes.iter().copied().collect();
+        let mut i: usize = 0;
+        vec.retain(|_| {
+            let keep: bool = !to_remove.contains(&i);
+            i += 1;
+            keep
+        });
     }
 
     pub fn get_size_elements(&self) -> usize {

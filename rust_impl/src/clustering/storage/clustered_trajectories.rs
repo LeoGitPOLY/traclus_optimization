@@ -3,7 +3,8 @@ use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
 use super::super::objects::corridor::Corridor;
 use super::super::storage::priority_queue::PriorityQueueCluster;
-use crate::gui::app_events::{AppEvent, ComputationEvent, ComputationType};
+use crate::utils::events::app_events::{AppEvent, ComputationType};
+use crate::utils::events::event_singleton::emit;
 use crate::io::args::TraclusArgs;
 
 pub struct ClusteredTrajectories {
@@ -33,15 +34,15 @@ impl ClusteredTrajectories {
         }
     }
 
-    pub fn finalize_corridors(&mut self, args: &TraclusArgs, emitter: &mut ComputationEvent) {
+    pub fn finalize_corridors(&mut self, args: &TraclusArgs) {
         let mut num_last_elements: usize = self.clusters.get_size_elements();
 
-        while let Some(completed_cluster) = self.clusters.pop_and_clean(args.min_density) {
+        while let Some(completed_cluster) = self.clusters.pop_and_clean(&args) {
             let index_corridor: usize = self.corridors.len();
-            let corridor: Corridor = Corridor::new(*completed_cluster, index_corridor);
+            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
             self.corridors.push(corridor);
 
-            emitter.emit(AppEvent::ComputationProgress {
+            emit(AppEvent::ComputationProgress {
                 computation_type: ComputationType::RemoveDuplicates,
                 increment_progress: num_last_elements - self.clusters.get_size_elements(),
             });
@@ -49,8 +50,8 @@ impl ClusteredTrajectories {
         }
     }
 
-    pub fn pop_and_clean(&mut self, min_density: u32) -> Option<Box<Cluster>> {
-        self.clusters.pop_and_clean(min_density)
+    pub fn pop_and_clean(&mut self, args: &TraclusArgs) -> Option<Cluster> {
+        self.clusters.pop_and_clean(&args)
     }
 
     pub fn take_non_clustered_segments(&mut self) {

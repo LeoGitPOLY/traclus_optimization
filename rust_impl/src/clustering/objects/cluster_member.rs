@@ -51,9 +51,16 @@ impl ClusterMember {
     }
 
     pub fn angle(&self) -> f64 {
-        let dx = self.center.x - self.start.x;
-        let dy = self.center.y - self.start.y;
-        dy.atan2(dx).to_degrees()
+        let delta_x: f64 = self.center.x - self.start.x;
+        let delta_y: f64 = self.center.y - self.start.y;
+        let mut angle: f64 = delta_y.atan2(delta_x).to_degrees();
+        angle = (angle * 100.0).round() / 100.0;
+
+        if angle < 0.0 {
+            angle += 360.0;
+        }
+
+        angle
     }
 }
 

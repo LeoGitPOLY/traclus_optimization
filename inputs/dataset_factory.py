@@ -250,20 +250,20 @@ def main():
 
     # Circle_around: lines every 30 degrees
     filename = BENCHMARKS_DIR / "circle_around_DL"
-    list_of_lines = generate_desire_line_in_circle(5, SMALL_RADIUS_1.center, 1000 - EPSILON)
+    list_of_lines = generate_desire_line_in_circle(30, SMALL_RADIUS_1.center, 300 - EPSILON)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
     
     # Parallels lines: 10 lines
     filename = BENCHMARKS_DIR / "parallels_DL"
-    list_of_lines = generate_vertical_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 10)
+    list_of_lines = generate_vertical_parallel_lines(15, SMALL_RADIUS_1.center, 300 - EPSILON, 6)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # 90 degrees lines: 10 lines
     filename = BENCHMARKS_DIR / "90_degrees_DL"
-    list_of_lines = generate_horizontal_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 11)
-    list_of_lines += generate_vertical_parallel_lines(50, SMALL_RADIUS_1.center, 1000 - EPSILON, 11)
+    list_of_lines = generate_horizontal_parallel_lines(15, SMALL_RADIUS_1.center, 300 - EPSILON, 6)
+    list_of_lines += generate_vertical_parallel_lines(15, SMALL_RADIUS_1.center, 300 - EPSILON, 6)
     for i in range(1, len(list_of_lines) + 1): list_of_lines[i-1][0] = i
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
@@ -273,7 +273,7 @@ def main():
     filename = BENCHMARKS_DIR / "enquete_od_DL"
     list_of_lines = convert_csv_enquete_to_list(input_file)
 
-    for sample_size in [500, 1000, 2000, 3000]:
+    for sample_size in [10, 500, 1000, 2000, 3000]:
         sampled_lines = chose_random_lines(list_of_lines, sample_size)
         save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
         save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
