@@ -2,7 +2,7 @@
 
 ## Downloading the Application
 
-Go to the [**Releases page**](https://github.com/LeoGitPOLY/traclus_optimization/releases/v1.0.0) of this repository.
+Go to the [**Releases page**](https://github.com/LeoGitPOLY/traclus_optimization/releases/v1.0.1) of this repository.
 Under **Assets**, download the file for your platform:
 
 | Platform                       | File to download          |
