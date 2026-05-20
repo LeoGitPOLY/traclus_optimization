@@ -472,7 +472,7 @@ def verify_solution_and_performance_gain():
         'path': ["enquete_od_DL_9000_traclus.txt" ],
     }
 
-    args = ArgumentsTraclus("benchmarked_data", args_big_samples)
+    args = ArgumentsTraclus("benchmarked_data", args_small_samples)
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
 
     nb, tot_time_stable, tot_time_new = 0, 0, 0

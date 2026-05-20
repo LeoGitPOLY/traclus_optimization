@@ -81,6 +81,7 @@ impl TraclusDLApp {
         self.current_vm().output += &args.print_small_summary();
         self.current_vm().output += "\n";
 
+        self.current_vm().args_when_loaded = args.clone();
         self.launch(move |t, stop| {
             if needs_reload {
                 t.load_raw_storage(&args, stop.clone());
@@ -178,7 +179,7 @@ impl TraclusDLApp {
             AppEvent::Error(msg) => {
                 vm.error_popup = Some(msg.to_string());
             }
-            
+
             _ => {}
         }
     }
