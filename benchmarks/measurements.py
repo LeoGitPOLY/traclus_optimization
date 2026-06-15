@@ -38,14 +38,14 @@ def number_of_segments(file_path_segments: str) -> int:
 
 # Return the number of non-clustered segments: 
 # Count the segments where the 'corridor_id' column is '-1'
-def number_of_non_clustered_segments(file_path_segments: str, old_order: dict = OLD_ORDER) -> int:
+def number_of_non_clustered_segments(file_path_segments: str, order: dict = OLD_ORDER) -> int:
     nb_non_clustered = 0
     with open(file_path_segments, 'r') as file:
         lines = file.readlines()
         
         for line in lines[1:]:  # Skip the header line
             columns = line.strip().split('\t')
-            if columns[old_order["corridor_id"]] == '-1':  # Check the 'corridor_id' column
+            if columns[order["corridor_id"]] == '-1':  # Check the 'corridor_id' column
                 nb_non_clustered += 1
 
         return nb_non_clustered
@@ -261,26 +261,34 @@ def calculate_similarity_index(reference_path_seg: str, comparison_path_seg: str
     ref_results = compare_clustered_seg_dict(ref_dict_segments, comp_dict_segments)
     comp_results = compare_clustered_seg_dict(comp_dict_segments, ref_dict_segments)
 
+    nb_total_segments = number_of_segments(reference_path_seg)
+    nb_seg_clustered_ref = nb_total_segments - number_of_non_clustered_segments(reference_path_seg, order=order)
+    nb_seg_clustered_comp = nb_total_segments - number_of_non_clustered_segments(comparison_path_seg, order=order)
+
+
     nb_both_clustered = ref_results[0] # Should be the same as comparison_result_rust[0]
     nb_both_non_clustered = ref_results[1] # Should be the same as comparison_result_rust[1]
-    nb_only_clustered_py = ref_results[2] 
-    nb_only_clustered_rust = comp_results[2]
+    nb_only_clustered_ref = ref_results[2] 
+    nb_only_clustered_comp = comp_results[2]
 
     total_both = nb_both_clustered + nb_both_non_clustered
 
-    if nb_both_clustered + nb_only_clustered_py + nb_only_clustered_rust == 0:
+    if nb_both_clustered + nb_only_clustered_ref + nb_only_clustered_comp == 0:
         similarity_index_1 = 1.0  # If there are no segments, we consider them as perfectly similar
     else:
-        similarity_index_1 = nb_both_clustered / (nb_both_clustered + nb_only_clustered_py + nb_only_clustered_rust)
+        similarity_index_1 = nb_both_clustered / (nb_both_clustered + nb_only_clustered_ref + nb_only_clustered_comp)
 
-    if total_both + nb_only_clustered_rust + nb_only_clustered_py == 0:
+    if total_both + nb_only_clustered_comp + nb_only_clustered_ref == 0:
         similarity_index_2 = 1.0  # If there are no segments, we consider them as perfectly similar
     else:
-        similarity_index_2 = total_both / (total_both + nb_only_clustered_rust + nb_only_clustered_py)
+        similarity_index_2 = total_both / (total_both + nb_only_clustered_comp + nb_only_clustered_ref)
+
+    relative_diff = abs(nb_seg_clustered_ref - nb_seg_clustered_comp) / nb_total_segments
 
     return {
         "similarity_index_1": similarity_index_1,
-        "similarity_index_2": similarity_index_2
+        "similarity_index_2": similarity_index_2,
+        "Relative_Difference": relative_diff
     }
     
 def calculate_exact_output_information(reference_path_seg: str, comparison_path_seg: str, format:str = "old_format") -> None:

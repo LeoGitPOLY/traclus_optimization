@@ -96,7 +96,7 @@ def get_files_with_all_substring(folder: str, substring: list[str], exclude: lis
     names_substring = [name for name in names_folder if all(sub in name for sub in substring) and not any(exc in name for exc in exclude)]
     return names_substring
 
-def transfert_files_to_qgis_results(rust_mode: list):
+def transfert_files_to_qgis_results(rust_mode: list, include_stable: bool = False):
     name_data = traclus_args.get_name().replace("_traclus", "").replace(".txt", ".tsv")
     create_file(BENCH_SRC, RESULTS_QGIS_DIR, name_data, "DL_INPUT.txt")
 
@@ -112,18 +112,35 @@ def transfert_files_to_qgis_results(rust_mode: list):
         name = mode['name']
         
         rust_seg_old = get_files_with_all_substring(RUST_BENCH_DST, ["segment", "old", name])[0]
-        rust_seg_new = get_files_with_all_substring(RUST_BENCH_DST, ["segment", "new", name])[0]
+        rust_seg_new = get_files_with_all_substring(RUST_BENCH_DST, ["segment", name], exclude=["old"])[0]
         rust_corr = get_files_with_all_substring(RUST_BENCH_DST, ["corridor", name])[0]
         
         create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_seg_old, f"SEG_RUST_{name}.txt")
         create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_seg_new, f"SEG_RUST_NEW_{name}.txt")
         create_file(RUST_BENCH_DST, RESULTS_QGIS_DIR, rust_corr, f"CORRIDOR_RUST_{name}.txt")
+    
+    if include_stable:
+        name_stable_seg_old = get_files_with_all_substring(RUST_STABLE_BENCH_DST, ["segment", "old", "ParallelRayon"])[0]
+        name_stable_seg_new = get_files_with_all_substring(RUST_STABLE_BENCH_DST, ["segment", "ParallelRayon"], exclude=["old"])[0]
+        name_stable_corr = get_files_with_all_substring(RUST_STABLE_BENCH_DST, ["corridor", "ParallelRayon"])[0]
 
-def get_newest_rust_executable() -> str:
+        create_file(RUST_STABLE_BENCH_DST, RESULTS_QGIS_DIR, name_stable_seg_old, f"SEG_RUST_STABLE_OLD.txt")
+        create_file(RUST_STABLE_BENCH_DST, RESULTS_QGIS_DIR, name_stable_seg_new, f"SEG_RUST_STABLE_NEW.txt")
+        create_file(RUST_STABLE_BENCH_DST, RESULTS_QGIS_DIR, name_stable_corr, f"CORRIDOR_RUST_STABLE.txt")
+
+def get_newest_rust_executable(version: str = None) -> str:
     exe_files = [
         f for f in os.listdir(RUST_STABLE_DIR)
         if f.startswith("rust_impl_V") and f.endswith(".exe" if os.name == "nt" else "")
     ]
+
+    if not exe_files:
+        raise FileNotFoundError("No Rust executable files found in RUST_STABLE_DIR")
+
+    if version:
+        exe_files = [f for f in exe_files if version in f]
+        if not exe_files:
+            raise FileNotFoundError(f"No Rust executable files found matching version: {version}")
 
     def version_key(f):
         try:
@@ -186,22 +203,24 @@ def file_information(impl: str, mode: dict = {"name": "NONE"}) -> dict:
     return calculate_file_information(file_corridor, file_segment)
 
 def full_output_similarity_python_vs_rust(mode: dict = {"name": "ParallelRayon"}) -> dict:
+    print(f"\n=> PYTHON similimarity vs RUST ===")
     _, file_segment_py = get_python_output_files()
     _, file_segment_rust, _ = get_rust_output_files(mode['name'])
 
     calculate_exact_output_information(file_segment_py, file_segment_rust)
-    print(calculate_similarity_index(file_segment_py, file_segment_rust))
-    return calculate_similarity_index(file_segment_py, file_segment_rust)
+    sim_results = calculate_similarity_index(file_segment_py, file_segment_rust)
+    print(sim_results)
+    return sim_results
 
 def full_output_similarity_rust() -> dict:
+    print(f"\n=> RUST similimarity vs STABLE_RUST ===")
     _, _, file_segment_stable= get_stable_rust_output_files("ParallelRayon")
     _, _, file_segment_new = get_rust_output_files("ParallelRayon")
 
     calculate_exact_output_information(file_segment_stable, file_segment_new, "new_format")
-    print(calculate_similarity_index(file_segment_stable, file_segment_new, "new_format"))
-
-
-
+    sim_results = calculate_similarity_index(file_segment_stable, file_segment_new, "new_format")
+    print(sim_results)
+    return sim_results
 
 # =====================================================
 #                 BUILD STEP
@@ -238,11 +257,11 @@ def build_rust_impl():
 
     print(f"Rust build done in {end - start:.4f} seconds")
 
-def set_newest_rust_executable():
+def set_newest_rust_executable(version: str = None):
     print("=== Finding Newest Rust Executable ===")
 
     global newest_version_exe
-    newest_version_exe = get_newest_rust_executable()
+    newest_version_exe = get_newest_rust_executable(version)
     version_name = os.path.basename(newest_version_exe)
     print(f"Newest Rust executable found: {version_name}")
 
@@ -362,7 +381,18 @@ def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
         if traclus_args.iter_arguments() is False:
             break
 
-def time_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
+def time_testing():
+    args= {
+        'max_dist':     [600],
+        'min_density':  [333],
+        'max_angle':    [5],
+        'seg_size':     [3000],
+        'path': ["enquete_od_DL_1000_traclus.txt"],
+    }
+
+    traclus_args = ArgumentsTraclus("benchmarked_data", args)
+    rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
+    
     outputs = []
 
     # TESTING PYTHON
@@ -439,22 +469,54 @@ def run_averaged_multi_OD():
 def verify_similarity_index():
     args_order_verify = {
         'max_dist':     [600],
-        'min_density':  [666],
-        'max_angle':    [5],
-        'seg_size':     [3000],
-        'path': ["enquete_od_DL_2000_traclus.txt" ],
+        'min_density':  [30],
+        'max_angle':    [6],
+        'seg_size':     [1000],
+        'path': ["enquete_od_DL_10_traclus.txt"],
     }
+
     args = ArgumentsTraclus("benchmarked_data", args_order_verify)
-    rust_mode = {'cmd': 'serial', 'name': 'Serial'}
+    rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
 
+    set_newest_rust_executable("V1.0.0")
+    
+    outputs_python_vs_rust = []
+    outputs_rust_vs_stable = []
+    
     while True:
-        run_timed_once("rust", args, rust_mode)
+        run_timed_once("rust", args, rust_mode[0])
         run_timed_once("python", args)
+        run_timed_once("stable_rust", args, rust_mode[0])
 
-        full_output_similarity_python_vs_rust(rust_mode)
+        outputs_python_vs_rust.append(full_output_similarity_python_vs_rust(rust_mode[0]))
+        outputs_rust_vs_stable.append(full_output_similarity_rust())
+
+        transfert_files_to_qgis_results(rust_mode, True)
+        input("\nPress Enter to continue to the next argument set (or 's' to stop)...\n")
 
         if args.iter_arguments() is False:
-            break 
+            break
+    
+    print("\n=== Similarity Index Results for Python vs Rust ===")
+    average_sim = (0,0,0)
+    for output in outputs_python_vs_rust:
+        print(f"Similarity Index 1: {output['similarity_index_1']:.6f} "
+              f"Similarity Index 2: {output['similarity_index_2']:.6f} "
+              f"Relative Difference: {output['Relative_Difference']:.6f}")
+        average_sim = (average_sim[0] + output['similarity_index_1'], average_sim[1] + output['similarity_index_2'], average_sim[2] + output['Relative_Difference'])
+    print(f"\nAverage Similarity Index 1: {average_sim[0]/len(outputs_python_vs_rust):.6f}, "
+          f"Average Similarity Index 2: {average_sim[1]/len(outputs_python_vs_rust):.6f}, "
+          f"Average Relative Difference: {average_sim[2]/len(outputs_python_vs_rust):.6f}")
+
+    average_sim = (0,0,0)
+    for output in outputs_rust_vs_stable:
+        print(f"Similarity Index 1: {output['similarity_index_1']:.6f}"
+              f"Similarity Index 2: {output['similarity_index_2']:.6f}"
+              f"Relative Difference: {output['Relative_Difference']:.6f}")
+        average_sim = (average_sim[0] + output['similarity_index_1'], average_sim[1] + output['similarity_index_2'], average_sim[2] + output['Relative_Difference'])
+    print(f"\nAverage Similarity Index 1: {average_sim[0]/len(outputs_rust_vs_stable):.6f}, "
+          f"Average Similarity Index 2: {average_sim[1]/len(outputs_rust_vs_stable):.6f}, "
+          f"Average Relative Difference: {average_sim[2]/len(outputs_rust_vs_stable):.6f}")
 
 def verify_solution_and_performance_gain():
     args_small_samples = {
@@ -518,7 +580,7 @@ if __name__ == "__main__":
     if args_cli.mode == "visual":
         visual_testing(traclus_args, rust_mode)
     elif args_cli.mode == "time":
-        time_testing(traclus_args, rust_mode)
+        time_testing()
     elif args_cli.mode == "multi-od":
         run_averaged_multi_OD()
     elif args_cli.mode == "verify":
