@@ -85,7 +85,7 @@ class ArgumentsTraclus:
         if self._print_as_text:
             return f"[max dist: {args[0]}, min density: {args[1]}, max angle: {args[2]}, seg size: {args[3]}] for '{args[4]}'"
         else:
-            return f"{args[0]};{args[1]};{args[2]};{args[3]};{args[4]}"
+            return f"{args[0]},{args[1]},{args[2]},{args[3]},{args[4]}"
         
     def __valid_value(self, key: str) -> list:
         if not key in DEFAULT_VALUES:

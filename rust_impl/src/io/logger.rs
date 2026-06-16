@@ -197,7 +197,7 @@ impl Logger {
     }
 
     fn print_summary(&self) {
-        println!("\n[PERF] ──────────────── SUMMARY ────────────────");
+        println!("\n ──────────────────── SUMMARY ────────────────────");
 
         let total_ms: f64 = self
             .root_elements
@@ -206,37 +206,42 @@ impl Logger {
             .map(|record| record.elapsed_ms)
             .sum();
 
-        for root in &self.root_elements {
-            self.print_parent(root, total_ms, 0);
+        for (i, root) in self.root_elements.iter().enumerate() {
+            self.print_parent(root, total_ms, 0, format!("{}", i + 1));
         }
 
-        println!("[PERF] ─────────────────────────────────────────");
-        println!("[PERF] {:<35}: {:>10.3} ms", "TOTAL", total_ms);
+        println!(" ─────────────────────────────────────────────────");
+        println!("[PERF] {:<50}: {:>10.3} ms", "TOTAL", total_ms);
     }
 
-    fn print_parent(&self, parent_label: &String, parent_ms: f64, depth: usize) {
+    fn print_parent(&self, parent_label: &String, parent_ms: f64, depth: usize, index: String) {
         let parent_record: &PerfRecord = self.all_elements.get(parent_label).unwrap();
 
-        Self::print_record(parent_record, parent_ms, depth);
+        Self::print_record(parent_record, parent_ms, depth, &index);
 
-        for child in &parent_record.children {
-            self.print_parent(child, parent_record.elapsed_ms, depth + 1);
+        for (i, child) in parent_record.children.iter().enumerate() {
+            self.print_parent(
+                child,
+                parent_record.elapsed_ms,
+                depth + 1,
+                format!("{}.{}", index, i + 1),
+            );
         }
     }
 
-    fn print_record(record: &PerfRecord, parent_ms: f64, depth: usize) {
-        let indent: String = "   ".repeat(depth);
+    fn print_record(record: &PerfRecord, parent_ms: f64, depth: usize, index: &str) {
+        let indent = "   ".repeat(depth);
 
-        let label: String = format!("{}{}", indent, record.display_label);
+        let label = format!("{}{} {}", indent, index, record.display_label);
 
-        let instance_tag: String = if record.instances > 1 {
+        let instance_tag = if record.instances > 1 {
             format!(" ×{}", record.instances)
         } else {
             String::new()
         };
 
         println!(
-            "[PERF] {:<40}: {:>10.3} ms ({:>6.2}%){}",
+            "[PERF] {:<50}: {:>10.3} ms ({:>6.2}%){}",
             label,
             record.elapsed_ms,
             (record.elapsed_ms / parent_ms) * 100.0,

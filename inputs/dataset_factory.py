@@ -250,7 +250,7 @@ def main():
 
     # Circle_around: lines every 30 degrees
     filename = BENCHMARKS_DIR / "circle_around_DL"
-    list_of_lines = generate_desire_line_in_circle(30, SMALL_RADIUS_1.center, 300 - EPSILON)
+    list_of_lines = generate_desire_line_in_circle(10, SMALL_RADIUS_1.center, 300 - EPSILON)
     save_to_tsv(list_of_lines, f"{filename}.tsv")
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
     

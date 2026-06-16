@@ -4,6 +4,10 @@ import os
 import argparse
 import shutil
 from time import perf_counter
+from turtle import pd
+from datetime import datetime
+import pandas as pd
+from openpyxl import load_workbook
 from arguments_traclus import ArgumentsTraclus
 from measurements import calculate_exact_output_information, calculate_file_information, calculate_similarity_index
 
@@ -40,7 +44,7 @@ def parse_args():
 
     parser.add_argument(
         "-m", "--mode",
-        choices=["visual", "time", "multi-od", "verify", "verify-sim"],
+        choices=["visual", "time", "multi-od", "verify", "verify-sim", "all-can"],
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
@@ -153,6 +157,24 @@ def get_newest_rust_executable(version: str = None) -> str:
     exe_path = os.path.join(RUST_STABLE_DIR, exe_files[0])
     return exe_path
 
+def save_outputs_to_excel(outputs: dict):
+    create_empty_folder("outputs")
+    file_name = "outputs/benchmark_results.xlsx"
+    
+    df = pd.DataFrame(outputs)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    sheet_name = f"run_{timestamp}"[:31]
+
+    file_exists = os.path.exists(file_name)
+
+    with pd.ExcelWriter(
+        file_name,
+        engine="openpyxl",
+        mode="a" if file_exists else "w",
+        if_sheet_exists="new" if file_exists else None
+    ) as writer:
+        df.to_excel(writer, sheet_name=sheet_name, index=False)
+
 # =====================================================
 #                 GET OUTPUT FILES
 # =====================================================
@@ -185,6 +207,27 @@ def get_stable_rust_output_files(mode: str):
         sys.exit(1)
     return file_corridor, file_segment_old, file_segment_new
 
+def get_perf_info_from_stout(stdout: str) -> dict:
+    perf_lines = []
+    total_time = None
+
+    for line in stdout.splitlines():
+        stripped_line = line.strip()
+
+        if not stripped_line.startswith("[PERF]"):
+            continue
+
+        if "TOTAL" in stripped_line.split():
+            parts = stripped_line.split(":")
+            total_str = parts[-1].strip().split()[0]
+            total_time = float(total_str) / 1000
+            continue
+
+        cleaned_line = stripped_line[len("[PERF]"):].strip()
+        perf_lines.append(cleaned_line)
+
+    return {"total_time_perf": total_time, "complete_perf": "\n".join(perf_lines)}
+
 # =====================================================
 #                 STATISTICS CALCULATIONS
 # =====================================================
@@ -203,9 +246,9 @@ def file_information(impl: str, mode: dict = {"name": "NONE"}) -> dict:
     return calculate_file_information(file_corridor, file_segment)
 
 def full_output_similarity_python_vs_rust(mode: dict = {"name": "ParallelRayon"}) -> dict:
-    print(f"\n=> PYTHON similimarity vs RUST ===")
+    print(f"\n=> PYTHON similimarity vs STABLE_RUST ===")
     _, file_segment_py = get_python_output_files()
-    _, file_segment_rust, _ = get_rust_output_files(mode['name'])
+    _, file_segment_rust, _ = get_stable_rust_output_files(mode['name'])
 
     calculate_exact_output_information(file_segment_py, file_segment_rust)
     sim_results = calculate_similarity_index(file_segment_py, file_segment_rust)
@@ -281,10 +324,11 @@ def run_python_impl_once(args: ArgumentsTraclus):
     ]
 
     results = subprocess.run(cmd, capture_output=True, text=True)
+    return results.stdout
 
-def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial"):
+def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
     exe = os.path.join(RUST_IMPL_DIR, "target", "release", "rust_impl" + (".exe" if os.name == "nt" else ""))
-    cmd = [
+    cmd_list = [
         exe,
         "--file", os.path.join(RUST_IMPL_DIR, args.get_path()),
         "--max_dist", args.get_args_value('max_dist'),
@@ -292,12 +336,13 @@ def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial"):
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
         "--mode", mode,
-        "--interface", "performance"
+        "--interface", interface
     ]   
     
-    results = subprocess.run(cmd, capture_output=True, text=True)
+    results = subprocess.run(cmd_list, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return results.stdout
     
-def run_stable_rust_impl_once(args: ArgumentsTraclus, cmd: str = "serial"):
+def run_stable_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
     cmd_list = [
         newest_version_exe,
         "--file", os.path.join(RUST_STABLE_DIR, args.get_path()),
@@ -305,26 +350,29 @@ def run_stable_rust_impl_once(args: ArgumentsTraclus, cmd: str = "serial"):
         "--min_density", args.get_args_value('min_density'),
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
-        "--mode", cmd,
-        "--interface", "performance"
+        "--mode", mode,
+        "--interface", interface
     ]
     
-    results = subprocess.run(cmd_list, capture_output=True, text=True)
+    results = subprocess.run(cmd_list, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return results.stdout
 
-def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}):
+def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}, interface: str = "performance") -> dict:
     remove_and_copy_input_file(args, impl)
     run_start = perf_counter()
     
+    stdout = ""
     if impl == "python":
-        run_python_impl_once(args)
+        stdout = run_python_impl_once(args)
     elif impl == "rust":
-        run_rust_impl_once(args, mode['cmd'])
+        stdout = run_rust_impl_once(args, mode['cmd'], interface)
     elif impl == "stable_rust":
-        run_stable_rust_impl_once(args, mode['cmd'])
+        stdout = run_stable_rust_impl_once(args, mode['cmd'], interface)
 
     run_end = perf_counter()
     time = run_end - run_start
 
+    perf = get_perf_info_from_stout(stdout)
     information = file_information(impl, mode)
 
     print(f"\n=> {impl.upper()} implementation ({mode['name']}) ===")
@@ -333,7 +381,7 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NON
     print(f"\tNb of corr: {information['number_of_corridors']}, "
           f"Nb of seg: {information['number_of_segments']}, "
           f"Nb of non-clustered seg: {information['number_of_non_clustered_segments']}")
-    return {"impl": impl, "mode": mode['name'], "args": args.get_args(), "time": time, **information}
+    return {"impl": impl, "mode": mode['name'], "args": args.get_args(), "time": time, **perf, **information}
     
 def run_timed_all(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}):
     outputs = []
@@ -413,7 +461,6 @@ def run_averaged_multi_OD():
         'max_angle':    [5,7],
         'seg_size':     [3000],
     }
-    # ,
     rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     
@@ -554,6 +601,69 @@ def verify_solution_and_performance_gain():
     print(f"Average execution time for stable Rust: {tot_time_stable/nb:.6f} seconds")
     print(f"Average execution time for new Rust: {tot_time_new/nb:.6f} seconds")
 
+def aliance_canada_testing():
+    # Test with latest executable (cargo not available)
+    # Test with python (smaller sample) - to get a difference from last results
+    
+    args_values = {
+        'max_dist':     [600],
+        'max_angle':    [5],
+        'seg_size':     [3000],
+    }
+    rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
+                {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
+    base_file = "enquete_od_DL_$NB$_traclus.txt"
+    
+    start, step, n = 2000, 2000, 2
+    list_of_sizes = [start + i * step for i in range(n)] 
+    max_index_python = -1
+
+    outputs = []
+    try: # Keep the benchmarking results even if an error occurs during the process
+        for (index,size) in enumerate(list_of_sizes):
+            # SETTING ARGUMENTS
+            args_copy = args_values.copy()
+            
+            file_name = base_file.replace("$NB$", str(size))
+            args_copy['path'] = [file_name]
+            args_copy['min_density'] = [size//3]
+            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
+
+            print(f"\n======== Running implementations for {file_name} ===========")
+
+            while True: # Iter over all combinations of arguments
+                o_python, o_rust_serial, o_rust_parallel = None, None, None
+                
+                # TESTING PYTHON
+                if index <= max_index_python:
+                    o_python = run_timed_once("python", traclus_args)
+
+                # TESTING ALL MODE RUST
+                o_rust_serial = run_timed_once("stable_rust", traclus_args, rust_mode[0], "logger")
+                o_rust_parallel = run_timed_once("stable_rust", traclus_args, rust_mode[1], "logger")
+
+                # CALCULATE SIMILIARITY INDEX
+                if index <= max_index_python:
+                    similarity_index = full_output_similarity_python_vs_rust()
+                    o_python = o_python | similarity_index
+                    o_rust_serial = o_rust_serial | similarity_index
+                    o_rust_parallel = o_rust_parallel | similarity_index
+                
+                # STORE OUTPUTS
+                if o_python is not None: outputs.append(o_python)
+                if o_rust_serial is not None: outputs.append(o_rust_serial)
+                if o_rust_parallel is not None: outputs.append(o_rust_parallel)
+
+                if traclus_args.iter_arguments() is False:
+                    break   
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    print("\n=== Final Time Results stored to Excel file ===")
+    outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
+    save_outputs_to_excel(outputs_sorted)
+
 # =====================================================
 #                 MAIN
 # =====================================================
@@ -575,8 +685,6 @@ if __name__ == "__main__":
     build_rust_impl()
     set_newest_rust_executable()
 
-    print("\n=== Starting Benchmarks ===")
-
     if args_cli.mode == "visual":
         visual_testing(traclus_args, rust_mode)
     elif args_cli.mode == "time":
@@ -587,5 +695,7 @@ if __name__ == "__main__":
         verify_solution_and_performance_gain()
     elif args_cli.mode == "verify-sim":
         verify_similarity_index()
+    elif args_cli.mode == "all-can":
+        aliance_canada_testing()
 
    
