@@ -10,7 +10,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::clustering::main_traclusdl::MainTraclusDL;
+use crate::traclusdl_core::TraclusDLCore;
 
 // Shared bool: true while any task is executing.
 // Shared ownership between GUI thread and worker thread.
@@ -46,15 +46,15 @@ impl GuiParallelRunner {
 
     /// Generic task launcher.
     ///
-    /// - `main`: Arc-wrapped MainTraclusDL shared with the worker thread
-    /// - `task`: any fonction on `&mut MainTraclusDL`; runs on a dedicated std::thread
+    /// - `main`: Arc-wrapped CoreTraclusDL shared with the worker thread
+    /// - `task`: any fonction on `&mut CoreTraclusDL`; runs on a dedicated std::thread
     /// - `stop`: flag to signal the task to stop
     ///
     /// Returns false immediately (no blocking) if already busy.
     /// Returns true if the task was accepted and spawned.
-    pub fn try_run<F>(&self, main: Arc<Mutex<MainTraclusDL>>, task: F) -> bool
+    pub fn try_run<F>(&self, main: Arc<Mutex<TraclusDLCore>>, task: F) -> bool
     where
-        F: FnOnce(&mut MainTraclusDL, StopFlag) + Send + 'static,
+        F: FnOnce(&mut TraclusDLCore, StopFlag) + Send + 'static,
     {
         if !self.try_acquire() {
             return false;

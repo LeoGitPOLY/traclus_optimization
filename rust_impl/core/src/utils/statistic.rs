@@ -1,4 +1,4 @@
-use crate::clustering::storage::raw_trajectories::RawTrajectories;
+use crate::storage::raw_trajectories::RawTrajectories;
 
 /// Computes a directional correlation factor in [0.0, 1.0].
 ///

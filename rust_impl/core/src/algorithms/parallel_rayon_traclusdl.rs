@@ -2,15 +2,15 @@ use crate::io::args::TraclusArgs;
 use crate::utils::events::event_singleton::emit_timed_perf;
 use crate::utils::gui_parallel_runner::StopFlag;
 
-use super::super::geometry::trajectory::Trajectory;
-use super::super::objects::cluster::Cluster;
-use super::super::objects::corridor::Corridor;
-use super::super::storage::{
+use super::base_traclusdl::TICK_EVERY;
+use super::base_traclusdl::TraclusAlgorithm;
+use crate::geometry::trajectory::Trajectory;
+use crate::objects::cluster::Cluster;
+use crate::objects::corridor::Corridor;
+use crate::storage::{
     clustered_trajectories::ClusteredTrajectories,
     raw_trajectories::{Bucket, RawTrajectories},
 };
-use super::base_traclusdl::TICK_EVERY;
-use super::base_traclusdl::TraclusAlgorithm;
 
 use rayon::prelude::*;
 use rayon::slice::Iter;

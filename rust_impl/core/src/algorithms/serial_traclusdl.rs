@@ -7,8 +7,6 @@ use super::super::storage::{
 use super::base_traclusdl::TraclusAlgorithm;
 
 use crate::io::args::TraclusArgs;
-use crate::utils::events::app_events::AppEvent;
-use crate::utils::events::event_singleton::emit;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub struct SerialTraclusDL {

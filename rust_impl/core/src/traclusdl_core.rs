@@ -1,8 +1,10 @@
+use std::thread::available_parallelism;
+
 use super::storage::clustered_trajectories::ClusteredTrajectories;
 use super::storage::raw_trajectories::RawTrajectories;
 use crate::utils::events::app_events::{AppError, AppEvent, ComputationType};
 
-use crate::io::args::{ExecutionMode, TraclusArgs};
+use crate::io::args::{ExecutionMode, InterfaceMode, TraclusArgs};
 use crate::io::input_loader::parse_input_data;
 use crate::io::output_writer::{SegOutFormat, generate_corridor_file, generate_segment_file};
 use crate::utils::events::event_singleton::{emit, emit_error, emit_timed_perf};
@@ -13,12 +15,12 @@ use super::algorithms::base_traclusdl::TraclusAlgorithm;
 use super::algorithms::parallel_rayon_traclusdl::ParallelRayonTraclusDL;
 use super::algorithms::serial_traclusdl::SerialTraclusDL;
 
-pub struct MainTraclusDL {
+pub struct TraclusDLCore {
     raw_storage: Option<RawTrajectories>,
     clust_storage: Option<ClusteredTrajectories>,
 }
 
-impl MainTraclusDL {
+impl TraclusDLCore {
     pub fn new() -> Self {
         Self {
             raw_storage: None,
@@ -102,6 +104,33 @@ impl MainTraclusDL {
         generate_segment_file(&args, &clust_storage, SegOutFormat::NewTraclus);
         generate_segment_file(&args, &clust_storage, SegOutFormat::OldTraclus);
         emit_timed_perf("Output_Writing", false, None);
+    }
+
+    /// Sets how many threads Rayon should use for computation.
+    /// Reserves CPUs for the UI threads that will be active.
+    pub fn build_thread_pool(args: &TraclusArgs, gui_active: bool) {
+        let available: usize = available_parallelism().map(|n| n.get()).unwrap_or(2).max(1);
+
+        let mut reserved: usize = match args.interface_mode {
+            InterfaceMode::Logger => 1,      // 1 CPU for the logger thread
+            InterfaceMode::PerfTimer => 0, // no reservation — perf timer events are very lightweight and at the end
+            InterfaceMode::Performance => 0, // no reservation — all CPUs to computation
+        };
+
+        if gui_active {
+            reserved += 1; // 1 CPU for the GUI thread
+        }
+
+        let computation: usize = available.saturating_sub(reserved).max(1);
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(computation)
+            .build_global()
+            .expect("Failed to build Rayon thread pool");
+
+        println!(
+            "Available CPUs: {}, reserved for UI/Logger: {}, used for computation: {}",
+            available, reserved, computation
+        );
     }
 
     fn get_proper_algorithm(args: &TraclusArgs) -> Box<dyn TraclusAlgorithm> {

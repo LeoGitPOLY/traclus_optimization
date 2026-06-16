@@ -30,18 +30,16 @@ impl fmt::Display for ExecutionMode {
 
 #[derive(Copy, Clone, Debug, ValueEnum, PartialEq)]
 pub enum InterfaceMode {
-    Gui,
     Logger,
-    GuiAndLogger,
+    PerfTimer,
     Performance,
 }
 
 impl fmt::Display for InterfaceMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InterfaceMode::Gui => write!(f, "Gui"),
             InterfaceMode::Logger => write!(f, "Logger"),
-            InterfaceMode::GuiAndLogger => write!(f, "GuiAndLogger"),
+            InterfaceMode::PerfTimer => write!(f, "PerfTimer"),
             InterfaceMode::Performance => write!(f, "Performance"),
         }
     }
@@ -51,7 +49,7 @@ fn default_mode() -> ExecutionMode {
     ExecutionMode::Serial
 }
 fn default_interface_mode() -> InterfaceMode {
-    InterfaceMode::Gui
+    InterfaceMode::Performance
 }
 
 // ─────────────────────────────────────────────

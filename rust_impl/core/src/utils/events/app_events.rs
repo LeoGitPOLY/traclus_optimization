@@ -1,5 +1,4 @@
 // app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
-use eframe::egui::{self, Color32};
 use std::{fmt, time::Instant};
 
 // ─────────────────────────────────────────────
@@ -30,7 +29,7 @@ pub enum AppEvent {
         messages: Vec<String>,
     },
 
-    PerfTimer{
+    PerfTimer {
         event_label: String,
         exact_instant: Instant,
         is_start: bool,
@@ -88,12 +87,12 @@ impl fmt::Debug for ComputationType {
 }
 
 impl ComputationType {
-    pub fn color(&self) -> egui::Color32 {
+    pub fn color(&self) -> (u8, u8, u8) {
         match self {
-            ComputationType::Clustering => Color32::from_rgb(39, 115, 38), // green
-            ComputationType::RemoveDuplicates => Color32::from_rgb(196, 148, 81), // light orange
-            ComputationType::CreateOutputs => Color32::from_rgb(0, 0, 255), // blue
-            ComputationType::NotComputing => Color32::from_rgb(128, 128, 128), // gray
+            ComputationType::Clustering => (39, 115, 38),
+            ComputationType::RemoveDuplicates => (196, 148, 81),
+            ComputationType::CreateOutputs => (0, 0, 255),
+            ComputationType::NotComputing => (128, 128, 128),
         }
     }
 }

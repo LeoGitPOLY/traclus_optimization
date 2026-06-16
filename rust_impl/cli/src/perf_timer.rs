@@ -1,15 +1,16 @@
-// logger.rs - Event subscriber that prints AppEvents to stdout
+// perf_timer.rs — Event subscriber that collects PerfTimer events and prints a summary on exit
 //
-// The logger runs on its own dedicated std::thread
+// PerfTimer runs on its own dedicated std::thread.
 // CPU usage stays near zero — the thread is parked while waiting for events.
+// All output is deferred: nothing is printed until the event channel closes.
 
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::thread::{self, JoinHandle};
 use std::time::Instant;
 
-use crate::utils::events::app_events::AppEvent;
-use crate::utils::events::event_singleton::subscribe as singleton_subscribe;
+use traclusdl_core::utils::events::app_events::AppEvent;
+use traclusdl_core::utils::events::event_singleton::subscribe as singleton_subscribe;
 
 struct PerfRecord {
     display_label: String,
@@ -29,28 +30,26 @@ impl PerfRecord {
     }
 }
 
-pub struct Logger {
+pub struct PerfTimer {
     active_timers: Vec<(String, Instant)>,
     root_elements: Vec<String>,
     all_elements: HashMap<String, PerfRecord>,
 }
 
-impl Logger {
-    /// Spawn the logger thread.
+impl PerfTimer {
+    /// Spawn the perf timer thread.
     /// `rx` is the Receiver returned by EventBus::subscribe().
     pub fn start() -> JoinHandle<()> {
         let rx: Receiver<AppEvent> = singleton_subscribe();
 
         thread::Builder::new()
-            .name("traclus-logger".to_string())
+            .name("traclus-perf-timer".to_string())
             .spawn(move || Self::run(rx))
-            .expect("failed to spawn logger thread")
+            .expect("failed to spawn perf timer thread")
     }
 
     fn run(rx: Receiver<AppEvent>) {
-        let start_time: Instant = Instant::now();
-
-        let mut logger: Logger = Logger {
+        let mut perf_timer: PerfTimer = PerfTimer {
             active_timers: Vec::new(),
             root_elements: Vec::new(),
             all_elements: HashMap::new(),
@@ -59,56 +58,6 @@ impl Logger {
         // recv() parks the thread with zero CPU usage until an event is received
         while let Ok(event) = rx.recv() {
             match event {
-                AppEvent::LoadComplete {
-                    desire_line_count: traj_count,
-                    correlation_percent,
-                } => {
-                    println!(
-                        "[LOG] LOAD COMPLETED at {:?} — {} trajectories loaded, correlation: {:.2}%.",
-                        start_time.elapsed(),
-                        traj_count,
-                        correlation_percent
-                    );
-                }
-
-                AppEvent::ComputationStart {
-                    computation_type,
-                    max_progress,
-                } => {
-                    println!(
-                        "[LOG] COMPUTATION STARTED at {:?} — {:?} with {} total steps.",
-                        start_time.elapsed(),
-                        computation_type,
-                        max_progress,
-                    );
-                }
-
-                AppEvent::ComputationProgress {
-                    computation_type,
-                    increment_progress,
-                } => {
-                    println!(
-                        "[LOG] {:?} progress: +{} steps at {:?}.",
-                        computation_type,
-                        increment_progress,
-                        start_time.elapsed()
-                    );
-                }
-
-                AppEvent::ComputationComplete { computation_type } => {
-                    println!(
-                        "[LOG] {:?} COMPLETED at {:?}.",
-                        computation_type,
-                        start_time.elapsed()
-                    );
-                }
-
-                AppEvent::PrintInfo { messages } => {
-                    for message in messages {
-                        println!("[LOG] {}", message);
-                    }
-                }
-
                 AppEvent::PerfTimer {
                     event_label,
                     exact_instant,
@@ -122,19 +71,18 @@ impl Logger {
                     }
 
                     if is_start {
-                        logger.handle_timer_start(event_label, full_label, exact_instant);
+                        perf_timer.handle_timer_start(event_label, full_label, exact_instant);
                     } else {
-                        logger.handle_timer_end(event_label, full_label, exact_instant);
+                        perf_timer.handle_timer_end(event_label, full_label, exact_instant);
                     }
                 }
 
-                AppEvent::Error(msg) => {
-                    eprintln!("[LOG][ERROR] {}", msg);
-                }
+                // All other events are handled exclusively by Logger — ignore here
+                _ => {}
             }
         }
 
-        logger.print_summary();
+        perf_timer.print_summary();
     }
 
     fn handle_timer_start(

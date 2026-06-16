@@ -1,6 +1,6 @@
-use crate::clustering::objects::cluster_member::ClusterMember;
-use crate::clustering::objects::corridor::Corridor;
-use crate::clustering::storage::clustered_trajectories::ClusteredTrajectories;
+use crate::objects::cluster_member::ClusterMember;
+use crate::objects::corridor::Corridor;
+use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::utils::events::app_events::AppError;
 use crate::utils::events::event_singleton::emit_error;
 use crate::io::args::TraclusArgs;

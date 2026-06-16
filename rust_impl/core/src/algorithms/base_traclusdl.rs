@@ -1,12 +1,12 @@
-use super::super::geometry::{segment::Segment, trajectory::Trajectory};
-use super::super::objects::{
+use crate::geometry::{segment::Segment, trajectory::Trajectory};
+use crate::io::args::TraclusArgs;
+use crate::objects::{
     cluster::Cluster,
     cluster_member::{ClusterMember, ClusterSeed},
 };
-use super::super::storage::{
+use crate::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
-use crate::io::args::TraclusArgs;
 use crate::utils::events::app_events::{AppEvent, ComputationType};
 use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
