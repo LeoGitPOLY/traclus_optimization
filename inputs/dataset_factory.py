@@ -148,6 +148,29 @@ def convert_csv_enquete_to_list(input_file) -> list[list]:
     
     return list_of_lines
 
+def convert_csv_donnes_taxi_to_list(input_file) -> list[list]:
+    """
+    Convert Données Taxi CSV format to a list of desire lines.
+    """
+    list_of_lines = []
+    
+    with open(input_file, 'r') as infile:
+        reader = csv.DictReader(infile, delimiter=';')
+
+        for row in reader:
+            id_val = 1
+            weight = 1
+            xorig = float(row['xdebut'])
+            yorig = float(row['ydebut'])
+            xdest = float(row['xfin'])
+            ydest = float(row['yfin'])
+            
+            start_point = Point(xorig, yorig)
+            end_point = Point(xdest, ydest)
+            
+            list_of_lines.append([id_val, weight, start_point, end_point])
+    
+    return list_of_lines
 def chose_random_lines(list_lines: list[list], num_lines: int) -> list[list]:
     """
     Choose a random subset of lines from the given list.
@@ -269,20 +292,31 @@ def main():
     save_to_traclus(list_of_lines, f"{filename}_traclus.txt")
 
     # Convert Enquête format to Traclus format
-    input_file = DATA / "traclus_od_sample_3k_south_shore_to_montreal.csv"
-    filename = BENCHMARKS_DIR / "enquete_od_DL"
-    list_of_lines = convert_csv_enquete_to_list(input_file)
+    # input_file = DATA / "traclus_od_sample_3k_south_shore_to_montreal.csv"
+    # filename = BENCHMARKS_DIR / "enquete_od_DL"
+    # list_of_lines = convert_csv_enquete_to_list(input_file)
 
-    for sample_size in [10, 500, 1000, 2000, 3000]:
+    # for sample_size in [10, 500, 1000, 2000, 3000]:
+    #     sampled_lines = chose_random_lines(list_of_lines, sample_size)
+    #     save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
+    #     save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
+    
+    # for sample_size in [4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 
+    #                     13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000]:
+    #     sampled_lines = generate_random_lines(list_of_lines, sample_size)
+    #     save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
+    #     save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
+
+    # Convert donnes taxi format to Traclus format
+    input_file = DATA / "donnes_taxi_pour_traclus.csv"
+    filename = BENCHMARKS_DIR / "donnes_taxi_DL"
+    list_of_lines = convert_csv_donnes_taxi_to_list(input_file)
+
+    for sample_size in [2000, 5000, 8000, 11000]:
         sampled_lines = chose_random_lines(list_of_lines, sample_size)
         save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
         save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
     
-    for sample_size in [4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000, 
-                        13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000]:
-        sampled_lines = generate_random_lines(list_of_lines, sample_size)
-        save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
-        save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")
 
 if __name__ == "__main__":
     main()

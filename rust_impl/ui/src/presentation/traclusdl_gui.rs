@@ -6,10 +6,10 @@ use eframe::egui;
 use eframe::egui::{RichText, ScrollArea, TextEdit, Vec2};
 use rfd::FileDialog;
 
-use crate::gui::style::*;
-use crate::gui::traclusdl_app::TraclusDLApp;
-use crate::io::args::ExecutionMode;
-use crate::io::args_config::get_param_configs;
+use super::style::*;
+use crate::logic::traclusdl_app::TraclusDLApp;
+use traclusdl_core::io::args::ExecutionMode;
+use traclusdl_core::io::args_config::get_param_configs;
 
 // ─────────────────────────────────────────────
 // App Update (main render loop)
@@ -461,7 +461,8 @@ fn render_action_bar_idle(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
 fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     let vm = app.current_vm();
-    let color_progress: egui::Color32 = vm.computation_type.color();
+    let (r, g, b) = vm.computation_type.color();
+    let color_progress = egui::Color32::from_rgb(r, g, b);
 
     let progress = if vm.total_to_compute > 0 {
         vm.num_computed as f32 / vm.total_to_compute as f32

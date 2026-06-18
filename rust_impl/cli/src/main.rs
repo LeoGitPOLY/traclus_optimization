@@ -1,12 +1,9 @@
-use crate::logger::Logger;
-use crate::perf_timer::PerfTimer;
 use clap::Parser;
 use traclusdl_core::io::args::{InterfaceMode, TraclusArgs};
 use traclusdl_core::traclusdl_core::TraclusDLCore;
+use traclusdl_core::utils::debug::logger::Logger;
+use traclusdl_core::utils::debug::perf_timer::PerfTimer;
 use traclusdl_core::utils::events::event_singleton;
-
-mod logger;
-mod perf_timer;
 
 fn main() -> std::io::Result<()> {
     let traclus_args: TraclusArgs = TraclusArgs::parse();

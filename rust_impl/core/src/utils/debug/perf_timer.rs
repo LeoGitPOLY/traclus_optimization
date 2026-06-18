@@ -9,8 +9,8 @@ use std::sync::mpsc::Receiver;
 use std::thread::{self, JoinHandle};
 use std::time::Instant;
 
-use traclusdl_core::utils::events::app_events::AppEvent;
-use traclusdl_core::utils::events::event_singleton::subscribe as singleton_subscribe;
+use crate::utils::events::app_events::AppEvent;
+use crate::utils::events::event_singleton::subscribe as singleton_subscribe;
 
 struct PerfRecord {
     display_label: String,

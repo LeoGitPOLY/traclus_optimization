@@ -7,13 +7,13 @@ use std::time::Instant;
 
 use eframe::egui;
 
-use crate::clustering::main_traclusdl::MainTraclusDL;
-use crate::gui::style::*;
-use crate::gui::view_model::ViewModel;
-use crate::io::args::TraclusArgs;
-use crate::utils::events::app_events::AppEvent;
-use crate::utils::events::event_singleton::subscribe;
-use crate::utils::gui_parallel_runner::{GuiParallelRunner, StopFlag};
+use super::view_model::ViewModel;
+use crate::presentation::style::*;
+use traclusdl_core::io::args::TraclusArgs;
+use traclusdl_core::traclusdl_core::TraclusDLCore;
+use traclusdl_core::utils::events::app_events::AppEvent;
+use traclusdl_core::utils::events::event_singleton::subscribe;
+use traclusdl_core::utils::gui_parallel_runner::{GuiParallelRunner, StopFlag};
 
 // ─────────────────────────────────────────────
 // Application State
@@ -25,7 +25,7 @@ pub struct TraclusDLApp {
 
     pub detected_cpus: usize,
 
-    pub main_traclus: Arc<Mutex<MainTraclusDL>>,
+    pub main_traclus: Arc<Mutex<TraclusDLCore>>,
     pub runner: GuiParallelRunner,
 
     event_rx: Receiver<AppEvent>,
@@ -33,8 +33,8 @@ pub struct TraclusDLApp {
 
 impl TraclusDLApp {
     // TraclusDLApp::new is private — construction only via start_gui
-    fn new(args: TraclusArgs, main_traclusdl: MainTraclusDL) -> Self {
-        let main_traclus: Arc<Mutex<MainTraclusDL>> = Arc::new(Mutex::new(main_traclusdl));
+    fn new(args: TraclusArgs, main_traclusdl: TraclusDLCore) -> Self {
+        let main_traclus: Arc<Mutex<TraclusDLCore>> = Arc::new(Mutex::new(main_traclusdl));
         let event_rx: Receiver<AppEvent> = subscribe();
 
         Self {
@@ -187,7 +187,7 @@ impl TraclusDLApp {
     /// Launches a task on the worker thread via GuiParallelRunner.
     pub fn launch<F>(&mut self, task: F)
     where
-        F: FnOnce(&mut MainTraclusDL, StopFlag) + Send + 'static,
+        F: FnOnce(&mut TraclusDLCore, StopFlag) + Send + 'static,
     {
         self.runner.try_run(Arc::clone(&self.main_traclus), task);
     }
@@ -237,7 +237,7 @@ fn estimated_time_total(start: std::time::Instant, progress_percent: f64) -> f64
 // GUI Entry Point
 // ─────────────────────────────────────────────
 
-pub fn start_gui(args: TraclusArgs, main_traclusdl: MainTraclusDL) {
+pub fn start_gui(args: TraclusArgs, main_traclusdl: TraclusDLCore) {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([WINDOW_WIDTH, WINDOW_HEIGHT])
