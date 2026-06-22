@@ -688,8 +688,9 @@ if __name__ == "__main__":
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
 
    
-    build_python_impl()
-    build_rust_impl()
+    if not args_cli.mode == "all-can":
+        build_python_impl()
+        build_rust_impl()
     set_newest_rust_executable()
 
     if args_cli.mode == "visual":
