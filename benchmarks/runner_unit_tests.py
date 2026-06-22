@@ -102,7 +102,7 @@ def get_files_with_all_substring(folder: str, substring: list[str], exclude: lis
     names_substring = [name for name in names_folder if all(sub in name for sub in substring) and not any(exc in name for exc in exclude)]
     return names_substring
 
-def transfert_files_to_qgis_results(rust_mode: list, include_stable: bool = False):
+def transfert_files_to_qgis_results(traclus_args: ArgumentsTraclus, rust_mode: list, include_stable: bool = False):
     name_data = traclus_args.get_name().replace("_traclus", "").replace(".txt", ".tsv")
     create_file(BENCH_SRC, RESULTS_QGIS_DIR, name_data, "DL_INPUT.txt")
 
@@ -250,7 +250,7 @@ def file_information(impl: str, mode: dict = {"name": "NONE"}) -> dict:
 def full_output_similarity_python_vs_rust(mode: dict = {"name": "ParallelRayon"}) -> dict:
     print(f"\n=> PYTHON similimarity vs STABLE_RUST ===")
     _, file_segment_py = get_python_output_files()
-    _, file_segment_rust, _ = get_stable_rust_output_files(mode['name'])
+    _, file_segment_rust, _ = get_rust_output_files(mode['name'])
 
     calculate_exact_output_information(file_segment_py, file_segment_rust)
     sim_results = calculate_similarity_index(file_segment_py, file_segment_rust)
@@ -266,6 +266,7 @@ def full_output_similarity_rust() -> dict:
     sim_results = calculate_similarity_index(file_segment_stable, file_segment_new, "new_format")
     print(sim_results)
     return sim_results
+
 
 # =====================================================
 #                 BUILD STEP
@@ -376,6 +377,7 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NON
 
     perf = get_perf_info_from_stout(stdout)
     information = file_information(impl, mode)
+    print(stdout)  # Print the raw output for debugging purposes
 
     print(f"\n=> {impl.upper()} implementation ({mode['name']}) ===")
     print(f"\tArgument Set {args.get_args()}")
@@ -404,24 +406,28 @@ def run_timed_all(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE
 #                 TEST IMPLEMENTATIONS
 # =====================================================
 
-def visual_testing(traclus_args: ArgumentsTraclus, rust_mode: list):
+def visual_testing():
+    args_values = {
+        'max_dist':     [600],
+        'min_density':  [7, 10, 15, 20],
+        'max_angle':    [7],
+        'seg_size':     [2000],
+        'path': ["donnes_taxi_DL_2000_traclus.txt" ],
+    }
+    rust_mode = [{'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
+    traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
+    
     if not os.path.exists(RESULTS_QGIS_DIR):
         print(f"Error: Required folder to run the visual testing'{RESULTS_QGIS_DIR}' does not exist.")
         sys.exit(1)
     
     while True:
         # TESTING PYTHON
-        run_timed_once("python", traclus_args)
+        # run_timed_once("python", traclus_args)
         # TESTING ALL MODE RUST
         for mode in rust_mode: run_timed_once("rust", traclus_args, mode)
-
-        # Calculate similiarity index
-        similarity_index = full_output_similarity_python_vs_rust()
-        print(f"\nSimilarity Index for argument set {traclus_args.get_args()}: "
-          f"Similarity Index 1: {similarity_index['similarity_index_1']:.6f}, "
-          f"Similarity Index 2: {similarity_index['similarity_index_2']:.6f}\n")
         
-        transfert_files_to_qgis_results(rust_mode)
+        transfert_files_to_qgis_results(traclus_args, rust_mode)
 
         print(f"=== Visual results are ready for argument set {traclus_args.get_args()} ===")
 
@@ -613,8 +619,8 @@ def alliance_canada_testing():
 
     args_values = {
         'max_dist':     [600],
-        'max_angle':    [5],
-        'seg_size':     [3000],
+        'max_angle':    [7],
+        'seg_size':     [2000],
     }
     rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
@@ -632,7 +638,7 @@ def alliance_canada_testing():
             
             file_name = base_file.replace("$NB$", str(size))
             args_copy['path'] = [file_name]
-            args_copy['min_density'] = [size//30]
+            args_copy['min_density'] = [size//180]
             traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
 
             print(f"\n======== Running implementations for {file_name} ===========")
@@ -645,8 +651,8 @@ def alliance_canada_testing():
                     o_python = run_timed_once("python", traclus_args)
 
                 # TESTING ALL MODE RUST
-                o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "logger")
-                o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode[1], "logger")
+                o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "perf-timer")
+                o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode[1], "perf-timer")
 
                 # CALCULATE SIMILIARITY INDEX
                 if index <= max_index_python:
@@ -676,17 +682,6 @@ def alliance_canada_testing():
 
 if __name__ == "__main__":
     args_cli = parse_args()
-    args_values = {
-        'max_dist':     [600],
-        'min_density':  [300],
-        'max_angle':    [5,7],
-        'seg_size':     [1000],
-        'path': ["enquete_od_DL_1000_traclus.txt" ],
-    }
-    rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
-                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
-    traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
-
    
     if not args_cli.mode == "all-can":
         build_python_impl()
@@ -694,7 +689,7 @@ if __name__ == "__main__":
     set_newest_rust_executable()
 
     if args_cli.mode == "visual":
-        visual_testing(traclus_args, rust_mode)
+        visual_testing()
     elif args_cli.mode == "time":
         time_testing()
     elif args_cli.mode == "multi-od":

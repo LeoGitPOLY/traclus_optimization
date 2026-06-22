@@ -2,9 +2,10 @@
 #SBATCH --job-name=traclus_unit_tests
 #SBATCH --output=logs/traclus_tests_%j.out
 #SBATCH --error=logs/traclus_tests_%j.err
-#SBATCH --time=00:30:00                 
-#SBATCH --cpus-per-task=50
-#SBATCH --mem-per-cpu=2G               
+#SBATCH --time=00:30:00
+#SBATCH --nodes=1                 
+#SBATCH --cpus-per-task=60
+#SBATCH --mem-per-cpu=250G               
 
 # Ensure a clean module environment
 module purge
