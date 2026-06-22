@@ -638,7 +638,7 @@ def alliance_canada_testing():
             
             file_name = base_file.replace("$NB$", str(size))
             args_copy['path'] = [file_name]
-            args_copy['min_density'] = [size//180]
+            args_copy['min_density'] = [size//200]
             traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
 
             print(f"\n======== Running implementations for {file_name} ===========")
