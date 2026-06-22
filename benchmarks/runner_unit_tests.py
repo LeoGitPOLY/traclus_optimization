@@ -603,7 +603,7 @@ def verify_solution_and_performance_gain():
     print(f"Average execution time for stable Rust: {tot_time_stable/nb:.6f} seconds")
     print(f"Average execution time for new Rust: {tot_time_new/nb:.6f} seconds")
 
-def aliance_canada_testing():
+def alliance_canada_testing():
     # Test with latest executable (cargo not available)
     # Test with python (smaller sample) - to get a difference from last results
     
@@ -687,8 +687,9 @@ if __name__ == "__main__":
                  {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
 
-    build_python_impl()
-    build_rust_impl()
+    if not args_cli.mode == "all-can":
+        build_python_impl()
+        build_rust_impl()
     set_newest_rust_executable()
 
     if args_cli.mode == "visual":
@@ -702,6 +703,6 @@ if __name__ == "__main__":
     elif args_cli.mode == "verify-sim":
         verify_similarity_index()
     elif args_cli.mode == "all-can":
-        aliance_canada_testing()
+        alliance_canada_testing()
 
    
