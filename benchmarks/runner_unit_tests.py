@@ -645,8 +645,8 @@ def alliance_canada_testing():
                     o_python = run_timed_once("python", traclus_args)
 
                 # TESTING ALL MODE RUST
-                o_rust_serial = run_timed_once("stable_rust", traclus_args, rust_mode[0], "logger")
-                o_rust_parallel = run_timed_once("stable_rust", traclus_args, rust_mode[1], "logger")
+                o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "logger")
+                o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode[1], "logger")
 
                 # CALCULATE SIMILIARITY INDEX
                 if index <= max_index_python:
@@ -687,9 +687,9 @@ if __name__ == "__main__":
                  {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values)
 
-    if not args_cli.mode == "all-can":
-        build_python_impl()
-        build_rust_impl()
+   
+    build_python_impl()
+    build_rust_impl()
     set_newest_rust_executable()
 
     if args_cli.mode == "visual":
