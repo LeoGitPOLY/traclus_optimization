@@ -214,5 +214,6 @@ python_impl/data/
 rust_impl/benchmarked_data/
 inputs/benchmarked_data/
 inputs/data/
+inputs/alliance_can_data/
 benchmarks/rust_versions/benchmarked_data/
 benchmarks/outputs/

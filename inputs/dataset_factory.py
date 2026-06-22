@@ -247,9 +247,11 @@ def main():
     # Base path: always points to the root of the project
     ROOT_DIR = Path(__file__).resolve().parent
     BENCHMARKS_DIR = ROOT_DIR / "benchmarked_data"
+    ALLIANCE_CAN_DIR = ROOT_DIR / "alliance_can_data"
     DATA = ROOT_DIR / "data"
 
     BENCHMARKS_DIR.mkdir(parents=True, exist_ok=True)
+    ALLIANCE_CAN_DIR.mkdir(parents=True, exist_ok=True)
     DATA.mkdir(parents=True, exist_ok=True)
     
 
@@ -309,7 +311,7 @@ def main():
 
     # Convert donnes taxi format to Traclus format
     input_file = DATA / "donnes_taxi_pour_traclus.csv"
-    filename = BENCHMARKS_DIR / "donnes_taxi_DL"
+    filename = ALLIANCE_CAN_DIR / "donnes_taxi_DL"
     list_of_lines = convert_csv_donnes_taxi_to_list(input_file)
 
     for sample_size in [2000, 5000, 8000, 11000]:

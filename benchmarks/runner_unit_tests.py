@@ -32,6 +32,8 @@ PYTHON_BENCH_DST = os.path.join(PYTHON_IMPL_DIR, "benchmarked_data")
 RUST_BENCH_DST = os.path.join(RUST_IMPL_DIR, "benchmarked_data")
 RUST_STABLE_BENCH_DST = os.path.join(RUST_STABLE_DIR, "benchmarked_data")
 
+ALLIANCE_CAN_BENCH_DST = os.path.join(ROOT_DIR, "..", "..", "alliance_can_data")
+
 newest_version_exe = "" # Will be set after building the Rust implementation
 
 if os.name == "nt":
@@ -605,6 +607,10 @@ def aliance_canada_testing():
     # Test with latest executable (cargo not available)
     # Test with python (smaller sample) - to get a difference from last results
     
+    # Overwrite the SRC_DIRECTORY with the alliance canada data
+    global BENCH_SRC
+    BENCH_SRC = ALLIANCE_CAN_BENCH_DST
+
     args_values = {
         'max_dist':     [600],
         'max_angle':    [5],
@@ -612,11 +618,11 @@ def aliance_canada_testing():
     }
     rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
-    base_file = "enquete_od_DL_$NB$_traclus.txt"
+    base_file = "donnes_taxi_DL_$NB$_traclus.txt"
     
-    start, step, n = 2000, 2000, 2
+    start, step, n = 2000, 3000, 3
     list_of_sizes = [start + i * step for i in range(n)] 
-    max_index_python = -1
+    max_index_python = 1
 
     outputs = []
     try: # Keep the benchmarking results even if an error occurs during the process
