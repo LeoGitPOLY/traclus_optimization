@@ -329,7 +329,7 @@ def run_python_impl_once(args: ArgumentsTraclus):
     return results.stdout
 
 def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
-    exe = os.path.join(RUST_IMPL_DIR, "target", "release", "rust_impl" + (".exe" if os.name == "nt" else ""))
+    exe = os.path.join(RUST_IMPL_DIR, "target", "release", "traclusdl_cli" + (".exe" if os.name == "nt" else ""))
     cmd_list = [
         exe,
         "--file", os.path.join(RUST_IMPL_DIR, args.get_path()),
@@ -632,7 +632,7 @@ def alliance_canada_testing():
             
             file_name = base_file.replace("$NB$", str(size))
             args_copy['path'] = [file_name]
-            args_copy['min_density'] = [size//3]
+            args_copy['min_density'] = [size//30]
             traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
 
             print(f"\n======== Running implementations for {file_name} ===========")
