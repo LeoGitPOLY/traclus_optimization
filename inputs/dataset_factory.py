@@ -313,8 +313,11 @@ def main():
     input_file = DATA / "donnes_taxi_pour_traclus.csv"
     filename = ALLIANCE_CAN_DIR / "donnes_taxi_DL"
     list_of_lines = convert_csv_donnes_taxi_to_list(input_file)
-
-    for sample_size in [2000, 5000, 8000, 11000]:
+    
+    start, step, n = 2000, 8000, 14
+    list_of_sizes = [start + i * step for i in range(n)] 
+    
+    for sample_size in list_of_sizes:
         sampled_lines = chose_random_lines(list_of_lines, sample_size)
         save_to_tsv(sampled_lines, f"{filename}_{sample_size}.tsv")
         save_to_traclus(sampled_lines, f"{filename}_{sample_size}_traclus.txt")

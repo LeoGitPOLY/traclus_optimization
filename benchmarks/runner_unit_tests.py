@@ -50,6 +50,13 @@ def parse_args():
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
+    parser.add_argument(
+        "-i", "--info",
+        type=str,
+        default=None,
+        required=False,
+        help="Benchmark information string"
+    )
 
     return parser.parse_args()
 
@@ -159,23 +166,32 @@ def get_newest_rust_executable(version: str = None) -> str:
     exe_path = os.path.join(RUST_STABLE_DIR, exe_files[0])
     return exe_path
 
-def save_outputs_to_excel(outputs: dict):
+def save_outputs_to_excel(outputs: dict, sheet_name: str):
     create_empty_folder("outputs")
     file_name = "outputs/benchmark_results.xlsx"
-    
+
     df = pd.DataFrame(outputs)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    sheet_name = f"run_{timestamp}"[:31]
+
+    # Excel sheet names are limited to 31 characters
+    sheet_name = sheet_name[:31]
 
     file_exists = os.path.exists(file_name)
 
-    with pd.ExcelWriter(
-        file_name,
-        engine="openpyxl",
-        mode="a" if file_exists else "w",
-        if_sheet_exists="new" if file_exists else None
-    ) as writer:
-        df.to_excel(writer, sheet_name=sheet_name, index=False)
+    if file_exists:
+        with pd.ExcelWriter(
+            file_name,
+            engine="openpyxl",
+            mode="a",
+            if_sheet_exists="replace",
+        ) as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+    else:
+        with pd.ExcelWriter(
+            file_name,
+            engine="openpyxl",
+            mode="w",
+        ) as writer:
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 # =====================================================
 #                 GET OUTPUT FILES
@@ -609,7 +625,7 @@ def verify_solution_and_performance_gain():
     print(f"Average execution time for stable Rust: {tot_time_stable/nb:.6f} seconds")
     print(f"Average execution time for new Rust: {tot_time_new/nb:.6f} seconds")
 
-def alliance_canada_testing():
+def alliance_canada_testing(info: str):
     # Test with latest executable (cargo not available)
     # Test with python (smaller sample) - to get a difference from last results
     
@@ -626,55 +642,60 @@ def alliance_canada_testing():
                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     base_file = "donnes_taxi_DL_$NB$_traclus.txt"
     
-    start, step, n = 2000, 3000, 3
+    start, step, n = 2000, 8000, 14
     list_of_sizes = [start + i * step for i in range(n)] 
-    max_index_python = 1
+    
+    time_last_run = [0.0, 0.0, 0.0] # For python, rust serial, rust parallel
+    MAX_TIME_SEC = 110 * 60 # seconds
+
+    sheet_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     outputs = []
-    try: # Keep the benchmarking results even if an error occurs during the process
-        for (index,size) in enumerate(list_of_sizes):
-            # SETTING ARGUMENTS
-            args_copy = args_values.copy()
+    for (_, size) in enumerate(list_of_sizes):
+        # SETTING ARGUMENTS
+        args_copy = args_values.copy()
+        
+        file_name = base_file.replace("$NB$", str(size))
+        args_copy['path'] = [file_name]
+        args_copy['min_density'] = [size//250]
+        traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
+
+        print(f"\n======== Running implementations for {file_name} ===========")
+
+        while True: # Iter over all combinations of arguments
+            o_python, o_rust_serial, o_rust_parallel = None, None, None
             
-            file_name = base_file.replace("$NB$", str(size))
-            args_copy['path'] = [file_name]
-            args_copy['min_density'] = [size//200]
-            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
+            # TESTING PYTHON
+            if time_last_run[0] < MAX_TIME_SEC:
+                o_python = run_timed_once("python", traclus_args)
+                time_last_run[0] = o_python["time"]
 
-            print(f"\n======== Running implementations for {file_name} ===========")
-
-            while True: # Iter over all combinations of arguments
-                o_python, o_rust_serial, o_rust_parallel = None, None, None
-                
-                # TESTING PYTHON
-                if index <= max_index_python:
-                    o_python = run_timed_once("python", traclus_args)
-
-                # TESTING ALL MODE RUST
+            # TESTING ALL MODE RUST
+            if time_last_run[1] < MAX_TIME_SEC:
                 o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "perf-timer")
+                time_last_run[1] = o_rust_serial["time"]
+            if time_last_run[2] < MAX_TIME_SEC:
                 o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode[1], "perf-timer")
+                time_last_run[2] = o_rust_parallel["time"]
 
-                # CALCULATE SIMILIARITY INDEX
-                if index <= max_index_python:
-                    similarity_index = full_output_similarity_python_vs_rust()
-                    o_python = o_python | similarity_index
-                    o_rust_serial = o_rust_serial | similarity_index
-                    o_rust_parallel = o_rust_parallel | similarity_index
-                
-                # STORE OUTPUTS
-                if o_python is not None: outputs.append(o_python)
-                if o_rust_serial is not None: outputs.append(o_rust_serial)
-                if o_rust_parallel is not None: outputs.append(o_rust_parallel)
+            # CALCULATE SIMILIARITY INDEX
+            if time_last_run[0] < MAX_TIME_SEC:
+                similarity_index = full_output_similarity_python_vs_rust()
+                o_python = o_python | similarity_index
+                o_rust_serial = o_rust_serial | similarity_index
+                o_rust_parallel = o_rust_parallel | similarity_index
+            
+            # STORE OUTPUTS
+            if o_python is not None: outputs.append(o_python | {"info": info})
+            if o_rust_serial is not None: outputs.append(o_rust_serial | {"info": info})
+            if o_rust_parallel is not None: outputs.append(o_rust_parallel | {"info": info})
 
-                if traclus_args.iter_arguments() is False:
-                    break   
+            # STORE OUTPUTS TO EXCEL FILE (avoid losing data)
+            outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
+            save_outputs_to_excel(outputs_sorted, sheet_name)
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    print("\n=== Final Time Results stored to Excel file ===")
-    outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
-    save_outputs_to_excel(outputs_sorted)
+            if traclus_args.iter_arguments() is False:
+                break   
 
 # =====================================================
 #                 MAIN
@@ -699,6 +720,6 @@ if __name__ == "__main__":
     elif args_cli.mode == "verify-sim":
         verify_similarity_index()
     elif args_cli.mode == "all-can":
-        alliance_canada_testing()
+        alliance_canada_testing(args_cli.info)
 
    
