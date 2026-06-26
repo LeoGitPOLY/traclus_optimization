@@ -314,7 +314,7 @@ def main():
     filename = ALLIANCE_CAN_DIR / "donnes_taxi_DL"
     list_of_lines = convert_csv_donnes_taxi_to_list(input_file)
     
-    start, step, n = 2000, 8000, 14
+    start, step, n = 2000, 8000, 17
     list_of_sizes = [start + i * step for i in range(n)] 
     
     for sample_size in list_of_sizes:

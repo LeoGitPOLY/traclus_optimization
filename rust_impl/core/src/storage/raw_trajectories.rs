@@ -1,6 +1,6 @@
 use super::super::geometry::trajectory::Trajectory;
 
-const BUCKET_SIZE: f64 = 0.5; // degrees, must evenly divide 360.0
+const BUCKET_SIZE: f64 = 1.0; // degrees, must evenly divide 360.0
 
 pub struct Bucket {
     pub angle_start: f64, // (inclusive)
@@ -71,7 +71,7 @@ impl RawTrajectories {
         }
     }
 
-    // Returns trajectories from all buckets within max_angle of the target angle
+    // Returns an iterator over trajectories from all buckets within max_angle
     pub fn iter_nearby_angle(&self, angle: f64) -> impl Iterator<Item = &Trajectory> {
         let idx: usize = self.angle_to_bucket(angle);
 
@@ -93,6 +93,33 @@ impl RawTrajectories {
             .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
     }
 
+    // Returns a copy of trajectories from all buckets within max_angle
+    pub fn vec_nearby_angle(&self, angle: f64) -> Vec<Trajectory> {
+        let idx: usize = self.angle_to_bucket(angle);
+
+        let u_len: usize = self.traj_buckets.len();
+        let i_len: isize = u_len as isize;
+        let wrap = |i: isize| -> usize { ((i % i_len) + i_len) as usize % u_len };
+
+        // Number of neighboring buckets required on each side to fully cover max_angle
+        let bucket_radius: isize = (self.max_angle / self.bucket_size).ceil() as isize;
+
+        // estimate size to avoid reallocations
+        let mut total: usize = 0;
+        for offset in -bucket_radius..=bucket_radius {
+            let i: usize = wrap(idx as isize + offset);
+            total += self.traj_buckets[i].trajectories.len();
+        }
+
+        let mut result: Vec<Trajectory> = Vec::with_capacity(total);
+
+        for offset in -bucket_radius..=bucket_radius {
+            let i: usize = wrap(idx as isize + offset);
+            result.extend(self.traj_buckets[i].trajectories.iter().cloned());
+        }
+
+        result
+    }
     pub fn get_num_trajectories(&self) -> usize {
         self.traj_buckets.iter().map(|b| b.trajectories.len()).sum()
     }

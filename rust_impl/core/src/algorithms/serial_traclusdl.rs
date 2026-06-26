@@ -7,6 +7,7 @@ use super::super::storage::{
 use super::base_traclusdl::TraclusAlgorithm;
 
 use crate::io::args::TraclusArgs;
+use crate::utils::events::event_singleton::emit_timed_perf;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub struct SerialTraclusDL {
@@ -37,9 +38,10 @@ impl SerialTraclusDL {
         let mut total_traj_processed: usize = 0;
         for bucket in &raw_trajectories.traj_buckets {
             // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
-            let nearby_trajs: Vec<&Trajectory> = raw_trajectories
-                .iter_nearby_angle(bucket.angle_start)
-                .collect();
+            emit_timed_perf("Copy_Nearby_Trajectories", true, None);
+            let nearby_trajs: Vec<Trajectory> =
+                raw_trajectories.vec_nearby_angle(bucket.angle_start);
+            emit_timed_perf("Copy_Nearby_Trajectories", false, None);
 
             for traj_seed in &bucket.trajectories {
                 // Cluster segments from this trajectory using nearby trajectories
@@ -72,7 +74,7 @@ impl SerialTraclusDL {
     fn individual_trajectory_clustering(
         &self,
         traj_seed: &Trajectory,
-        nearby_trajs: &Vec<&Trajectory>,
+        nearby_trajs: &[Trajectory],
     ) -> Vec<Cluster> {
         let mut cluster_group: Vec<Cluster> = Vec::new();
 

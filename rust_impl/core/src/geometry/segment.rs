@@ -1,6 +1,6 @@
 use super::point::Point;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Segment {
     pub id: usize,
     pub start: Point,

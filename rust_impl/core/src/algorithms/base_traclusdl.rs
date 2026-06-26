@@ -12,7 +12,7 @@ use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
 use std::sync::atomic::Ordering;
 
-pub const TICK_EVERY: usize = 25; // how many trajectories between progress events
+pub const TICK_EVERY: usize = 50; // how many trajectories between progress events
 
 /// Base trait for TraClus algorithm implementations.
 ///
@@ -74,7 +74,7 @@ pub trait TraclusAlgorithm {
     fn cluster_reachable_segs(
         &self,
         seed: ClusterSeed,
-        nearby_trajs: &Vec<&Trajectory>,
+        nearby_trajs: &[Trajectory],
     ) -> Option<Cluster> {
         let mut cluster: Cluster = Cluster::new(seed, Vec::new());
         let seed_ref: &ClusterSeed = &cluster.seed;
@@ -139,7 +139,7 @@ pub trait TraclusAlgorithm {
     fn expand_segment_cluster<'a>(
         &self,
         cluster: &'a mut Cluster,
-        nearby_trajs: &Vec<&Trajectory>,
+        nearby_trajs: &[Trajectory],
     ) -> &'a mut Cluster {
         while !cluster.candidates.is_empty() {
             let mut new_clusters: Vec<Cluster> = Vec::new();
@@ -186,7 +186,7 @@ pub trait TraclusAlgorithm {
     fn initial_segment_cluster(
         &self,
         seed: (&Segment, &Trajectory),
-        nearby_trajs: &Vec<&Trajectory>,
+        nearby_trajs: &[Trajectory],
     ) -> Option<Cluster> {
         let member: ClusterMember = ClusterMember::new_from_traj(seed.1, seed.0);
         let seed_member: ClusterSeed = ClusterSeed::new(member, seed.1.angle);

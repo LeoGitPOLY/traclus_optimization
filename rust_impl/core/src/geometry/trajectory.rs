@@ -1,10 +1,13 @@
 use std::f64::consts::PI;
 
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::slice::Iter;
+
 use super::input_od_line::InputODLine;
 use super::point::Point;
 use super::segment::Segment;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Trajectory {
     pub id: usize,
     pub start: Point,
@@ -113,6 +116,10 @@ impl Trajectory {
 
     pub fn segments_iter(&self) -> impl Iterator<Item = &Segment> {
         self.segments.iter()
+    }
+
+    pub fn segments_par_iter(&self) -> impl ParallelIterator<Item = &Segment> {
+        self.segments.par_iter()
     }
 
     pub fn segment(&self, index: usize) -> Option<&Segment> {
