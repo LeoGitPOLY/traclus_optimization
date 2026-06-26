@@ -47,7 +47,7 @@ impl ParallelRayonTraclusDL {
 
         for bucket in bucket_serial_iter {
             // Get a copy of nearby trajectories for this angle bucket
-            // Since this is not mutable, this is a read-only and thread-safe
+            // Since this is not mutable, this is read-only and thread-safe
             emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);

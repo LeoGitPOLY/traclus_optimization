@@ -642,9 +642,8 @@ def alliance_canada_testing(info: str):
                 {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
     base_file = "donnes_taxi_DL_$NB$_traclus.txt"
     
-    # start, step, n = 2000, 8000, 17
-    # list_of_sizes = [start + i * step for i in range(n)]
-    list_of_sizes = [82000]
+    start, step, n = 2000, 8000, 17
+    list_of_sizes = [start + i * step for i in range(n)] 
     
     time_last_run = [0.0, 0.0, 0.0] # For python, rust serial, rust parallel
     MAX_TIME_SEC = 150 * 60 # seconds
@@ -672,7 +671,7 @@ def alliance_canada_testing(info: str):
                 time_last_run[0] = o_python["time"]
 
             # TESTING ALL MODE RUST
-            if time_last_run[1] < MAX_TIME_SEC and False:
+            if time_last_run[1] < MAX_TIME_SEC:
                 o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "perf-timer")
                 time_last_run[1] = o_rust_serial["time"]
             if time_last_run[2] < MAX_TIME_SEC:
