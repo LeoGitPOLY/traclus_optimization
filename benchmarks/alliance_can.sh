@@ -20,7 +20,7 @@ echo "Job started at: $(date)"
 echo "Running on node: $SLURMD_NODENAME"
 echo "CPUs allocated: $SLURM_CPUS_PER_TASK"
 
-BENCHMARK_INFO="Node=${SLURMD_NODENAME};CPUs=${SLURM_CPUS_PER_TASK};MemPerCPU=${SLURM_MEM_PER_CPU};TimeLimit=${SLURM_TIMELIMIT};Date=$(date +%F)"
+BENCHMARK_INFO="Node=${SLURMD_NODENAME};CPUs=${SLURM_CPUS_PER_TASK};MemPerCPU=${SLURM_MEM_PER_CPU};TimeLimit=${SBATCH_TIMELIMIT};Date=$(date +%F)"
 
 mkdir -p logs
 python runner_unit_tests.py -m all-can -i "$BENCHMARK_INFO"
