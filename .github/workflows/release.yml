@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: rust_impl
     strategy:
       matrix:
         include:
@@ -72,7 +75,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target/
+            rust_impl/target/
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('Cargo.lock') }}
 
       # ── Build both crates ──────────────────────────────────────────────────
