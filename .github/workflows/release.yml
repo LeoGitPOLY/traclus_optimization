@@ -153,28 +153,28 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: traclusdl-${{ matrix.platform }}
-          path: traclusdl-${{ matrix.platform }}.zip
+          path: rust_impl/traclusdl-${{ matrix.platform }}.zip
 
       - name: Upload artifact (Linux)
         if: matrix.platform == 'linux'
         uses: actions/upload-artifact@v4
         with:
           name: traclusdl-linux
-          path: traclusdl-linux.zip
+          path: rust_impl/traclusdl-linux.zip
 
       - name: Upload artifact (Windows CLI)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.cli_binary }}
-          path: ${{ matrix.cli_binary }}
+          path: rust_impl/${{ matrix.cli_binary }}
 
       - name: Upload artifact (Windows UI)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.ui_binary }}
-          path: ${{ matrix.ui_binary }}
+          path: rust_impl/${{ matrix.ui_binary }}
 
   # ── Release ────────────────────────────────────────────────────────────────
 
