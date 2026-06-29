@@ -654,7 +654,7 @@ def alliance_canada_nb_cores(info: str):
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
 
 
-    sheet_name = 'Multi_cores'
+    sheet_name = 'Multi_cores' + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     traclus_args = ArgumentsTraclus("benchmarked_data", args_values, print_as_text=False)
 
     outputs = []
@@ -689,6 +689,6 @@ if __name__ == "__main__":
     elif args_cli.mode == "verify-sim":
         verify_similarity_index()
     elif args_cli.mode == "all-can":
-        alliance_canada_testing(args_cli.info)
+        alliance_canada_nb_cores(args_cli.info)
 
    
