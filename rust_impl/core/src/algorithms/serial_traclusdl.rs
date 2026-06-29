@@ -24,32 +24,31 @@ impl SerialTraclusDL {
     }
 
     /// Completes the serial clustering process by iterating over angle buckets
-    /// Clusters each trajectory and fills non-clustered segments
+    /// Each trajectory inside each bucket is computed
     ///
     /// # Arguments
     /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
     /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
-    /// * `emitter` - The event emitter for sending computation events
     fn complete_serial_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
     ) {
-        let mut total_traj_processed: usize = 0;
         for bucket in &raw_trajectories.traj_buckets {
-            // Get nearby trajectories for this angle bucket: contains all trajectories within angle range
+            // Get a copy of nearby trajectories for this angle bucket
             emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);
             emit_timed_perf("Copy_Nearby_Trajectories", false, None);
 
+            // Iterate over trajectories in this bucket serially
             for traj_seed in &bucket.trajectories {
-                // Cluster segments from this trajectory using nearby trajectories
                 let clusters: Vec<Cluster> =
                     self.individual_trajectory_clustering(traj_seed, &nearby_trajs);
                 clustered_trajectories.add_list_cluster(clusters);
 
-                self.tick_clustering(&mut total_traj_processed);
+                // Tick after every trajectory (count = 1)
+                self.tick_clustering(1);
 
                 // Check for stop signal to bail out early
                 if self.is_stopped() {
@@ -70,7 +69,6 @@ impl SerialTraclusDL {
     /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
     /// # Returns
     /// * A vector of clusters formed from the trajectory segments
-    #[inline]
     fn individual_trajectory_clustering(
         &self,
         traj_seed: &Trajectory,
@@ -92,29 +90,6 @@ impl SerialTraclusDL {
         }
 
         return cluster_group;
-    }
-
-    /// Creates corridors for all clustered trajectories based on the clustering results
-    /// # Arguments
-    /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
-    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
-        let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
-
-        while let Some(completed_cluster) = clustered_trajectories.pop_and_clean(&self.args) {
-            let index_corridor: usize = clustered_trajectories.corridors.len();
-            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
-            clustered_trajectories.corridors.push(corridor);
-
-            let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
-            self.tick_remove_duplicates(num_last_elements, num_current_elements);
-            num_last_elements = num_current_elements;
-
-            // Check for stop signal to bail out early
-            if self.is_stopped() {
-                return;
-            }
-        }
-        clustered_trajectories.take_non_clustered_segments();
     }
 }
 

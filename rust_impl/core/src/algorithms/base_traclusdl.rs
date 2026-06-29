@@ -1,5 +1,6 @@
 use crate::geometry::{segment::Segment, trajectory::Trajectory};
 use crate::io::args::TraclusArgs;
+use crate::objects::corridor::Corridor;
 use crate::objects::{
     cluster::Cluster,
     cluster_member::{ClusterMember, ClusterSeed},
@@ -12,13 +13,10 @@ use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
 use std::sync::atomic::Ordering;
 
-pub const TICK_EVERY: usize = 50; // how many trajectories between progress events
-
 /// Base trait for TraClus algorithm implementations.
 ///
 /// This trait defines the contract that all TraClus variants must follow,
 /// providing both required methods and overridable default implementations
-/// for the core clustering algorithm.
 pub trait TraclusAlgorithm {
     // ============================================================
     // Shared Data Accessors
@@ -32,14 +30,11 @@ pub trait TraclusAlgorithm {
     // Required Methods (Must Be Implemented by Implementations)
     // ============================================================
 
-    /// Performs DB-SCAN clustering on trajectory segments.
-    ///
-    /// This is the main method to partitions the trajectory into clusters
-    /// based constraints and then creates the appropriate corridors.
+    /// Performs DB-SCAN clustering on trajectory (segments).
+    /// This is the main method to partitions the trajectory (segments) into clusters
     /// # Arguments
     /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
     /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
-    /// * `emitter` - The event emitter for sending computation events
     /// # Returns
     /// * `true` if clustering completed successfully
     /// * `false` if clustering was stopped early due to a stop signal
@@ -62,6 +57,7 @@ pub trait TraclusAlgorithm {
     /// 4. **Density constraint**: Ensures minimum cluster weight (min_density)
     ///
     /// # Time Complexity
+    /// TODO: VERIFY THIS!
     /// O(n × d / bucket_size) where n is nearby trajectories, d is avg trajectory length
     ///
     /// # Arguments
@@ -127,6 +123,7 @@ pub trait TraclusAlgorithm {
     /// The process continues until no new candidates are found.
     ///
     /// # Time Complexity
+    /// TODO: VERIFY THIS!
     /// O(m' × cluster_reachable_segs) = O(m' × n × d / bucket_size)
     /// where m' is the number of members in the final cluster
     ///
@@ -174,6 +171,7 @@ pub trait TraclusAlgorithm {
     /// for a given seed without performing expansion.
     ///
     /// # Time Complexity
+    /// TODO: VERIFY THIS!
     /// O(n × d / bucket_size)
     ///
     /// # Arguments
@@ -210,6 +208,30 @@ pub trait TraclusAlgorithm {
         }
     }
 
+    /// Creates corridors for all clustered trajectories based on the clustering results
+    ///
+    /// # Arguments
+    /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
+    fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
+        let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
+
+        while let Some(completed_cluster) = clustered_trajectories.pop_and_clean(&self.args()) {
+            let index_corridor: usize = clustered_trajectories.corridors.len();
+            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
+            clustered_trajectories.corridors.push(corridor);
+
+            let num_current_elements: usize = clustered_trajectories.get_size_priority_queue();
+            self.tick_remove_duplicates(num_last_elements, num_current_elements);
+            num_last_elements = num_current_elements;
+
+            // Check for stop signal to bail out early
+            if self.is_stopped() {
+                return;
+            }
+        }
+        clustered_trajectories.take_non_clustered_segments();
+    }
+
     // ============================================================
     // Emitter Helpers (For Emitting Progress Events During Clustering)
     // ============================================================
@@ -222,14 +244,11 @@ pub trait TraclusAlgorithm {
         false
     }
 
-    fn tick_clustering(&self, count: &mut usize) {
-        if *count % TICK_EVERY == 0 {
-            emit(AppEvent::ComputationProgress {
-                computation_type: ComputationType::Clustering,
-                increment_progress: TICK_EVERY,
-            });
-        }
-        *count += 1;
+    fn tick_clustering(&self, count: usize) {
+        emit(AppEvent::ComputationProgress {
+            computation_type: ComputationType::Clustering,
+            increment_progress: count,
+        });
     }
 
     fn tick_remove_duplicates(&self, num_last_elements: usize, num_current_elements: usize) {

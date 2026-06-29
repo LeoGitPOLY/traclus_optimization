@@ -46,7 +46,7 @@ def parse_args():
 
     parser.add_argument(
         "-m", "--mode",
-        choices=["visual", "time", "multi-od", "verify", "verify-sim", "all-can"],
+        choices=["visual", "time", "verify", "verify-sim", "all-can"],
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
@@ -362,6 +362,8 @@ def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: 
     return results.stdout
     
 def run_stable_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
+    # For version below V1.0.2; interface mode perf
+    
     cmd_list = [
         newest_version_exe,
         "--file", os.path.join(RUST_STABLE_DIR, args.get_path()),
@@ -372,7 +374,6 @@ def run_stable_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", inte
         "--mode", mode,
         "--interface", interface
     ]
-    
     results = subprocess.run(cmd_list, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return results.stdout
 
@@ -393,7 +394,6 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NON
 
     perf = get_perf_info_from_stout(stdout)
     information = file_information(impl, mode)
-    print(stdout)  # Print the raw output for debugging purposes
 
     print(f"\n=> {impl.upper()} implementation ({mode['name']}) ===")
     print(f"\tArgument Set {args.get_args()}")
@@ -479,64 +479,6 @@ def time_testing():
     for output in outputs:
         print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f}")
 
-def run_averaged_multi_OD():
-    args_values = {
-        'max_dist':     [600],
-        'max_angle':    [5,7],
-        'seg_size':     [3000],
-    }
-    rust_mode = [{'cmd': 'serial', 'name': 'Serial'},
-                {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}]
-    
-    base_file = "enquete_od_DL_$NB$_traclus.txt"
-    list_of_sizes = [2000, 4000, 6000, 8000, 10000, 12000, 
-                     14000, 16000, 18000, 20000]
-    max_index_python = -1
-
-    outputs_time = []
-    outputs_similarity = []
-
-    try: # Keep the benchmarking results even if an error occurs during the process
-        for (index,size) in enumerate(list_of_sizes):
-            file_name = base_file.replace("$NB$", str(size))
-            
-            args_copy = args_values.copy()
-            args_copy['path'] = [file_name]
-            args_copy['min_density'] = [size//3]
-            traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
-
-            print(f"\n======== Running implementations for {file_name} ===========")
-
-            # TESTING PYTHON
-            if index <= max_index_python:
-                outputs_time += run_timed_all("python", traclus_args)
-                traclus_args.reset_arguments()
-
-            # TESTING ALL MODE RUST
-            for  mode in rust_mode:
-                outputs_time += run_timed_all("rust", traclus_args, mode)
-                traclus_args.reset_arguments()
-
-            # Calculate similiarity index
-            if index <= max_index_python:
-                similarity_index = full_output_similarity_python_vs_rust()
-                outputs_similarity.append({"size":size, **similarity_index})
-  
-            
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    print("\n=== Final Time Results (sorted by implementation and mode) ===")
-    outputs_sorted = sorted(outputs_time, key=lambda x: (x['impl'], x['mode']))
-    for output in outputs_sorted:
-        print(f"{output['impl']};{output['mode']};{output['args']};{output['time']:.6f};"
-              f"{output['number_of_corridors']};{output['number_of_segments']};{output['number_of_non_clustered_segments']}".replace(".", ","))
-
-    print("\n=== Final Similarity Index Results (sorted by size) ===")
-    for output in outputs_similarity:
-        print(f"{output['size']};{output['similarity_index_1']:.6f};{output['similarity_index_2']:.6f}".replace(".", ","))
-
 def verify_similarity_index():
     args_order_verify = {
         'max_dist':     [600],
@@ -592,18 +534,20 @@ def verify_similarity_index():
 def verify_solution_and_performance_gain():
     args_small_samples = {
         'max_dist':     [600, 800, 1000] * 2,
-        'min_density':  [1500],
+        'min_density':  [150],
         'max_angle':    [5, 4, 3] * 2,
         'seg_size':     [1000, 900, 800] * 2,
-        'path': ["enquete_od_DL_4000_traclus.txt" ],
+        'path': ["enquete_od_DL_2000_traclus.txt" ],
     }
     args_big_samples = {
         'max_dist':     [600] * 2,
         'min_density':  [2666],
         'max_angle':    [5] * 2,
         'seg_size':     [3000] * 2,
-        'path': ["enquete_od_DL_9000_traclus.txt" ],
+        'path': ["donnes_taxi_DL_98000_traclus.txt" ],
     }
+
+    set_newest_rust_executable("V1.0.1")
 
     args = ArgumentsTraclus("benchmarked_data", args_small_samples)
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
@@ -626,9 +570,6 @@ def verify_solution_and_performance_gain():
     print(f"Average execution time for new Rust: {tot_time_new/nb:.6f} seconds")
 
 def alliance_canada_testing(info: str):
-    # Test with latest executable (cargo not available)
-    # Test with python (smaller sample) - to get a difference from last results
-    
     # Overwrite the SRC_DIRECTORY with the alliance canada data
     global BENCH_SRC
     BENCH_SRC = ALLIANCE_CAN_BENCH_DST
@@ -698,6 +639,36 @@ def alliance_canada_testing(info: str):
             if traclus_args.iter_arguments() is False:
                 break   
 
+def alliance_canada_nb_cores(info: str):
+    # Overwrite the SRC_DIRECTORY with the alliance canada data
+    global BENCH_SRC
+    BENCH_SRC = ALLIANCE_CAN_BENCH_DST
+
+    args_values = {
+        'max_dist':     [600],
+        'max_angle':    [5,7],
+        'min_density':  [520],
+        'seg_size':     [2000],
+        'path': ["donnes_taxi_DL_130000_traclus.txt"],
+    }
+    rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
+
+
+    sheet_name = 'Multi_cores'
+    traclus_args = ArgumentsTraclus("benchmarked_data", args_values, print_as_text=False)
+
+    outputs = []
+    while True: # Iter over all combinations of arguments
+        o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode, "perf-timer")
+        if o_rust_parallel is not None: outputs.append(o_rust_parallel | {"info": info})
+
+         # STORE OUTPUTS TO EXCEL FILE (avoid losing data)
+        outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
+        save_outputs_to_excel(outputs_sorted, sheet_name)
+
+        if traclus_args.iter_arguments() is False:
+            break   
+
 # =====================================================
 #                 MAIN
 # =====================================================
@@ -713,8 +684,6 @@ if __name__ == "__main__":
         visual_testing()
     elif args_cli.mode == "time":
         time_testing()
-    elif args_cli.mode == "multi-od":
-        run_averaged_multi_OD()
     elif args_cli.mode == "verify":
         verify_solution_and_performance_gain()
     elif args_cli.mode == "verify-sim":
