@@ -171,6 +171,7 @@ def convert_csv_donnes_taxi_to_list(input_file) -> list[list]:
             list_of_lines.append([id_val, weight, start_point, end_point])
     
     return list_of_lines
+
 def chose_random_lines(list_lines: list[list], num_lines: int) -> list[list]:
     """
     Choose a random subset of lines from the given list.
@@ -315,7 +316,7 @@ def main():
     list_of_lines = convert_csv_donnes_taxi_to_list(input_file)
     
     start, step, n = 2000, 8000, 17
-    list_of_sizes = [start + i * step for i in range(n)] 
+    list_of_sizes = [start + i * step for i in range(n)]
     
     for sample_size in list_of_sizes:
         sampled_lines = chose_random_lines(list_of_lines, sample_size)
