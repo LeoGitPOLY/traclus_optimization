@@ -1,5 +1,5 @@
 [package]
-name = "rust_ui"
+name = "traclusdl_ui"
 version = "0.1.0"
 edition = "2024"
 

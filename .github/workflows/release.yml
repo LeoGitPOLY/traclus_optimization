@@ -13,17 +13,33 @@ jobs:
     strategy:
       matrix:
         include:
+          # ── Windows ────────────────────────────────────────────────────────
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary_name: rust_impl.exe
+            platform: windows
+            cli_binary: traclusdl_cli.exe
+            ui_binary: traclusdl_ui.exe
 
+          # ── macOS Intel ────────────────────────────────────────────────────
           - os: macos-latest
             target: x86_64-apple-darwin
-            binary_name: rust_impl-mac-intel
+            platform: mac-intel
+            cli_binary: traclusdl_cli-mac-intel
+            ui_binary: traclusdl_ui-mac-intel
 
+          # ── macOS Apple Silicon ────────────────────────────────────────────
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary_name: rust_impl-mac-arm
+            platform: mac-arm
+            cli_binary: traclusdl_cli-mac-arm
+            ui_binary: traclusdl_ui-mac-arm
+
+          # ── Linux x86_64 ───────────────────────────────────────────────────
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            platform: linux
+            cli_binary: traclusdl_cli-linux
+            ui_binary: traclusdl_ui-linux
 
     runs-on: ${{ matrix.os }}
 
@@ -36,33 +52,62 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      # eframe on Linux requires several system GUI libraries
+      - name: Install Linux GUI dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libssl-dev \
+            libglib2.0-dev
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            rust_impl/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('rust_impl/Cargo.lock') }}
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('Cargo.lock') }}
 
-      - name: Build binary
-        run: cargo build --release --target ${{ matrix.target }} --manifest-path rust_impl/Cargo.toml
+      # ── Build both crates ──────────────────────────────────────────────────
 
-      - name: Prepare binary (Unix)
+      - name: Build CLI
+        run: cargo build --release --target ${{ matrix.target }} --package traclusdl_cli
+
+      - name: Build UI
+        run: cargo build --release --target ${{ matrix.target }} --package traclusdl_ui
+
+      # ── Stage binaries (Unix) ──────────────────────────────────────────────
+
+      - name: Stage binaries (Unix)
         if: runner.os != 'Windows'
-        run: cp rust_impl/target/${{ matrix.target }}/release/rust_impl ./${{ matrix.binary_name }}
+        run: |
+          cp target/${{ matrix.target }}/release/traclusdl_cli ./${{ matrix.cli_binary }}
+          cp target/${{ matrix.target }}/release/traclusdl_ui  ./${{ matrix.ui_binary }}
 
-      - name: Prepare binary (Windows)
+      - name: Stage binaries (Windows)
         if: runner.os == 'Windows'
-        run: cp rust_impl/target/${{ matrix.target }}/release/rust_impl.exe ./${{ matrix.binary_name }}
+        shell: pwsh
+        run: |
+          cp target/${{ matrix.target }}/release/traclusdl_cli.exe ./${{ matrix.cli_binary }}
+          cp target/${{ matrix.target }}/release/traclusdl_ui.exe  ./${{ matrix.ui_binary }}
 
-      - name: Create .app bundle (macOS only)
+      # ── macOS: wrap UI in a .app bundle, zip both ──────────────────────────
+
+      - name: Bundle and zip (macOS)
         if: runner.os == 'macOS'
         run: |
-          APP="rust_impl.app"
+          # ── UI .app bundle ──────────────────────────────────────────────
+          APP="TraClus-DL.app"
           mkdir -p "$APP/Contents/MacOS"
-          cp ./${{ matrix.binary_name }} "$APP/Contents/MacOS/rust_impl"
-          chmod +x "$APP/Contents/MacOS/rust_impl"
+          cp ./${{ matrix.ui_binary }} "$APP/Contents/MacOS/traclusdl_ui"
+          chmod +x "$APP/Contents/MacOS/traclusdl_ui"
 
           cat > "$APP/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -71,34 +116,64 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>CFBundleName</key>
-            <string>rust_impl</string>
+            <string>TraClus-DL</string>
             <key>CFBundleExecutable</key>
-            <string>rust_impl</string>
+            <string>traclusdl_ui</string>
             <key>CFBundleIdentifier</key>
-            <string>com.yourname.rust-impl</string>
+            <string>com.traclusdl.app</string>
             <key>CFBundleVersion</key>
-            <string>1.0.0</string>
+            <string>${{ github.ref_name }}</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
           </dict>
           </plist>
           EOF
 
-          zip -r ${{ matrix.binary_name }}.zip "$APP"
+          # ── Zip CLI + UI bundle together ────────────────────────────────
+          zip -r traclusdl-${{ matrix.platform }}.zip \
+            ./${{ matrix.cli_binary }} \
+            "$APP"
+
+      # ── Linux: zip both binaries together ─────────────────────────────────
+
+      - name: Zip binaries (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          zip traclusdl-linux.zip \
+            ./${{ matrix.cli_binary }} \
+            ./${{ matrix.ui_binary }}
+
+      # ── Upload artifacts ───────────────────────────────────────────────────
 
       - name: Upload artifact (macOS)
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.binary_name }}.zip
-          path: ${{ matrix.binary_name }}.zip
+          name: traclusdl-${{ matrix.platform }}
+          path: traclusdl-${{ matrix.platform }}.zip
 
-      - name: Upload artifact (Windows)
+      - name: Upload artifact (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: traclusdl-linux
+          path: traclusdl-linux.zip
+
+      - name: Upload artifact (Windows CLI)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.binary_name }}
-          path: ${{ matrix.binary_name }}
+          name: ${{ matrix.cli_binary }}
+          path: ${{ matrix.cli_binary }}
+
+      - name: Upload artifact (Windows UI)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.ui_binary }}
+          path: ${{ matrix.ui_binary }}
+
+  # ── Release ────────────────────────────────────────────────────────────────
 
   release:
     needs: build
@@ -117,11 +192,13 @@ jobs:
           name: Release ${{ github.ref_name }}
           body: |
             ## Downloads
-            | Platform | File |
-            |---|---|
-            | Windows (64-bit) | `rust_impl.exe` |
-            | macOS Intel (zip) | `rust_impl-mac-intel.zip` |
-            | macOS Apple Silicon M1/M2/M3 (zip) | `rust_impl-mac-arm.zip` |
+
+            | Platform | CLI | UI |
+            |---|---|---|
+            | Windows (64-bit) | `traclusdl_cli.exe` | `traclusdl_ui.exe` |
+            | macOS Intel | `traclusdl-mac-intel.zip` (CLI + .app) | ← same zip |
+            | macOS Apple Silicon M1/M2/M3 | `traclusdl-mac-arm.zip` (CLI + .app) | ← same zip |
+            | Linux x86_64 | `traclusdl-linux.zip` (CLI + UI) | ← same zip |
           files: artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
