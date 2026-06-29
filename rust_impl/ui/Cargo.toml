@@ -1,0 +1,10 @@
+[package]
+name = "traclusdl_ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+traclusdl_core = {path = "../core"}
+clap = { version = "4.5.57", features = ["derive"] }
+eframe = "0.27"
+rfd = "0.14"   # file picker

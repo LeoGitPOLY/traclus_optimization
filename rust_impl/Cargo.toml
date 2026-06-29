@@ -1,11 +1,3 @@
-[package]
-name = "rust_impl"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-clap = { version = "4.5.57", features = ["derive"] }
-rayon = "1.10"
-eframe = "0.27"
-rfd = "0.14"   # file picker
-rustc-hash = "1"
+[workspace]
+members = ["core", "ui", "cli"]
+resolver = "2"
