@@ -8,7 +8,7 @@ from turtle import pd
 from datetime import datetime
 import pandas as pd
 from openpyxl import load_workbook
-from arguments_traclus import ArgumentsTraclus
+from arguments_traclus import ArgumentsBenchmark, ArgumentsTraclus
 from measurements import calculate_exact_output_information, calculate_file_information, calculate_similarity_index
 
 # =====================================================
@@ -46,14 +46,14 @@ def parse_args():
 
     parser.add_argument(
         "-m", "--mode",
-        choices=["visual", "time", "verify", "verify-sim", "all-can"],
+        choices=["visual", "time", "verify", "verify-sim", "all-can-t", "all-can-od"],
         default = "time",
         help="Run mode [visual, time, default: time]"
     )
     parser.add_argument(
         "-i", "--info",
         type=str,
-        default=None,
+        default="",
         required=False,
         help="Benchmark information string"
     )
@@ -345,7 +345,7 @@ def run_python_impl_once(args: ArgumentsTraclus):
     results = subprocess.run(cmd, capture_output=True, text=True)
     return results.stdout
 
-def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
+def run_rust_impl_once(args: ArgumentsTraclus, bench: ArgumentsBenchmark, mode: str = "serial"):
     exe = os.path.join(RUST_IMPL_DIR, "target", "release", "traclusdl_cli" + (".exe" if os.name == "nt" else ""))
     cmd_list = [
         exe,
@@ -355,15 +355,14 @@ def run_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: 
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
         "--mode", mode,
-        "--interface", interface
+        "--interface", bench.interface,
+        "--max_threads", str(bench.nb_cores)
     ]   
     
     results = subprocess.run(cmd_list, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return results.stdout
     
-def run_stable_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", interface: str = "performance"):
-    # For version below V1.0.2; interface mode perf
-    
+def run_stable_rust_impl_once(args: ArgumentsTraclus, bench: ArgumentsBenchmark, mode: str = "serial"):
     cmd_list = [
         newest_version_exe,
         "--file", os.path.join(RUST_STABLE_DIR, args.get_path()),
@@ -372,12 +371,16 @@ def run_stable_rust_impl_once(args: ArgumentsTraclus, mode: str = "serial", inte
         "--max_angle", args.get_args_value('max_angle'),
         "--segment_size", args.get_args_value('seg_size'),
         "--mode", mode,
-        "--interface", interface
+        "--interface", bench.interface
     ]
+    print(newest_version_exe[-5:-4])
+    if int(newest_version_exe[-5:-4]) > 2:
+        cmd_list += ["--max_threads", str(bench.nb_cores)]
+
     results = subprocess.run(cmd_list, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return results.stdout
 
-def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NONE"}, interface: str = "performance") -> dict:
+def run_timed_once(impl: str, args: ArgumentsTraclus, bench: ArgumentsBenchmark, mode: dict = {"name": "NONE"}) -> dict:
     remove_and_copy_input_file(args, impl)
     run_start = perf_counter()
     
@@ -385,15 +388,16 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, mode: dict = {"name": "NON
     if impl == "python":
         stdout = run_python_impl_once(args)
     elif impl == "rust":
-        stdout = run_rust_impl_once(args, mode['cmd'], interface)
+        stdout = run_rust_impl_once(args, bench, mode['cmd'])
     elif impl == "stable_rust":
-        stdout = run_stable_rust_impl_once(args, mode['cmd'], interface)
+        stdout = run_stable_rust_impl_once(args, bench, mode['cmd'])
 
     run_end = perf_counter()
     time = run_end - run_start
 
     perf = get_perf_info_from_stout(stdout)
     information = file_information(impl, mode)
+    print(stdout)
 
     print(f"\n=> {impl.upper()} implementation ({mode['name']}) ===")
     print(f"\tArgument Set {args.get_args()}")
@@ -569,7 +573,7 @@ def verify_solution_and_performance_gain():
     print(f"Average execution time for stable Rust: {tot_time_stable/nb:.6f} seconds")
     print(f"Average execution time for new Rust: {tot_time_new/nb:.6f} seconds")
 
-def alliance_canada_testing(info: str):
+def alliance_canada_over_OD(info: str):
     # Overwrite the SRC_DIRECTORY with the alliance canada data
     global BENCH_SRC
     BENCH_SRC = ALLIANCE_CAN_BENCH_DST
@@ -585,10 +589,10 @@ def alliance_canada_testing(info: str):
     
     # start, step, n = 2000, 8000, 17
     # list_of_sizes = [start + i * step for i in range(n)] 
-    list_of_sizes = [200000, 250000, 300000] 
+    list_of_sizes = [10000, 400000, 450000, 500000, 550000] 
     
     time_last_run = [0.0, 0.0, 0.0] # For python, rust serial, rust parallel
-    MAX_TIME_SEC = 1500 * 60 # seconds
+    MAX_TIME_SEC = 5 * 60 * 60 # seconds
 
     sheet_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -601,6 +605,7 @@ def alliance_canada_testing(info: str):
         args_copy['path'] = [file_name]
         args_copy['min_density'] = [size//250]
         traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
+        bench_args = ArgumentsBenchmark(interface="perf-timer", nb_cores=200)
 
         print(f"\n======== Running implementations for {file_name} ===========")
 
@@ -614,10 +619,10 @@ def alliance_canada_testing(info: str):
 
             # TESTING ALL MODE RUST
             if time_last_run[1] < MAX_TIME_SEC and False:
-                o_rust_serial = run_timed_once("rust", traclus_args, rust_mode[0], "perf-timer")
+                o_rust_serial = run_timed_once("rust", traclus_args, bench_args, rust_mode[0])
                 time_last_run[1] = o_rust_serial["time"]
             if time_last_run[2] < MAX_TIME_SEC:
-                o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode[1], "perf-timer")
+                o_rust_parallel = run_timed_once("rust", traclus_args, bench_args, rust_mode[1])
                 time_last_run[2] = o_rust_parallel["time"]
 
             # CALCULATE SIMILIARITY INDEX
@@ -639,7 +644,7 @@ def alliance_canada_testing(info: str):
             if traclus_args.iter_arguments() is False:
                 break   
 
-def alliance_canada_nb_cores(info: str):
+def alliance_canada_over_threads(info: str):
     # Overwrite the SRC_DIRECTORY with the alliance canada data
     global BENCH_SRC
     BENCH_SRC = ALLIANCE_CAN_BENCH_DST
@@ -652,22 +657,31 @@ def alliance_canada_nb_cores(info: str):
         'path': ["donnes_taxi_DL_130000_traclus.txt"],
     }
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
+    sheet_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
 
-
-    sheet_name = 'Multi_cores' + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    traclus_args = ArgumentsTraclus("benchmarked_data", args_values, print_as_text=False)
-
+    start, step, n = 1, 10, 19
+    list_of_max_threads = [start + i * step for i in range(n)] 
+    
     outputs = []
-    while True: # Iter over all combinations of arguments
-        o_rust_parallel = run_timed_once("rust", traclus_args, rust_mode, "perf-timer")
-        if o_rust_parallel is not None: outputs.append(o_rust_parallel | {"info": info})
+    for (_, max_threads) in enumerate(list_of_max_threads):
+        # SETTING ARGUMENTS
+        args_copy = args_values.copy()
+        bench_args = ArgumentsBenchmark(interface="perf-timer", nb_cores=max_threads)
+        traclus_args = ArgumentsTraclus("benchmarked_data", args_copy, print_as_text=False)
+        
+        while True: # Iter over all combinations of arguments
+            o_rust_parallel = run_timed_once("rust", traclus_args, bench_args, rust_mode)
+            info_and_threads = info + f";max_threads={max_threads}"
+            outputs.append(o_rust_parallel | {"info": info_and_threads})
 
-         # STORE OUTPUTS TO EXCEL FILE (avoid losing data)
+
+            if traclus_args.iter_arguments() is False:
+                break   
+
+        # STORE OUTPUTS TO EXCEL FILE (avoid losing data)
         outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
         save_outputs_to_excel(outputs_sorted, sheet_name)
-
-        if traclus_args.iter_arguments() is False:
-            break   
 
 # =====================================================
 #                 MAIN
@@ -688,7 +702,9 @@ if __name__ == "__main__":
         verify_solution_and_performance_gain()
     elif args_cli.mode == "verify-sim":
         verify_similarity_index()
-    elif args_cli.mode == "all-can":
-        alliance_canada_nb_cores(args_cli.info)
+    elif args_cli.mode == "all-can-t":
+        alliance_canada_over_threads(args_cli.info)
+    elif args_cli.mode == "all-can-od":
+        alliance_canada_over_OD(args_cli.info)
 
    

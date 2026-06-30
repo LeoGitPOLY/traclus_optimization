@@ -126,6 +126,17 @@ pub struct TraclusArgs {
     )]
     pub segment_size: f64,
 
+    #[arg(short = 't', long = "max_threads", default_value_t = get_param_configs().max_threads.default, value_parser = |v: &str| {
+        let cfg = get_param_configs().max_threads;
+        let val: u32 = v.parse().map_err(|_| String::from("must be a number"))?;
+        if val < cfg.min || val > cfg.max {
+            Err(format!("max_threads must be in range {}..={}", cfg.min, cfg.max))
+        } else {
+            Ok(val)
+        }
+    })]
+    pub max_threads: u32,
+
     #[arg(short = 'm', long = "mode",      value_enum, default_value_t = default_mode())]
     pub mode: ExecutionMode,
 
@@ -142,6 +153,7 @@ impl Default for TraclusArgs {
             min_density: cfg.min_density.default,
             max_angle: cfg.max_angle.default,
             segment_size: cfg.segment_size.default,
+            max_threads: cfg.max_threads.default,
             mode: default_mode(),
             interface_mode: default_interface_mode(),
         }

@@ -1,6 +1,5 @@
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
-use super::super::objects::corridor::Corridor;
 use super::super::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };

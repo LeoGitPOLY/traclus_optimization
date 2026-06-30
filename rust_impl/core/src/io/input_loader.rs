@@ -21,19 +21,25 @@ fn is_header(line: &str) -> bool {
         .any(|field| field.trim().parse::<f64>().is_err())
 }
 
-/// Detects whether the line uses tabs or commas as separator.
+/// Detects whether the line uses tabs, commas, or semicolons as separator.
 fn detect_separator(line: &str) -> char {
-    if line.contains('\t') { '\t' } else { ',' }
+    if line.contains('\t') {
+        '\t'
+    } else if line.contains(';') {
+        ';'
+    } else {
+        ','
+    }
 }
 
 /// Parses a line into an InputODLine.
 ///
-/// Supported formats (tab or comma separated):
+/// Supported formats (tab, comma, or semicolon separated):
 ///   With name:    name  weight  x_start  y_start  x_end  y_end
 ///   Without name: weight  x_start  y_start  x_end  y_end
 #[inline]
 fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
-    let sep = detect_separator(line);
+    let sep: char = detect_separator(line);
     let parts: Vec<&str> = line.split(sep).map(|p| p.trim()).collect();
 
     let offset = match parts.len() {

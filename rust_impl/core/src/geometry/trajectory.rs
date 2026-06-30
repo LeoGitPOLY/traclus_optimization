@@ -1,7 +1,6 @@
 use std::f64::consts::PI;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rayon::slice::Iter;
 
 use super::input_od_line::InputODLine;
 use super::point::Point;

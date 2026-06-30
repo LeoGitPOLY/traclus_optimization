@@ -105,4 +105,8 @@ class ArgumentsTraclus:
             return values
         return values + [values[-1]] * (target_len - len(values))
 
-
+class ArgumentsBenchmark:
+    def __init__(self, interface: str = "performance", nb_cores: int = 1000):
+        self.interface = interface
+        self.nb_cores = nb_cores
+    

@@ -122,14 +122,16 @@ impl TraclusDLCore {
         }
 
         let computation: usize = available.saturating_sub(reserved).max(1);
+        let threads_to_use: usize = args.max_threads.min(computation as u32) as usize;
+
         rayon::ThreadPoolBuilder::new()
-            .num_threads(computation)
+            .num_threads(threads_to_use)
             .build_global()
             .expect("Failed to build Rayon thread pool");
 
         println!(
             "Available CPUs: {}, reserved for UI/Logger: {}, used for computation: {}",
-            available, reserved, computation
+            available, reserved, threads_to_use
         );
     }
 
