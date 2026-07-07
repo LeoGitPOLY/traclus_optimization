@@ -589,7 +589,7 @@ def alliance_canada_over_OD(info: str):
     
     # start, step, n = 2000, 8000, 17
     # list_of_sizes = [start + i * step for i in range(n)] 
-    list_of_sizes = [10000, 400000, 450000, 500000, 550000] 
+    list_of_sizes = [350000, 400000, 450000, 500000, 550000] 
     
     time_last_run = [0.0, 0.0, 0.0] # For python, rust serial, rust parallel
     MAX_TIME_SEC = 5 * 60 * 60 # seconds
