@@ -397,7 +397,6 @@ def run_timed_once(impl: str, args: ArgumentsTraclus, bench: ArgumentsBenchmark,
 
     perf = get_perf_info_from_stout(stdout)
     information = file_information(impl, mode)
-    print(stdout)
 
     print(f"\n=> {impl.upper()} implementation ({mode['name']}) ===")
     print(f"\tArgument Set {args.get_args()}")
@@ -543,24 +542,24 @@ def verify_solution_and_performance_gain():
         'seg_size':     [1000, 900, 800] * 2,
         'path': ["enquete_od_DL_2000_traclus.txt" ],
     }
+    # Around 40 secondes
     args_big_samples = {
         'max_dist':     [600] * 2,
-        'min_density':  [2666],
-        'max_angle':    [5] * 2,
-        'seg_size':     [3000] * 2,
-        'path': ["donnes_taxi_DL_98000_traclus.txt" ],
+        'min_density':  [90],
+        'max_angle':    [5.5],
+        'seg_size':     [1500],
+        'path': ["donnes_taxi_DL_42000_traclus.txt" ],
     }
 
-    set_newest_rust_executable("V1.0.1")
-
-    args = ArgumentsTraclus("benchmarked_data", args_small_samples)
+    args = ArgumentsTraclus("benchmarked_data", args_big_samples)
+    args_bench = ArgumentsBenchmark()
     rust_mode = {'cmd': 'parallel-rayon', 'name': 'ParallelRayon'}
 
     nb, tot_time_stable, tot_time_new = 0, 0, 0
     while True:
-        output_rust_new = run_timed_once("rust", args, rust_mode)
+        output_rust_new = run_timed_once("rust", args, args_bench, rust_mode)
         tot_time_new += output_rust_new["time"]
-        output_rust_stable = run_timed_once("stable_rust", args, rust_mode)
+        output_rust_stable = run_timed_once("stable_rust", args, args_bench, rust_mode)
         tot_time_stable += output_rust_stable["time"]
 
         full_output_similarity_rust()

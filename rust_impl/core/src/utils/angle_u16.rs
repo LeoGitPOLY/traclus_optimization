@@ -19,7 +19,7 @@ impl AngleU16 {
         Self(normalized as u16)
     }
 
-    pub fn form_u16(angle_deg: u16) -> Self {
+    pub fn from_u16(angle_deg: u16) -> Self {
         let normalized: i64 = (angle_deg as i64).rem_euclid(FULL_CIRCLE as i64);
         Self(normalized as u16)
     }

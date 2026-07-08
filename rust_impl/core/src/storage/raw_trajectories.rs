@@ -2,7 +2,7 @@ use crate::utils::angle_u16::{AngleU16, FULL_CIRCLE};
 
 use super::super::geometry::trajectory::Trajectory;
 
-const BUCKET_SIZE: f64 = 2.5; // degrees, must evenly divide 360.0
+const BUCKET_SIZE: f64 = 1.0; // degrees, must evenly divide 360.0
 
 pub struct Bucket {
     pub angle_start: AngleU16, // inclusive
@@ -45,8 +45,8 @@ impl RawTrajectories {
             end_raw = end_raw.min(FULL_CIRCLE);
 
             buckets.push(Bucket {
-                angle_start: AngleU16::form_u16(start_raw),
-                angle_end: AngleU16::form_u16(end_raw),
+                angle_start: AngleU16::from_u16(start_raw),
+                angle_end: AngleU16::from_u16(end_raw),
                 trajectories: Vec::new(),
             });
         }
