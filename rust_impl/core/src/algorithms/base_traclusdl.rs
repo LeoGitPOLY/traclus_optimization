@@ -83,9 +83,8 @@ pub trait TraclusAlgorithm {
             }
 
             // Constraint 2: Check angle difference
-            let angle_diff: f64 = (seed_ref.angle - nearby_traj.angle).abs();
-            let min_angle_diff: f64 = angle_diff.min(360.0 - angle_diff);
-            if min_angle_diff > self.args().max_angle + 1e-9 {
+            let angle_diff: u16 = seed_ref.angle.min_diff(nearby_traj.angle);
+            if angle_diff > self.args().max_angle.raw() {
                 continue;
             }
 

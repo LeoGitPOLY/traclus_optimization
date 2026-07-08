@@ -126,7 +126,7 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
 }
 
 pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
-    let content = match read_file(&args.file) {
+    let content: String = match read_file(&args.file) {
         Ok(c) => c,
         Err(err) => {
             emit_error(AppError::IoError(format!(
@@ -140,7 +140,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
     let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
     let mut number_point_lines: i32 = 0;
     for (index, line) in content.lines().enumerate() {
-        let line = line.trim();
+        let line: &str = line.trim();
 
         if line.is_empty() {
             continue;
@@ -150,7 +150,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
             continue;
         }
 
-        let od_line = match parse_line_to_od(line, index + 1) {
+        let od_line: InputODLine = match parse_line_to_od(line, index + 1) {
             Ok(od) => od,
             Err(err) => {
                 emit_error(AppError::IoError(format!("{}", err)));

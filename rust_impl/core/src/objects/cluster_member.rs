@@ -1,4 +1,5 @@
 use super::super::geometry::{point::Point, segment::Segment, trajectory::Trajectory};
+use crate::utils::angle_u16::AngleU16;
 
 pub struct ClusterMember {
     pub traj_id: usize,
@@ -50,27 +51,22 @@ impl ClusterMember {
         }
     }
 
-    pub fn angle(&self) -> f64 {
+    pub fn display_angle(&self) -> String {
         let delta_x: f64 = self.center.x - self.start.x;
         let delta_y: f64 = self.center.y - self.start.y;
-        let mut angle: f64 = delta_y.atan2(delta_x).to_degrees();
-        angle = (angle * 100.0).round() / 100.0;
+        let angle: f64 = delta_y.atan2(delta_x).to_degrees();
 
-        if angle < 0.0 {
-            angle += 360.0;
-        }
-
-        angle
+        AngleU16::from_degrees(angle).to_string()
     }
 }
 
 pub struct ClusterSeed {
     pub cm: ClusterMember,
-    pub angle: f64,
+    pub angle: AngleU16,
 }
 
 impl ClusterSeed {
-    pub fn new(cm: ClusterMember, angle: f64) -> Self {
+    pub fn new(cm: ClusterMember, angle: AngleU16) -> Self {
         Self { cm, angle }
     }
 }
