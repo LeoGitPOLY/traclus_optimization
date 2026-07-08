@@ -1,9 +1,10 @@
+use crate::geometry::point::Point;
+use crate::io::args::TraclusArgs;
 use crate::objects::cluster_member::ClusterMember;
 use crate::objects::corridor::Corridor;
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::utils::events::app_events::AppError;
 use crate::utils::events::event_singleton::emit_error;
-use crate::io::args::TraclusArgs;
 use std::path::Path;
 
 use std::fs::File;
@@ -71,9 +72,9 @@ pub fn generate_segment_file(
     clust_storage: &ClusteredTrajectories,
     format: SegOutFormat,
 ) -> Option<()> {
-    let output_filename = build_segment_output_filename(args, &format);
+    let output_filename: String = build_segment_output_filename(args, &format);
 
-    let file = match File::create(&output_filename) {
+    let file: File = match File::create(&output_filename) {
         Ok(f) => f,
         Err(err) => {
             emit_error(AppError::IoError(format!(
@@ -84,7 +85,7 @@ pub fn generate_segment_file(
         }
     };
 
-    let mut writer = BufWriter::new(file);
+    let mut writer: BufWriter<File> = BufWriter::new(file);
 
     if let Err(err) = write_segment_header(&mut writer, &format) {
         emit_error(AppError::IoError(format!(
@@ -180,7 +181,7 @@ fn write_single_segment_new(
     corridor_id: i32,
     cluster_member: &ClusterMember,
 ) -> io::Result<()> {
-    let end_point = cluster_member.end_point();
+    let end_point: Point = cluster_member.end_point();
     writeln!(
         writer,
         "{}\t{}\t{}\t{}\t{}\tLINESTRING({} {}, {} {})",
@@ -202,9 +203,10 @@ fn write_single_segment_old(
     corridor_id: i32,
     cluster_member: &ClusterMember,
 ) -> io::Result<()> {
-    let end_point = cluster_member.end_point();
-    let start_str = cluster_member.start.x.to_string() + ":" + &cluster_member.start.y.to_string();
-    let segment_id = cluster_member.traj_id.to_string() + ":" + &start_str;
+    let end_point: Point = cluster_member.end_point();
+    let start_str: String =
+        cluster_member.start.x.to_string() + ":" + &cluster_member.start.y.to_string();
+    let segment_id: String = cluster_member.traj_id.to_string() + ":" + &start_str;
 
     writeln!(
         writer,
