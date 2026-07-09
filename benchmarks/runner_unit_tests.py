@@ -577,8 +577,12 @@ def alliance_canada_over_OD(info: str):
     global BENCH_SRC
     BENCH_SRC = ALLIANCE_CAN_BENCH_DST
 
+    # Specific information about the run
+    git_branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, check=False).stdout.strip()
+    info += ";git_branch=" + git_branch
+
     args_values = {
-        'max_dist':     [600],
+        'max_dist':     [600]*5,
         'max_angle':    [7],
         'seg_size':     [2000],
     }
@@ -588,7 +592,7 @@ def alliance_canada_over_OD(info: str):
     
     # start, step, n = 2000, 8000, 17
     # list_of_sizes = [start + i * step for i in range(n)] 
-    list_of_sizes = [350000, 400000, 450000, 500000, 550000] 
+    list_of_sizes = [74_000, 130_000, 200_000,300_000] 
     
     time_last_run = [0.0, 0.0, 0.0] # For python, rust serial, rust parallel
     MAX_TIME_SEC = 5 * 60 * 60 # seconds
@@ -682,6 +686,7 @@ def alliance_canada_over_threads(info: str):
         outputs_sorted = sorted(outputs, key=lambda x: (x['impl'], x['mode']))
         save_outputs_to_excel(outputs_sorted, sheet_name)
 
+    
 # =====================================================
 #                 MAIN
 # =====================================================

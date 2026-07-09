@@ -3,9 +3,9 @@ use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
 use super::super::objects::corridor::Corridor;
 use super::super::storage::priority_queue::PriorityQueueCluster;
+use crate::io::args::TraclusArgs;
 use crate::utils::events::app_events::{AppEvent, ComputationType};
 use crate::utils::events::event_singleton::emit;
-use crate::io::args::TraclusArgs;
 
 pub struct ClusteredTrajectories {
     clusters: PriorityQueueCluster,
@@ -94,7 +94,7 @@ impl ClusteredTrajectories {
             .map(|c| c.cluster.get_all_members_iter().count())
             .sum();
         vec![
-            format!("=== ClusteredTrajectories Summary ==="),
+            format!("=== Corridor Summary ==="),
             format!("- Total corridors found: {}", self.corridors.len()),
             format!("- Total clustered segments: {}", total_clustered_segments),
             format!(

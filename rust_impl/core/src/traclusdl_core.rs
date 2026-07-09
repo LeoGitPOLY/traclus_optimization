@@ -9,7 +9,7 @@ use crate::io::input_loader::parse_input_data;
 use crate::io::output_writer::{SegOutFormat, generate_corridor_file, generate_segment_file};
 use crate::utils::events::event_singleton::{emit, emit_error, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
-use crate::utils::statistic::directional_correlation;
+use crate::utils::statistic::{clustering_histogram, directional_correlation};
 
 use super::algorithms::base_traclusdl::TraclusAlgorithm;
 use super::algorithms::parallel_rayon_traclusdl::ParallelRayonTraclusDL;
@@ -60,6 +60,9 @@ impl TraclusDLCore {
         if result {
             emit(AppEvent::PrintInfo {
                 messages: clust_storage.get_summary(),
+            });
+            emit(AppEvent::PrintInfo {
+                messages: clustering_histogram(&clust_storage).get_summary(),
             });
             self.clust_storage = Some(clust_storage);
         }
