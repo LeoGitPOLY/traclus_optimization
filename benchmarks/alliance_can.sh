@@ -2,7 +2,7 @@
 #SBATCH --job-name=traclus_unit_tests
 #SBATCH --output=logs/traclus_tests_%j.out
 #SBATCH --error=logs/traclus_tests_%j.err
-#SBATCH --time=12:00:00
+#SBATCH --time=05:00:00
 #SBATCH --nodes=1                 
 #SBATCH --cpus-per-task=185
 #SBATCH --mem-per-cpu=2G               

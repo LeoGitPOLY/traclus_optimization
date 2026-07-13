@@ -3,7 +3,7 @@
 use clap::{Parser, ValueEnum};
 use std::fmt;
 
-use crate::io::args_config::get_param_configs;
+use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::angle_u16::AngleU16};
 
 // ─────────────────────────────────────────────
 // ExecutionMode  — algorithm parallelism strategy
@@ -97,18 +97,20 @@ pub struct TraclusArgs {
     #[arg(
         short = 'a',
         long = "max_angle",
-        default_value_t = get_param_configs().max_angle.default,
+        default_value_t = AngleU16::from_degrees(get_param_configs().max_angle.default),
         value_parser = |v: &str| {
             let cfg = get_param_configs().max_angle;
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
+            
             if val < cfg.min || val > cfg.max {
                 Err(format!("max_angle must be in range {}..={}", cfg.min, cfg.max))
             } else {
-                Ok(val)
+                let val_angle: AngleU16 = AngleU16::from_degrees(val);
+                Ok(val_angle)
             }
         }
     )]
-    pub max_angle: f64,
+    pub max_angle: AngleU16,
 
     #[arg(
         short = 's',
@@ -146,12 +148,12 @@ pub struct TraclusArgs {
 
 impl Default for TraclusArgs {
     fn default() -> Self {
-        let cfg = get_param_configs();
+        let cfg: AllArgsConfigs = get_param_configs();
         Self {
             file: String::new(),
             max_dist: cfg.max_dist.default,
             min_density: cfg.min_density.default,
-            max_angle: cfg.max_angle.default,
+            max_angle: AngleU16::from_degrees(cfg.max_angle.default),
             segment_size: cfg.segment_size.default,
             max_threads: cfg.max_threads.default,
             mode: default_mode(),

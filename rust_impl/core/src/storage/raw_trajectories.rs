@@ -1,50 +1,51 @@
 use super::super::geometry::trajectory::Trajectory;
+use crate::utils::angle_u16::{AngleU16, FULL_CIRCLE};
 
 const BUCKET_SIZE: f64 = 1.0; // degrees, must evenly divide 360.0
 
 pub struct Bucket {
-    pub angle_start: f64, // (inclusive)
-    pub angle_end: f64,   // (exclusive)
+    pub angle_start: AngleU16, // inclusive
+    pub angle_end: AngleU16,   // exclusive
     pub trajectories: Vec<Trajectory>,
 }
+
 pub struct RawTrajectories {
-    pub bucket_size: f64,
-    pub max_angle: f64,
+    pub bucket_size: AngleU16,
+    pub max_angle: AngleU16,
     pub traj_buckets: Vec<Bucket>,
 }
 
 impl RawTrajectories {
-    pub fn new(max_angle: f64) -> Self {
-        let buckets: Vec<Bucket> = Self::create_buckets(BUCKET_SIZE);
-
+    pub fn new(max_angle: AngleU16) -> Self {
+        let bucket_size: AngleU16 = AngleU16::from_degrees(BUCKET_SIZE);
+        let buckets: Vec<Bucket> = Self::create_buckets(bucket_size);
         Self {
-            bucket_size: BUCKET_SIZE,
+            bucket_size,
             max_angle,
             traj_buckets: buckets,
         }
     }
 
-    fn create_buckets(bucket_size: f64) -> Vec<Bucket> {
-        let num_buckets: usize = (360.0 / bucket_size).round() as usize;
-        assert!(bucket_size > 0.0 && bucket_size <= 360.0);
+    fn create_buckets(bucket_size: AngleU16) -> Vec<Bucket> {
+        let bucket_raw: u16 = bucket_size.raw();
+
         assert!(
-            (num_buckets as f64 * bucket_size - 360.0).abs() < 1e-9,
-            "Bucket size must evenly divide 360"
+            FULL_CIRCLE % bucket_raw == 0,
+            "Bucket size must evenly divide 360°"
         );
 
+        let num_buckets: usize = (FULL_CIRCLE / bucket_raw) as usize;
         let mut buckets: Vec<Bucket> = Vec::with_capacity(num_buckets);
 
         for i in 0..num_buckets {
-            let angle_start: f64 = i as f64 * bucket_size;
-            let mut angle_end: f64 = angle_start + bucket_size;
+            let start_raw: u16 = i as u16 * bucket_raw;
+            let mut end_raw: u16 = start_raw + bucket_raw;
 
-            if angle_end > 360.0 {
-                angle_end = 360.0;
-            }
+            end_raw = end_raw.min(FULL_CIRCLE);
 
             buckets.push(Bucket {
-                angle_start,
-                angle_end,
+                angle_start: AngleU16::from_u16(start_raw),
+                angle_end: AngleU16::from_u16(end_raw),
                 trajectories: Vec::new(),
             });
         }
@@ -53,12 +54,8 @@ impl RawTrajectories {
     }
 
     #[inline]
-    fn angle_to_bucket(&self, angle: f64) -> usize {
-        let mut a: f64 = angle % 360.0;
-        if a < 0.0 {
-            a += 360.0;
-        }
-        (a / self.bucket_size).floor() as usize
+    fn angle_to_bucket(&self, angle: AngleU16) -> usize {
+        (angle.raw() / self.bucket_size.raw()) as usize
     }
 
     pub fn add_trajectory(&mut self, traj: Trajectory) {
@@ -72,7 +69,7 @@ impl RawTrajectories {
     }
 
     // Returns an iterator over trajectories from all buckets within max_angle
-    pub fn iter_nearby_angle(&self, angle: f64) -> impl Iterator<Item = &Trajectory> {
+    pub fn iter_nearby_angle(&self, angle: AngleU16) -> impl Iterator<Item = &Trajectory> {
         let idx: usize = self.angle_to_bucket(angle);
 
         let u_len: usize = self.traj_buckets.len();
@@ -81,7 +78,7 @@ impl RawTrajectories {
         let wrap = |i: isize| -> usize { ((i % i_len) + i_len) as usize % u_len };
 
         // Number of neighboring buckets required on each side to fully cover max_angle
-        let bucket_radius: isize = (self.max_angle / self.bucket_size).ceil() as isize;
+        let bucket_radius: isize = self.max_angle.raw().div_ceil(self.bucket_size.raw()) as isize;
         let mut indices: Vec<usize> = Vec::new();
 
         for offset in -bucket_radius..=bucket_radius {
@@ -94,7 +91,7 @@ impl RawTrajectories {
     }
 
     // Returns a copy of trajectories from all buckets within max_angle
-    pub fn vec_nearby_angle(&self, angle: f64) -> Vec<Trajectory> {
+    pub fn vec_nearby_angle(&self, angle: AngleU16) -> Vec<Trajectory> {
         let idx: usize = self.angle_to_bucket(angle);
 
         let u_len: usize = self.traj_buckets.len();
@@ -102,7 +99,7 @@ impl RawTrajectories {
         let wrap = |i: isize| -> usize { ((i % i_len) + i_len) as usize % u_len };
 
         // Number of neighboring buckets required on each side to fully cover max_angle
-        let bucket_radius: isize = (self.max_angle / self.bucket_size).ceil() as isize;
+        let bucket_radius: isize = self.max_angle.raw().div_ceil(self.bucket_size.raw()) as isize;
 
         // estimate size to avoid reallocations
         let mut total: usize = 0;
@@ -120,6 +117,7 @@ impl RawTrajectories {
 
         result
     }
+
     pub fn get_num_trajectories(&self) -> usize {
         self.traj_buckets.iter().map(|b| b.trajectories.len()).sum()
     }
@@ -131,7 +129,7 @@ impl RawTrajectories {
             //     continue;
             // }
             println!(
-                "Bucket {}: Angle [{:.2}, {:.2}[ - {} trajectories",
+                "Bucket {}: Angle [{:.2}°, {:.2}°[ - {} trajectories",
                 i,
                 bucket.angle_start,
                 bucket.angle_end,

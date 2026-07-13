@@ -5,6 +5,8 @@
 // ArgsConfig — constraints for one argument
 // ─────────────────────────────────────────────
 
+use crate::utils::angle_u16::AngleU16;
+
 pub struct ArgsConfig<T> {
     pub default: T,
     pub min: T,
@@ -41,7 +43,7 @@ pub fn get_param_configs() -> AllArgsConfigs {
         },
         max_angle: ArgsConfig {
             default: 5.0,
-            min: f64::MIN_POSITIVE, // > 0
+            min: AngleU16::MIN_POSITIVE.to_degrees(), // > 0.01
             max: 22.5,
             label: "MAX ANGLE",
         },

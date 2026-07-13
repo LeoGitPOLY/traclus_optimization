@@ -2,6 +2,9 @@
 // This file is mainly AI generated (Claude.ai)
 // It's made to provide a minimal working GUI for users
 
+use std::fmt::Display;
+use std::str::FromStr;
+
 use eframe::egui;
 use eframe::egui::{RichText, ScrollArea, TextEdit, Vec2};
 use rfd::FileDialog;
@@ -10,6 +13,7 @@ use super::style::*;
 use crate::logic::traclusdl_app::TraclusDLApp;
 use traclusdl_core::io::args::ExecutionMode;
 use traclusdl_core::io::args_config::get_param_configs;
+use traclusdl_core::utils::angle_u16::AngleU16;
 
 // ─────────────────────────────────────────────
 // App Update (main render loop)
@@ -213,18 +217,18 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         ui.add_space(4.0);
 
                         // max_angle
-                        commit_f64_on_focus_loss(
+                        commit_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.max_angle,
                             &mut vm.args_selected.max_angle,
                             PARAM_FIELD_WIDTH,
-                            cfg.max_angle.min,
-                            cfg.max_angle.max,
+                            AngleU16::from_degrees(cfg.max_angle.min),
+                            AngleU16::from_degrees(cfg.max_angle.max),
                         );
                         ui.add_space(WIDGET_SPACING);
 
                         // min_density
-                        commit_u32_on_focus_loss(
+                        commit_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.min_density,
                             &mut vm.args_selected.min_density,
@@ -235,7 +239,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         ui.add_space(WIDGET_SPACING);
 
                         // max_dist
-                        commit_f64_on_focus_loss(
+                        commit_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.max_dist,
                             &mut vm.args_selected.max_dist,
@@ -246,7 +250,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         ui.add_space(WIDGET_SPACING);
 
                         // segment_size
-                        commit_f64_on_focus_loss(
+                        commit_on_focus_loss(
                             ui,
                             &mut vm.args_buffer.segment_size,
                             &mut vm.args_selected.segment_size,
@@ -293,14 +297,16 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 // If parsing fails the buffer is reset to the last valid committed value.
 // ─────────────────────────────────────────────
 
-fn commit_f64_on_focus_loss(
+fn commit_on_focus_loss<T>(
     ui: &mut egui::Ui,
     buf: &mut String, // raw text bound to TextEdit — may be empty or partial
-    value: &mut f64,  // committed value — only updated on focus loss / Enter
+    value: &mut T,    // committed value — only updated on focus loss / Enter
     width: f32,
-    min: f64,
-    max: f64,
-) {
+    min: T,
+    max: T,
+) where
+    T: FromStr + Display + PartialOrd + Copy,
+{
     let response = ui.add(
         TextEdit::singleline(buf)
             .desired_width(width)
@@ -313,44 +319,20 @@ fn commit_f64_on_focus_loss(
         || (response.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
 
     if commit {
-        match buf.trim().parse::<f64>() {
+        match buf.trim().parse::<T>() {
             Ok(v) => {
-                *value = v.clamp(min, max);
+                let mut v = v;
+                if v < min {
+                    v = min;
+                }
+                if v > max {
+                    v = max;
+                }
+                *value = v;
                 *buf = value.to_string(); // normalise buffer to clamped value
             }
             Err(_) => {
                 *buf = value.to_string(); // restore buffer to last valid committed value
-            }
-        }
-    }
-}
-
-fn commit_u32_on_focus_loss(
-    ui: &mut egui::Ui,
-    buf: &mut String, // raw text bound to TextEdit
-    value: &mut u32,  // committed value
-    width: f32,
-    min: u32,
-    max: u32,
-) {
-    let response = ui.add(
-        TextEdit::singleline(buf)
-            .desired_width(width)
-            .clip_text(true)
-            .text_color(COLOR_TEXT),
-    );
-
-    let commit = response.lost_focus()
-        || (response.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
-
-    if commit {
-        match buf.trim().parse::<u32>() {
-            Ok(v) => {
-                *value = v.clamp(min, max);
-                *buf = value.to_string();
-            }
-            Err(_) => {
-                *buf = value.to_string();
             }
         }
     }

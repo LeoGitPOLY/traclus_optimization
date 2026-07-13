@@ -1,4 +1,7 @@
+use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::storage::raw_trajectories::RawTrajectories;
+use rayon::iter::{ParallelBridge, ParallelIterator};
+use std::collections::HashMap;
 
 /// Computes a directional correlation factor in [0.0, 1.0].
 ///
@@ -63,4 +66,106 @@ pub fn directional_correlation(raw: &RawTrajectories) -> f64 {
     }
 
     ((hhi - hhi_min) / (hhi_max - hhi_min)).clamp(0.0, 1.0)
+}
+
+/// Per-trajectory segment counts: (segments clustered into a corridor, segments left unclustered).
+type TrajSegmentCounts = HashMap<usize, (u32, u32)>;
+
+/// Histogram of trajectories by number of clustered segments, plus summary stats.
+pub struct ClusteringHistogram {
+    /// `histogram[k]` = number of trajectories with exactly `k` clustered segments.
+    pub histogram: Vec<usize>,
+    /// Trajectories with at least one clustered segment, out of `total_trajectories`.
+    pub num_traj_with_clustered_segment: usize,
+    /// Total number of distinct trajectories observed.
+    pub total_trajectories: usize,
+    /// Highest number of clustered segments found for a single trajectory.
+    pub max_clustered_segments: u32,
+}
+
+impl ClusteringHistogram {
+    #[allow(dead_code)]
+    pub fn get_summary(&self) -> Vec<String> {
+        let mut output: Vec<String> = Vec::new();
+        output.push(format!("=== Clustered Trajectories Summary ==="));
+        output.push(format!(
+            "- Trajectories with at least one clustered segment: {} ({:.1}%)",
+            self.num_traj_with_clustered_segment,
+            100.0 * self.num_traj_with_clustered_segment as f64 / self.total_trajectories as f64
+        ));
+        let mut histogram_str: String = "".to_string();
+        histogram_str.push_str(&format!("- Segment clustered distribution:\t"));
+        for (i, &count) in self.histogram.iter().enumerate() {
+            if count > 0 {
+                histogram_str.push_str(&format!("[{}:{}] ", i, count));
+            }
+        }
+        output.push(histogram_str);
+        output
+    }
+}
+
+/// Builds a per-trajectory clustered/non-clustered segment count map in parallel.
+///
+/// # Arguments
+/// * `result` - The clustering result to analyze
+fn count_segments_per_trajectory(clust_storage: &ClusteredTrajectories) -> TrajSegmentCounts {
+    clust_storage
+        .get_all_cluster_members_iter()
+        .par_bridge()
+        .fold(
+            HashMap::new,
+            |mut acc: TrajSegmentCounts, (corridor_idx, cm)| {
+                let entry = acc.entry(cm.traj_id).or_insert((0, 0));
+                if corridor_idx >= 0 {
+                    entry.0 += 1; // clustered segment
+                } else {
+                    entry.1 += 1; // non-clustered segment
+                }
+                acc
+            },
+        )
+        .reduce(HashMap::new, |mut a, b| {
+            for (traj_id, (clustered, non_clustered)) in b {
+                let entry = a.entry(traj_id).or_insert((0, 0));
+                entry.0 += clustered;
+                entry.1 += non_clustered;
+            }
+            a
+        })
+}
+
+/// Computes the clustering histogram and summary stats for a clustering result.
+///
+/// Buckets trajectories by how many of their segments ended up in a corridor,
+/// then reports the distribution (histogram), coverage (trajectories with
+/// any clustered segment), and the peak.
+///
+/// # Arguments
+/// * `result` - The clustering result to analyze
+pub fn clustering_histogram(clust_storage: &ClusteredTrajectories) -> ClusteringHistogram {
+    let counts: TrajSegmentCounts = count_segments_per_trajectory(clust_storage);
+
+    let max_clustered_segments: u32 = counts
+        .values()
+        .map(|(clustered, _)| *clustered)
+        .max()
+        .unwrap_or(0);
+
+    let mut histogram: Vec<usize> = vec![0; max_clustered_segments as usize + 1];
+    let mut num_traj_with_clustered_segment: usize = 0;
+
+    for (clustered, _) in counts.values() {
+        histogram[*clustered as usize] += 1;
+        if *clustered > 0 {
+            num_traj_with_clustered_segment += 1;
+        }
+    }
+
+    ClusteringHistogram {
+        histogram,
+        num_traj_with_clustered_segment,
+        total_trajectories: counts.len(),
+        max_clustered_segments,
+    }
 }

@@ -2,6 +2,8 @@ use std::f64::consts::PI;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
+use crate::utils::angle_u16::AngleU16;
+
 use super::input_od_line::InputODLine;
 use super::point::Point;
 use super::segment::Segment;
@@ -12,13 +14,13 @@ pub struct Trajectory {
     pub start: Point,
     pub end: Point,
     pub weight: u32,
-    pub angle: f64,
+    pub angle: AngleU16,
     segments: Vec<Segment>,
 }
 
 impl Trajectory {
     pub fn new(input: InputODLine, seg_size: f64) -> Self {
-        let angle: f64 = Self::get_spatial_angle(&input.start, &input.end);
+        let angle: AngleU16 = Self::get_spatial_angle(&input.start, &input.end);
 
         let mut traj: Trajectory = Self {
             id: input.line_id,
@@ -33,17 +35,11 @@ impl Trajectory {
         traj
     }
 
-    fn get_spatial_angle(start: &Point, end: &Point) -> f64 {
+    fn get_spatial_angle(start: &Point, end: &Point) -> AngleU16 {
         let delta_y: f64 = end.y - start.y;
         let delta_x: f64 = end.x - start.x;
-        let mut angle: f64 = delta_y.atan2(delta_x).to_degrees();
-        angle = (angle * 100.0).round() / 100.0;
-
-        if angle < 0.0 {
-            angle += 360.0;
-        }
-
-        angle
+        let angle_deg: f64 = delta_y.atan2(delta_x).to_degrees();
+        AngleU16::from_degrees(angle_deg)
     }
 
     fn get_spatial_length(&self) -> f64 {
@@ -85,7 +81,7 @@ impl Trajectory {
     pub fn make_segments(&mut self, segment_length: f64) {
         self.segments.clear();
 
-        let angle_rad: f64 = self.angle * PI / 180.0;
+        let angle_rad: f64 = self.angle.to_degrees() * PI / 180.0;
         let xstep: f64 = segment_length * angle_rad.cos();
         let ystep: f64 = segment_length * angle_rad.sin();
 
