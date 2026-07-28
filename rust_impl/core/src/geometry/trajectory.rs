@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::utils::angle_u16::AngleU16;
+use crate::utils::data_type::angle_u16::AngleU16;
 
 use super::input_od_line::InputODLine;
 use super::point::Point;
@@ -48,6 +48,8 @@ impl Trajectory {
         (dx * dx + dy * dy).sqrt()
     }
 
+    // Returns the minimum distance from a point to the trajectory
+    // and the index of the segment that is closest to the point.
     pub fn distance_to_point(&self, point: &Point) -> (f64, usize) {
         let px: f64 = point.x;
         let py: f64 = point.y;
@@ -77,6 +79,8 @@ impl Trajectory {
 
         (min_distance, index_seg)
     }
+
+    //pub fn power_distance_to_point(&self, point: &PointI32Proj) -> (u64, usize) {}
 
     pub fn make_segments(&mut self, segment_length: f64) {
         self.segments.clear();
@@ -127,5 +131,73 @@ impl Trajectory {
             "Trajectory ID: {}, Start: ({}, {}), End: ({}, {}), Weight: {}, Angle: {}",
             self.id, self.start.x, self.start.y, self.end.x, self.end.y, self.weight, self.angle
         )
+    }
+}
+
+// UNIT TESTS : TO BE DELETED
+#[cfg(test)]
+mod tests {
+    use crate::utils::data_type::point_i32_proj::PointI32Proj;
+
+    use super::*;
+
+    #[test]
+    fn distance_to_point_horizontal_line() {
+        let input: InputODLine = InputODLine {
+            line_id: 0,
+            start: Point { x: 0.0, y: 0.0 },
+            end: Point { x: 10.0, y: 0.0 },
+            weight: 1,
+        };
+
+        // Segment size of 5 gives two segments.
+        let traj: Trajectory = Trajectory::new(input, 5.0);
+        let point: Point = Point { x: 3.0, y: 4.0 };
+
+        let (distance, segment_index) = traj.distance_to_point(&point);
+
+        assert!((distance - 4.0).abs() < 1e-9);
+        assert_eq!(segment_index, 0);
+    }
+
+    #[test]
+    fn run_tests_on_pointi32proj() {
+        let point_1: Point = Point {
+            x: -0.0499,
+            y: -0.0499,
+        };
+        let mut point_2: Point = Point {
+            x: 100.0499,
+            y: 100.0499,
+        };
+        let point_max: Point = Point {
+            x: 50_000.0499,
+            y: 50_000.0499,
+        };
+        point_2 = point_max.clone();
+
+        let point_proj_1: PointI32Proj = PointI32Proj::from_point(&point_1);
+        let point_proj_2: PointI32Proj = PointI32Proj::from_point(&point_2);
+
+        println!("Projected Point 1: {:?}", point_proj_1);
+        println!("Projected Point 2: {:?}", point_proj_2);
+
+        // Test subtraction of projected points
+        let real_sub: Point = Point {
+            x: point_1.x - point_2.x,
+            y: point_1.y - point_2.y,
+        };
+        let point_sub: PointI32Proj = point_proj_1.subtract(&point_proj_2);
+        println!("Real Point Subtraction: {:?}", real_sub);
+        println!("Projected Point Subtraction: {:?}", point_sub);
+
+        let real_power_dist: f64 =
+            (point_1.x - point_2.x).powi(2) + (point_1.y - point_2.y).powi(2);
+        let proj_power_dist: u64 = point_proj_1.power_distance_u64(&point_proj_2);
+        println!("Real Power Distance: {}", real_power_dist);
+        println!("Projected Power Distance: {}", proj_power_dist);
+
+        println!("Real Distance: {}", real_power_dist.sqrt());
+        println!("Projected Distance: {}", (proj_power_dist as f64).sqrt());
     }
 }

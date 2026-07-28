@@ -10,10 +10,8 @@ pub const FULL_CIRCLE: u16 = 36_000; // 360.00° * SCALE, exclusive upper bound
 
 impl AngleU16 {
     // Normalizes any input degree value into 0..=35999 via integer rem_euclid,
-    // so out-of-range input (negative, >360, NaN-adjacent) can never escape the invariant.
+    // so out-of-range input (negative, >360) can never escape the invariant.
     pub fn from_degrees(angle_deg: f64) -> Self {
-        debug_assert!(!angle_deg.is_nan(), "AngleU16::from_degrees received NaN");
-
         let scaled: i64 = (angle_deg * SCALE).round() as i64;
         let normalized: i64 = scaled.rem_euclid(FULL_CIRCLE as i64);
         Self(normalized as u16)

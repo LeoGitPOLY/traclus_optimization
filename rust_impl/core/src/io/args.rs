@@ -3,7 +3,7 @@
 use clap::{Parser, ValueEnum};
 use std::fmt;
 
-use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::angle_u16::AngleU16};
+use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::data_type::angle_u16::AngleU16};
 
 // ─────────────────────────────────────────────
 // ExecutionMode  — algorithm parallelism strategy

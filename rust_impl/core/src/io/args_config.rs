@@ -5,7 +5,7 @@
 // ArgsConfig — constraints for one argument
 // ─────────────────────────────────────────────
 
-use crate::utils::angle_u16::AngleU16;
+use crate::utils::data_type::angle_u16::AngleU16;
 
 pub struct ArgsConfig<T> {
     pub default: T,

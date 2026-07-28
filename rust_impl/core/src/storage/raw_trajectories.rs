@@ -1,5 +1,5 @@
 use super::super::geometry::trajectory::Trajectory;
-use crate::utils::angle_u16::{AngleU16, FULL_CIRCLE};
+use crate::utils::data_type::angle_u16::{AngleU16, FULL_CIRCLE};
 
 const BUCKET_SIZE: f64 = 1.0; // degrees, must evenly divide 360.0
 

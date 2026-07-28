@@ -13,7 +13,7 @@ use super::style::*;
 use crate::logic::traclusdl_app::TraclusDLApp;
 use traclusdl_core::io::args::ExecutionMode;
 use traclusdl_core::io::args_config::get_param_configs;
-use traclusdl_core::utils::angle_u16::AngleU16;
+use traclusdl_core::utils::data_type::angle_u16::AngleU16;
 
 // ─────────────────────────────────────────────
 // App Update (main render loop)
