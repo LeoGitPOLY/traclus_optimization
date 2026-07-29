@@ -1,8 +1,7 @@
 // args.rs
 
 use clap::{Parser, ValueEnum};
-use std::fmt;
-
+use std::{fmt, hash::Hash};
 use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::angle_u16::AngleU16};
 
 // ─────────────────────────────────────────────
@@ -24,8 +23,12 @@ impl fmt::Display for ExecutionMode {
     }
 }
 
+fn default_mode() -> ExecutionMode {
+    ExecutionMode::Serial
+}
+
 // ─────────────────────────────────────────────
-// InterfaceMode  — which front-ends are active
+// InterfaceMode  — type of way to interact with the program
 // ─────────────────────────────────────────────
 
 #[derive(Copy, Clone, Debug, ValueEnum, PartialEq)]
@@ -45,11 +48,140 @@ impl fmt::Display for InterfaceMode {
     }
 }
 
-fn default_mode() -> ExecutionMode {
-    ExecutionMode::Serial
-}
 fn default_interface_mode() -> InterfaceMode {
     InterfaceMode::Performance
+}
+
+// ─────────────────────────────────────────────
+// Input header mapper - maps input header names to internal field names
+// ─────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MappingHeader(pub Vec<String>);
+
+impl MappingHeader {
+    pub fn new() -> Self {
+        Self(vec![String::new(); InputHeaderField::COUNT])
+    }
+
+    pub fn get_value(&self, field: InputHeaderField) -> &str {
+        &self.0[field as usize]
+    }
+
+    pub fn set_value(&mut self, field: InputHeaderField, value: String) {
+        self.0[field as usize] = value;
+    }
+
+    pub fn from_index(i: usize) -> Option<InputHeaderField> {
+        INPUT_HEADER_FIELDS.get(i).copied()
+    }
+}
+
+impl Default for MappingHeader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::str::FromStr for MappingHeader {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_mapping(s)
+    }
+}
+
+impl std::ops::Deref for MappingHeader {
+    type Target = Vec<String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[repr(usize)]
+pub enum InputHeaderField {
+    Name = 0, // (Optional)
+    Weight = 1,
+    XOrigin = 2,
+    YOrigin = 3,
+    XDest = 4,
+    YDest = 5,
+}
+
+impl InputHeaderField {
+    pub const COUNT: usize = 6;
+    pub const NB_OPTIONAL_FIELDS: usize = 1;
+
+    pub fn from_index(i: usize) -> Option<Self> {
+        INPUT_HEADER_FIELDS.get(i).copied()
+    }
+
+    // Returns the default mapping indexes based only on the number of columns in the CSV file. 
+    pub fn default_indexes(num_columns: usize) -> Vec<Option<usize>> {
+        let mut indexes: Vec<Option<usize>> = vec![None; Self::COUNT];
+
+        let missing_optional: usize = Self::COUNT.saturating_sub(num_columns);
+
+        let mut csv_index: usize = 0;
+        for field in INPUT_HEADER_FIELDS.iter().skip(missing_optional) {
+            indexes[*field as usize] = Some(csv_index);
+            csv_index += 1;
+        }
+
+        indexes
+    }
+
+    // Returns an empty mapping with all fields set to None
+    pub fn empty_mapping() -> Vec<Option<usize>> {
+        vec![None; Self::COUNT]
+    }
+}
+
+
+// Rust does not have built-in enum reflection
+const INPUT_HEADER_FIELDS: [InputHeaderField; InputHeaderField::COUNT] = [
+    InputHeaderField::Name,
+    // All optional fields must be at the beginning of the enum
+    InputHeaderField::Weight,
+    InputHeaderField::XOrigin,
+    InputHeaderField::YOrigin,
+    InputHeaderField::XDest,
+    InputHeaderField::YDest,
+];
+
+
+fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
+    let cleaned = s
+        .trim()
+        .replace(['{', '}', '[', ']', ' ', '\'', '"', '\t', '\n', '\r'], "");
+
+    let mut mapping = MappingHeader::new();
+
+    if cleaned.is_empty() {
+        return Ok(mapping);
+    }
+
+    for entry in cleaned.split(',') {
+        let (field, column) = entry
+            .split_once(':')
+            .ok_or_else(|| format!("Expected FIELD:COLUMN in '{entry}'"))?;
+
+        let field = match field {
+            "name" => InputHeaderField::Name,
+            "weight" => InputHeaderField::Weight,
+            "x_origin" => InputHeaderField::XOrigin,
+            "y_origin" => InputHeaderField::YOrigin,
+            "x_dest" => InputHeaderField::XDest,
+            "y_dest" => InputHeaderField::YDest,
+            _ => return Err(format!("Field '{field}' is not accepted. All accepted fields: {:?}", INPUT_HEADER_FIELDS)),
+        };
+
+        mapping.set_value(field, column.to_string());
+    }
+
+    Ok(mapping)
 }
 
 // ─────────────────────────────────────────────
@@ -128,6 +260,23 @@ pub struct TraclusArgs {
     )]
     pub segment_size: f64,
 
+    #[arg(
+        long = "map",
+        default_value = "",
+        value_parser = |v: &str| {
+            let cfg = get_param_configs().num_fields_map;
+            let mapping: MappingHeader = parse_mapping(v).map_err(|e| format!("Invalid map: {}", e))?;
+            let val: usize = mapping.iter().filter(|s| !s.is_empty()).count() as usize;
+            if (val < cfg.min || val > cfg.max) && val != 0 {
+                Err(format!("num_fields_map must be in range {}..={}", cfg.min, cfg.max))
+            } else {
+                Ok(mapping)
+            }
+        },
+        help = "Mapping of input header fields to CSV columns"
+    )]
+    pub map: MappingHeader,
+
     #[arg(short = 't', long = "max_threads", default_value_t = get_param_configs().max_threads.default, value_parser = |v: &str| {
         let cfg = get_param_configs().max_threads;
         let val: u32 = v.parse().map_err(|_| String::from("must be a number"))?;
@@ -139,7 +288,7 @@ pub struct TraclusArgs {
     })]
     pub max_threads: u32,
 
-    #[arg(short = 'm', long = "mode",      value_enum, default_value_t = default_mode())]
+    #[arg(short = 'm', long = "mode", value_enum, default_value_t = default_mode())]
     pub mode: ExecutionMode,
 
     #[arg(short = 'i', long = "interface", value_enum, default_value_t = default_interface_mode())]
@@ -148,13 +297,14 @@ pub struct TraclusArgs {
 
 impl Default for TraclusArgs {
     fn default() -> Self {
-        let cfg: AllArgsConfigs = get_param_configs();
+    let cfg: AllArgsConfigs = get_param_configs();
         Self {
             file: String::new(),
             max_dist: cfg.max_dist.default,
             min_density: cfg.min_density.default,
             max_angle: AngleU16::from_degrees(cfg.max_angle.default),
             segment_size: cfg.segment_size.default,
+            map: MappingHeader::new(),
             max_threads: cfg.max_threads.default,
             mode: default_mode(),
             interface_mode: default_interface_mode(),

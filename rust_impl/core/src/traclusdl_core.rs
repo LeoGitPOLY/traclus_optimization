@@ -98,7 +98,7 @@ impl TraclusDLCore {
             parse_input_data(&args).expect("Failed to parse input data");
         emit_timed_perf("Input_Parsing", false, None);
 
-        let mut clust_storage = ClusteredTrajectories::new(&args);
+        let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(&args);
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(&args);
         clustering_algorithm.db_scan_clustering(&raw_storage, &mut clust_storage);
 

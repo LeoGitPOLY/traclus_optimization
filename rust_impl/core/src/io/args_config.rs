@@ -24,6 +24,7 @@ pub struct AllArgsConfigs {
     pub max_angle: ArgsConfig<f64>,
     pub segment_size: ArgsConfig<f64>,
     pub max_threads: ArgsConfig<u32>,
+    pub num_fields_map: ArgsConfig<usize>,
 }
 
 /// Call this from any module that needs defaults, min, or max.
@@ -58,6 +59,12 @@ pub fn get_param_configs() -> AllArgsConfigs {
             min: 0,
             max: u32::MAX,
             label: "MAX THREADS",
+        },
+        num_fields_map: ArgsConfig {
+            default: 5,
+            min: 5,
+            max: 6,
+            label: "NUM FIELDS MAP",
         },
     }
 }

@@ -2,23 +2,76 @@ use super::super::geometry::input_od_line::InputODLine;
 use super::super::geometry::point::Point;
 use super::super::geometry::trajectory::Trajectory;
 use super::super::storage::raw_trajectories::RawTrajectories;
+use crate::io::args::InputHeaderField;
+use crate::io::args::MappingHeader;
 use crate::io::args::TraclusArgs;
+use crate::io::args_config::get_param_configs;
 use crate::utils::events::app_events::AppError;
 use crate::utils::events::event_singleton::emit_error;
 
 use std::fs;
 use std::io;
+use std::io::Error;
+use std::io::ErrorKind::InvalidData;
 use std::path::Path;
+use std::str::FromStr;
 
 fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fs::read_to_string(path)
 }
 
-/// Detects if a line is a header by checking if any field is non-numeric.
+// Returns the CSV column index corresponding to each InputHeaderField.
+// If the CSV has no header, or if no mapping is provided: indexes are inferred from the number of columns
+// If a header and a mapping are provided: the mapped fields are searched in the header
+fn get_header_mapping_indexes(
+    first_line: &str,
+    mapping: &MappingHeader,
+) -> io::Result<Vec<Option<usize>>> {
+    let is_header: bool = is_header(first_line);
+
+    let num_columns: usize = first_line.split(detect_separator(first_line)).count();
+    let num_mapping_fields: usize = mapping.iter().filter(|s: &&String| !s.is_empty()).count();
+
+    // Start with the default ordering inferred from the number of columns.
+    let default_indexes: Vec<Option<usize>> = InputHeaderField::default_indexes(num_columns);
+
+    // If there is no header or no mapping, the default indexes are correct.
+    if !is_header || num_mapping_fields < get_param_configs().num_fields_map.min {
+        return Ok(default_indexes);
+    }
+
+    let mut mapping_indexes: Vec<Option<usize>> = InputHeaderField::empty_mapping();
+    let sep: char = detect_separator(first_line);
+    let header_fields: Vec<&str> = first_line.split(sep).map(|s| s.trim()).collect();
+
+    // Replace the inferred indexes with the positions found in the header.
+    for i in 0..mapping.len() {
+        let mapped_name: &String = &mapping[i];
+
+        if mapped_name.is_empty() {
+            continue;
+        }
+
+        // Assign the mapped index.
+        let new_index: Option<usize> = header_fields.iter().position(|&s| s == mapped_name);
+
+        if new_index.is_none() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("Field '{mapped_name}' is not found in the header: '{first_line}\n'"),
+            ));
+        }
+
+        mapping_indexes[i] = new_index;
+    }
+    Ok(mapping_indexes)
+}
+
+/// Detects if a line is a header by checking if any field is non-numeric
 fn is_header(line: &str) -> bool {
-    let sep = detect_separator(line);
+    let sep: char = detect_separator(line);
     line.split(sep)
-        .any(|field| field.trim().parse::<f64>().is_err())
+        .any(|field: &str| field.trim().parse::<f64>().is_err())
 }
 
 /// Detects whether the line uses tabs, commas, or semicolons as separator.
@@ -32,90 +85,96 @@ fn detect_separator(line: &str) -> char {
     }
 }
 
+fn parse_to_type<T: FromStr>(s: &str, line_number: usize, field_name: &str) -> io::Result<T> {
+    s.parse::<T>().map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "Failed to parse {} at line {}: '{}'",
+                field_name, line_number, s
+            ),
+        )
+    })
+}
+
 /// Parses a line into an InputODLine.
 ///
 /// Supported formats (tab, comma, or semicolon separated):
 ///   With name:    name  weight  x_start  y_start  x_end  y_end
 ///   Without name: weight  x_start  y_start  x_end  y_end
 #[inline]
-fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
+fn parse_line_to_od(
+    line: &str,
+    header_indexes: &Vec<Option<usize>>,
+    index_line: usize,
+) -> io::Result<InputODLine> {
     let sep: char = detect_separator(line);
-    let parts: Vec<&str> = line.split(sep).map(|p| p.trim()).collect();
+    let parts: Vec<&str> = line.split(sep).map(|p: &str| p.trim()).collect();
 
-    let offset = match parts.len() {
-        6 => 1,
-        5 => 0,
-        _ => {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+    let name_index: usize = header_indexes[InputHeaderField::Name as usize].unwrap_or(0);
+    let name: &str = parts.get(name_index).unwrap_or(&"");
+
+    let weight_index: usize =
+        header_indexes[InputHeaderField::Weight as usize].ok_or_else(|| {
+            Error::new(
+                InvalidData,
                 format!(
-                    "Failed to parse line {}: \n\
-                    Expected format is: \n\
-                    \t'name, weight, x_start, y_start, x_end, y_end' or \n\
-                    \t'weight, x_start, y_start, x_end, y_end'\n\
-                    got:\n{}",
-                    index, line
+                    "Weight field is missing in the mapping for line {}: '{}'",
+                    index_line, line
                 ),
-            ));
-        }
-    };
+            )
+        })?;
+    let weight: u32 = parse_to_type::<u32>(parts[weight_index], index_line, "weight")?;
 
-    let weight: u32 = parts[offset].parse::<u32>().map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
+    let x_start_index: usize =
+        header_indexes[InputHeaderField::XOrigin as usize].ok_or_else(|| {
+            Error::new(
+                InvalidData,
+                format!(
+                    "x_origin field is missing in the mapping for line {}: '{}'",
+                    index_line, line
+                ),
+            )
+        })?;
+    let x_start: f64 = parse_to_type::<f64>(parts[x_start_index], index_line, "x_start")?;
+
+    let y_start_index: usize =
+        header_indexes[InputHeaderField::YOrigin as usize].ok_or_else(|| {
+            Error::new(
+                InvalidData,
+                format!(
+                    "y_origin field is missing in the mapping for line {}: '{}'",
+                    index_line, line
+                ),
+            )
+        })?;
+    let y_start: f64 = parse_to_type::<f64>(parts[y_start_index], index_line, "y_start")?;
+
+    let x_end_index: usize = header_indexes[InputHeaderField::XDest as usize].ok_or_else(|| {
+        Error::new(
+            InvalidData,
             format!(
-                "Failed to parse weight at line {}: '{}'",
-                index, parts[offset]
+                "x_dest field is missing in the mapping for line {}: '{}'",
+                index_line, line
             ),
         )
     })?;
+    let x_end: f64 = parse_to_type::<f64>(parts[x_end_index], index_line, "x_end")?;
 
-    let x_start: f64 = parts[offset + 1].parse::<f64>().map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
+    let y_end_index: usize = header_indexes[InputHeaderField::YDest as usize].ok_or_else(|| {
+        Error::new(
+            InvalidData,
             format!(
-                "Failed to parse x_start at line {}: '{}'",
-                index,
-                parts[offset + 1]
+                "y_dest field is missing in the mapping for line {}: '{}'",
+                index_line, line
             ),
         )
     })?;
-
-    let y_start: f64 = parts[offset + 2].parse::<f64>().map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Failed to parse y_start at line {}: '{}'",
-                index,
-                parts[offset + 2]
-            ),
-        )
-    })?;
-
-    let x_end: f64 = parts[offset + 3].parse::<f64>().map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Failed to parse x_end at line {}: '{}'",
-                index,
-                parts[offset + 3]
-            ),
-        )
-    })?;
-
-    let y_end: f64 = parts[offset + 4].parse::<f64>().map_err(|_| {
-        io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Failed to parse y_end at line {}: '{}'",
-                index,
-                parts[offset + 4]
-            ),
-        )
-    })?;
+    let y_end: f64 = parse_to_type::<f64>(parts[y_end_index], index_line, "y_end")?;
 
     Ok(InputODLine {
-        line_id: index,
+        name: name.to_string(),
+        line_id: index_line,
         weight,
         start: Point {
             x: x_start,
@@ -126,6 +185,9 @@ fn parse_line_to_od(line: &str, index: usize) -> io::Result<InputODLine> {
 }
 
 pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
+    let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
+
+    // Try to read the input file
     let content: String = match read_file(&args.file) {
         Ok(c) => c,
         Err(err) => {
@@ -137,8 +199,23 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
         }
     };
 
-    let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
+    // Try to get the header mapping indexes
+    let first_line: &str = content.lines().next().unwrap_or("");
+    let header_indexes: Vec<Option<usize>> = match get_header_mapping_indexes(first_line, &args.map)
+    {
+        Ok(indexes) => indexes,
+        Err(err) => {
+            emit_error(AppError::IoError(format!(
+                "Failed to get header mapping indexes: {}",
+                err
+            )));
+            return None;
+        }
+    };
+
+    // Try to process each line of the input file
     let mut number_point_lines: i32 = 0;
+    let mut trajectory_id: usize = 0;
     for (index, line) in content.lines().enumerate() {
         let line: &str = line.trim();
 
@@ -150,7 +227,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
             continue;
         }
 
-        let od_line: InputODLine = match parse_line_to_od(line, index + 1) {
+        let od_line: InputODLine = match parse_line_to_od(line, &header_indexes, trajectory_id) {
             Ok(od) => od,
             Err(err) => {
                 emit_error(AppError::IoError(format!("{}", err)));
@@ -165,8 +242,11 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
 
         let trajectory: Trajectory = Trajectory::new(od_line, args.segment_size);
         trajectory_storage.add_trajectory(trajectory);
+        trajectory_id += 1;
     }
 
+    // Emit a warning if any lines were ignored due to being points
+    // This is not a fatal error, but it may indicate an issue with the input data
     if number_point_lines > 0 {
         emit_error(AppError::IoError(format!(
             "WARNING: {} lines were ignored because they represent points (start and end are the same).\n\

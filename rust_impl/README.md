@@ -59,14 +59,14 @@ Sample input files are provided in the [`/data`](./data) folder of this reposito
 The application accepts **tab-separated** (`.txt`) or **comma-separated** (`.csv`) files.  
 Each data row must contain either **5 or 6 fields**:
 
-| Field     | Type    | Description                           |
-| --------- | ------- | ------------------------------------- |
-| `name`    | text    | _(optional)_ Label for the line       |
-| `weight`  | integer | Number of trips on this OD line       |
-| `x_start` | decimal | X coordinate of the origin point      |
-| `y_start` | decimal | Y coordinate of the origin point      |
-| `x_end`   | decimal | X coordinate of the destination point |
-| `y_end`   | decimal | Y coordinate of the destination point |
+| Field      | Type    | Description                           |
+| ---------- | ------- | ------------------------------------- |
+| `name`     | text    | _(optional)_ Label for the line       |
+| `weight`   | integer | Number of trips on this OD line       |
+| `x_origin` | decimal | X coordinate of the origin point      |
+| `y_origin` | decimal | Y coordinate of the origin point      |
+| `x_dest`   | decimal | X coordinate of the destination point |
+| `y_dest`   | decimal | Y coordinate of the destination point |
 
 **With name (6 fields):**
 

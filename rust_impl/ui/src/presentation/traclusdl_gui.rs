@@ -94,7 +94,7 @@ const INNER_WIDTH: f32 = CONTAINER_WIDTH - FRAME_OVERHEAD;
 fn container_frame() -> egui::Frame {
     egui::Frame::none()
         .fill(COLOR_SECTION_BG)
-        .stroke(egui::Stroke::new(1.0, COLOR_BORDER))
+        .stroke(egui::Stroke::new(1.0 as f32, COLOR_BORDER))
         .rounding(CONTAINER_ROUNDING)
         .inner_margin(egui::Margin::same(INNER_MARGIN))
 }
@@ -374,7 +374,7 @@ fn render_output_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
 
     egui::Frame::none()
         .fill(COLOR_OUTPUT_BG)
-        .stroke(egui::Stroke::new(1.0, COLOR_BORDER))
+        .stroke(egui::Stroke::new(1.0 as f32, COLOR_BORDER))
         .rounding(CONTAINER_ROUNDING)
         .inner_margin(egui::Margin::same(INNER_MARGIN))
         .show(ui, |ui| {
