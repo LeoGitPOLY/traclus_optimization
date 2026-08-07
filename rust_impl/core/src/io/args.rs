@@ -24,7 +24,7 @@ impl fmt::Display for ExecutionMode {
 }
 
 fn default_mode() -> ExecutionMode {
-    ExecutionMode::Serial
+    ExecutionMode::ParallelRayon
 }
 
 // ─────────────────────────────────────────────
@@ -153,7 +153,8 @@ const INPUT_HEADER_FIELDS: [InputHeaderField; InputHeaderField::COUNT] = [
 
 
 fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
-    let cleaned = s
+    let lower_cased: String = s.to_lowercase();
+    let cleaned: String = lower_cased
         .trim()
         .replace(['{', '}', '[', ']', ' ', '\'', '"', '\t', '\n', '\r'], "");
 
@@ -171,10 +172,10 @@ fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
         let field = match field {
             "name" => InputHeaderField::Name,
             "weight" => InputHeaderField::Weight,
-            "x_origin" => InputHeaderField::XOrigin,
-            "y_origin" => InputHeaderField::YOrigin,
-            "x_dest" => InputHeaderField::XDest,
-            "y_dest" => InputHeaderField::YDest,
+            "xorigin" => InputHeaderField::XOrigin,
+            "yorigin" => InputHeaderField::YOrigin,
+            "xdest" => InputHeaderField::XDest,
+            "ydest" => InputHeaderField::YDest,
             _ => return Err(format!("Field '{field}' is not accepted. All accepted fields: {:?}", INPUT_HEADER_FIELDS)),
         };
 
