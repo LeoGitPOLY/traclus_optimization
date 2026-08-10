@@ -173,7 +173,6 @@ impl TraclusDLApp {
                 for message in messages {
                     vm.output += &format!("{}\n", message);
                 }
-                vm.output += "\n";
             }
 
             AppEvent::Error(msg) => {

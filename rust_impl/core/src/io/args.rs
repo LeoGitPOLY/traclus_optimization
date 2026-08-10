@@ -196,6 +196,40 @@ pub struct TraclusArgs {
     pub file: String,
 
     #[arg(
+        short = 's',
+        long = "segment_size",
+        default_value_t = get_param_configs().segment_size.default,
+        value_parser = |v: &str| {
+            let cfg = get_param_configs().segment_size;
+            let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
+            if val < cfg.min || val > cfg.max {
+                Err(format!("segment_size must be in range {}..={}", cfg.min, cfg.max))
+            } else {
+                Ok(val)
+            }
+        }
+    )]
+    pub segment_size: f64,
+
+ #[arg(
+        short = 'a',
+        long = "max_angle",
+        default_value_t = AngleU16::from_degrees(get_param_configs().max_angle.default),
+        value_parser = |v: &str| {
+            let cfg = get_param_configs().max_angle;
+            let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
+            
+            if val < cfg.min || val > cfg.max {
+                Err(format!("max_angle must be in range {}..={}", cfg.min, cfg.max))
+            } else {
+                let val_angle: AngleU16 = AngleU16::from_degrees(val);
+                Ok(val_angle)
+            }
+        }
+    )]
+    pub max_angle: AngleU16,
+
+    #[arg(
         short = 'd',
         long = "max_dist",
         default_value_t = get_param_configs().max_dist.default,
@@ -226,40 +260,6 @@ pub struct TraclusArgs {
         }
     )]
     pub min_density: u32,
-
-    #[arg(
-        short = 'a',
-        long = "max_angle",
-        default_value_t = AngleU16::from_degrees(get_param_configs().max_angle.default),
-        value_parser = |v: &str| {
-            let cfg = get_param_configs().max_angle;
-            let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            
-            if val < cfg.min || val > cfg.max {
-                Err(format!("max_angle must be in range {}..={}", cfg.min, cfg.max))
-            } else {
-                let val_angle: AngleU16 = AngleU16::from_degrees(val);
-                Ok(val_angle)
-            }
-        }
-    )]
-    pub max_angle: AngleU16,
-
-    #[arg(
-        short = 's',
-        long = "segment_size",
-        default_value_t = get_param_configs().segment_size.default,
-        value_parser = |v: &str| {
-            let cfg = get_param_configs().segment_size;
-            let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            if val < cfg.min || val > cfg.max {
-                Err(format!("segment_size must be in range {}..={}", cfg.min, cfg.max))
-            } else {
-                Ok(val)
-            }
-        }
-    )]
-    pub segment_size: f64,
 
     #[arg(
         long = "map",

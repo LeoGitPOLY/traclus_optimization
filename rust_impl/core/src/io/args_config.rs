@@ -30,6 +30,18 @@ pub struct AllArgsConfigs {
 /// Call this from any module that needs defaults, min, or max.
 pub fn get_param_configs() -> AllArgsConfigs {
     AllArgsConfigs {
+        segment_size: ArgsConfig {
+            default: 500.0,
+            min: f64::MIN_POSITIVE, // > 0
+            max: f64::MAX,
+            label: "SEG SIZE",
+        },
+        max_angle: ArgsConfig {
+            default: 5.0,
+            min: AngleU16::MIN_POSITIVE.to_degrees(), // > 0.01
+            max: 22.5,
+            label: "MAX ANGLE",
+        },
         max_dist: ArgsConfig {
             default: 250.0,
             min: 0.0,
@@ -41,18 +53,6 @@ pub fn get_param_configs() -> AllArgsConfigs {
             min: 1,
             max: u32::MAX,
             label: "MIN DENSITY",
-        },
-        max_angle: ArgsConfig {
-            default: 5.0,
-            min: AngleU16::MIN_POSITIVE.to_degrees(), // > 0.01
-            max: 22.5,
-            label: "MAX ANGLE",
-        },
-        segment_size: ArgsConfig {
-            default: 500.0,
-            min: f64::MIN_POSITIVE, // > 0
-            max: f64::MAX,
-            label: "SEG SIZE",
         },
         max_threads: ArgsConfig {
             default: u32::MAX,

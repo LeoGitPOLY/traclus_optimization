@@ -3,8 +3,8 @@ use crate::io::args::TraclusArgs;
 use crate::objects::cluster_member::ClusterMember;
 use crate::objects::corridor::Corridor;
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
-use crate::utils::events::app_events::AppError;
-use crate::utils::events::event_singleton::emit_error;
+use crate::utils::events::app_events::{AppError, AppEvent};
+use crate::utils::events::event_singleton::{emit, emit_error};
 use std::path::Path;
 
 use std::fs::File;
@@ -61,8 +61,9 @@ pub fn generate_corridor_file(
         return None;
     }
 
-    println!("Corridor output written to: {}", output_filename);
-
+    emit(AppEvent::PrintInfo {
+        messages: vec![format!("Corridor output written to: {}", output_filename)],
+    });
     Some(())
 }
 
@@ -122,7 +123,9 @@ pub fn generate_segment_file(
         return None;
     }
 
-    println!("Segment output written to: {}", output_filename);
+    emit(AppEvent::PrintInfo {
+        messages: vec![format!("Segment output written to: {}", output_filename)],
+    });
 
     Some(())
 }
@@ -137,14 +140,13 @@ fn build_corridor_output_filename(args: &TraclusArgs) -> String {
     let parent_dir: &Path = input_path.parent().unwrap_or_else(|| Path::new("."));
 
     format!(
-        "{}/{}[{}-{}-{}-{}-{}].corridorlist.txt",
+        "{}/{}[{}-{}-{}-{}].corridorlist.txt",
         parent_dir.display(),
         basename,
+        args.segment_size.round(),
+        args.max_angle,
         args.max_dist.round(),
         args.min_density,
-        args.max_angle,
-        args.segment_size.round(),
-        args.mode,
     )
 }
 
@@ -163,14 +165,13 @@ fn build_segment_output_filename(args: &TraclusArgs, format: &SegOutFormat) -> S
     };
 
     format!(
-        "{}/{}[{}-{}-{}-{}-{}].{}.txt",
+        "{}/{}[{}-{}-{}-{}].{}.txt",
         parent_dir.display(),
         basename,
+        args.segment_size.round(),
+        args.max_angle,
         args.max_dist.round(),
         args.min_density,
-        args.max_angle,
-        args.segment_size.round(),
-        args.mode,
         suffix
     )
 }

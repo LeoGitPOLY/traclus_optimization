@@ -190,10 +190,10 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                 ui.horizontal(|ui| {
                     ui.add_space(26.0); // aligns with "#N " prefix below
                     for label in &[
-                        cfg.max_angle.label,
-                        cfg.min_density.label,
-                        cfg.max_dist.label,
                         cfg.segment_size.label,
+                        cfg.max_angle.label,
+                        cfg.max_dist.label,
+                        cfg.min_density.label,
                     ] {
                         ui.add_sized(
                             [PARAM_FIELD_WIDTH, 16.0],
@@ -216,6 +216,16 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                         ui.label(RichText::new(format!("#{}", idx + 1)).color(COLOR_TEXT));
                         ui.add_space(4.0);
 
+                        // segment_size
+                        commit_on_focus_loss(
+                            ui,
+                            &mut vm.args_buffer.segment_size,
+                            &mut vm.args_selected.segment_size,
+                            PARAM_FIELD_WIDTH,
+                            cfg.segment_size.min,
+                            cfg.segment_size.max,
+                        );
+
                         // max_angle
                         commit_on_focus_loss(
                             ui,
@@ -224,17 +234,6 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                             PARAM_FIELD_WIDTH,
                             AngleU16::from_degrees(cfg.max_angle.min),
                             AngleU16::from_degrees(cfg.max_angle.max),
-                        );
-                        ui.add_space(WIDGET_SPACING);
-
-                        // min_density
-                        commit_on_focus_loss(
-                            ui,
-                            &mut vm.args_buffer.min_density,
-                            &mut vm.args_selected.min_density,
-                            PARAM_FIELD_WIDTH,
-                            cfg.min_density.min,
-                            cfg.min_density.max,
                         );
                         ui.add_space(WIDGET_SPACING);
 
@@ -248,16 +247,17 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                             cfg.max_dist.max,
                         );
                         ui.add_space(WIDGET_SPACING);
-
-                        // segment_size
+                        
+                        // min_density
                         commit_on_focus_loss(
                             ui,
-                            &mut vm.args_buffer.segment_size,
-                            &mut vm.args_selected.segment_size,
+                            &mut vm.args_buffer.min_density,
+                            &mut vm.args_selected.min_density,
                             PARAM_FIELD_WIDTH,
-                            cfg.segment_size.min,
-                            cfg.segment_size.max,
+                            cfg.min_density.min,
+                            cfg.min_density.max,
                         );
+                        ui.add_space(WIDGET_SPACING);
 
                         if vm_count > 1 && ui.small_button(" - ").clicked() {
                             to_remove = Some(idx);
