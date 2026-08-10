@@ -1,6 +1,7 @@
-// Now: it's calculated incrementally when members are added for all clusters (not for cluster in a tie)
+// priority_queue.rs — weight/distance priority queue for cluster deduplication
+// Now: sum_distance is calculated incrementally when members are added for all clusters (not for cluster in a tie)
 
-// TODO (optimization): the sum of distances could be calculated only when needed, to optimize performance
+// TODO: compute sum_distance lazily instead of incrementally on every member add
 
 use crate::{
     io::args::{ExecutionMode, TraclusArgs},
@@ -32,8 +33,7 @@ impl PriorityQueueCluster {
         self.elements.push(cluster);
     }
 
-    // Ordering: first by total weight (descending), then by sum of distances (ascending)
-    // First cluster to use will be at the end of the vector
+    // Sort ascending by weight then descending by sum_distance; highest-weight cluster is popped from end
     fn compare_clusters(a: &Cluster, b: &Cluster) -> Ordering {
         a.total_weight
             .cmp(&b.total_weight) // ascending order for weight
@@ -44,14 +44,14 @@ impl PriorityQueueCluster {
             })
     }
 
-    // TODO (optimization): CLAUDE.AI CHAT
-    // Might not need to parallelize this, already almost in order (maybe for first iteration or when really big)
+    // TODO: evaluate whether parallel sort is worth it for nearly-sorted inputs
     fn sort_by_weight_and_distance(&mut self) {
         self.elements
             .sort_by(|a: &Cluster, b: &Cluster| Self::compare_clusters(a, b));
         self.is_initialy_sorted = true;
     }
 
+    // Pops best cluster, removes used segments from remaining clusters, re-sorts
     pub fn pop_and_clean(&mut self, args: &TraclusArgs) -> Option<Cluster> {
         if self.elements.is_empty() {
             return None;
@@ -96,7 +96,7 @@ impl PriorityQueueCluster {
     }
 
     fn clean_remaining_clusters(&mut self, used: &FxHashSet<(usize, usize)>, args: &TraclusArgs) {
-        const PARALLEL_THRESHOLD: usize = 10; // TODO: remove from here
+        const PARALLEL_THRESHOLD: usize = 10; // TODO: move PARALLEL_THRESHOLD to args_config when tuning is complete
         let mut mode: ExecutionMode = args.mode;
 
         if self.elements.len() < PARALLEL_THRESHOLD {
@@ -156,15 +156,14 @@ impl PriorityQueueCluster {
         used: &FxHashSet<(usize, usize)>,
         threshold: u32,
     ) -> bool {
-        // If the seed is now used, remove the entire cluster
+        // Seed already used — discard whole cluster
         if used.contains(&(cluster.seed.cm.traj_id, cluster.seed.cm.segment_id)) {
             return true;
         }
 
         let mut remove_indexes: Vec<usize> = Vec::new();
 
-        // Check each member is now used, remove if so
-        // If total weight drops below threshold, remove entire cluster
+        // Drop used members; remove cluster if below min_density
         for (member_index, member) in cluster.members.iter().enumerate() {
             if used.contains(&(member.traj_id, member.segment_id)) {
                 cluster.total_weight -= member.weight;
@@ -183,7 +182,6 @@ impl PriorityQueueCluster {
     fn clean_non_clustered_segments(&mut self, used: &FxHashSet<(usize, usize)>) {
         let mut remove_indexes: Vec<usize> = Vec::new();
 
-        // Check each non-clustered segment is now used, remove if so
         for (index, segment) in self.non_clustered_segments.iter_mut().enumerate() {
             if used.contains(&(segment.traj_id, segment.segment_id)) {
                 remove_indexes.push(index);

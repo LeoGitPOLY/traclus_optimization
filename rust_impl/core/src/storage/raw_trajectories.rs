@@ -1,3 +1,4 @@
+// raw_trajectories.rs — angle-bucketed trajectory index for neighbor lookup
 use super::super::geometry::trajectory::Trajectory;
 use crate::utils::angle_u16::{AngleU16, FULL_CIRCLE};
 
@@ -68,7 +69,7 @@ impl RawTrajectories {
         }
     }
 
-    // Returns an iterator over trajectories from all buckets within max_angle
+    // Iterator over trajectories in buckets within max_angle
     pub fn iter_nearby_angle(&self, angle: AngleU16) -> impl Iterator<Item = &Trajectory> {
         let idx: usize = self.angle_to_bucket(angle);
 
@@ -125,6 +126,7 @@ impl RawTrajectories {
     #[allow(unused)]
     pub fn print_info(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {
+            // DEAD: skip empty buckets in debug print — kept for reference
             // if bucket.trajectories.len() == 0 {
             //     continue;
             // }

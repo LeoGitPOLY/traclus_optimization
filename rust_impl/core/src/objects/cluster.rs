@@ -1,3 +1,4 @@
+// cluster.rs — DBSCAN cluster with seed, candidates, and members
 use super::cluster_member::{ClusterMember, ClusterSeed};
 
 pub struct Cluster {
@@ -28,6 +29,7 @@ impl Cluster {
         }
     }
 
+    // Appends unique candidates from another cluster (one segment per trajectory)
     pub fn merge_clusters(&mut self, other: Cluster) {
         for candidate in other.candidates {
             if !self.contains_traj(candidate.traj_id) {
@@ -53,6 +55,7 @@ impl Cluster {
         false
     }
 
+    // Sum of distances to existing members — used for cluster ordering ties
     fn distance_to_members(&self, new_member: &ClusterMember) -> f64 {
         let mut total_dist: f64 = 0.0;
         for member in &self.members {

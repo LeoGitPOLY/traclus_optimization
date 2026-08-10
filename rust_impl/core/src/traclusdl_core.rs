@@ -1,3 +1,4 @@
+// traclusdl_core.rs — orchestrates load, cluster, and output for GUI and CLI
 use std::thread::available_parallelism;
 
 use super::storage::clustered_trajectories::ClusteredTrajectories;
@@ -28,7 +29,7 @@ impl TraclusDLCore {
         }
     }
 
-    // Loads raw trajectories from disk and stores them.
+    // Parses input file and resets clustered storage
     pub fn load_raw_storage(&mut self, args: &TraclusArgs, _: StopFlag) {
         self.raw_storage = parse_input_data(&args);
         self.clust_storage = None;
@@ -37,14 +38,14 @@ impl TraclusDLCore {
             return;
         }
 
-        // Emit information about the loaded data
+        // Notify GUI of trajectory count and directional correlation
         emit(AppEvent::LoadComplete {
             desire_line_count: self.raw_storage.as_ref().unwrap().get_num_trajectories(),
             correlation_percent: directional_correlation(self.raw_storage.as_ref().unwrap()),
         });
     }
 
-    // Runs the clustering algorithm on the currently loaded raw storage and stores the clustered result.
+    // Runs DBSCAN clustering and emits summary stats on success
     pub fn run_clustering(&mut self, args: &TraclusArgs, stop: StopFlag) {
         if self.raw_storage.is_none() {
             emit_error(AppError::NoRawStorage);
@@ -68,7 +69,7 @@ impl TraclusDLCore {
         }
     }
 
-    // Writes corridor and segment output files from the current clustered storage.
+    // Writes corridor and segment output files from clustered storage
     pub fn generate_outputs(&mut self, _: &TraclusArgs, _: StopFlag) {
         if self.clust_storage.is_none() {
             emit_error(AppError::NoClustStorage);
@@ -82,8 +83,7 @@ impl TraclusDLCore {
         generate_segment_file(args, clust_storage, SegOutFormat::NewTraclus);
     }
 
-    /// Commmand line entry point for running the full TraclusDL algorithm
-    /// No GUI involved, No overhead of statistics, just pure algorithm execution
+    // CLI entry point: full pipeline without GUI progress overhead
     pub fn run_full_traclus(&self, args: TraclusArgs) {
         emit_timed_perf("Input_Parsing", true, None);
         let raw_storage: RawTrajectories =
@@ -101,8 +101,7 @@ impl TraclusDLCore {
         emit_timed_perf("Output_Writing", false, None);
     }
 
-    /// Sets how many threads Rayon should use for computation.
-    /// Reserves CPUs for the UI threads that will be active.
+    // Configures Rayon thread pool, reserving CPUs for logger/GUI when active
     pub fn build_thread_pool(args: &TraclusArgs, gui_active: bool) {
         let available: usize = available_parallelism().map(|n| n.get()).unwrap_or(2).max(1);
 
@@ -117,7 +116,11 @@ impl TraclusDLCore {
         }
 
         let computation: usize = available.saturating_sub(reserved).max(1);
-        let threads_to_use: usize = args.max_threads.min(computation as u32) as usize;
+        let mut threads_to_use: usize = args.max_threads.min(computation as u32) as usize;
+
+        if args.mode == ExecutionMode::Serial {
+            threads_to_use = 1; // Force single-threaded execution for serial mode
+        }
 
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads_to_use)

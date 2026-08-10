@@ -1,3 +1,4 @@
+// input_od_line.rs — parsed origin–destination line from input file
 use super::point::Point;
 
 #[derive(Debug)]

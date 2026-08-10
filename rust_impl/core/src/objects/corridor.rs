@@ -1,3 +1,4 @@
+// corridor.rs — weighted average line representing a finalized cluster
 use super::super::geometry::point::Point;
 use super::cluster::Cluster;
 use super::cluster_member::ClusterMember;
@@ -23,6 +24,7 @@ impl Corridor {
         }
     }
 
+    // Weighted mean of member start/end points for corridor geometry
     pub fn weighted_average(cluster: &Cluster) -> (Point, Point) {
         let mut weighted_start: Point = cluster.seed.cm.start * (cluster.seed.cm.weight as f64);
         let mut weighted_end: Point = Self::get_weighted_end(&cluster.seed.cm);
@@ -39,6 +41,7 @@ impl Corridor {
         )
     }
 
+    // Weighted end point from midpoint-encoded segment geometry
     #[inline]
     pub fn get_weighted_end(member: &ClusterMember) -> Point {
         Point {

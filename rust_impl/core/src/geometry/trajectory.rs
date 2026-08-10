@@ -1,3 +1,4 @@
+// trajectory.rs — OD line split into directed segments for clustering
 use std::f64::consts::PI;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -48,6 +49,7 @@ impl Trajectory {
         (dx * dx + dy * dy).sqrt()
     }
 
+    // Minimum distance to polyline and approximate segment index via projection parameter t
     pub fn distance_to_point(&self, point: &Point) -> (f64, usize) {
         let px: f64 = point.x;
         let py: f64 = point.y;
@@ -78,6 +80,7 @@ impl Trajectory {
         (min_distance, index_seg)
     }
 
+    // Tiles trajectory into equal-length segments along its bearing
     pub fn make_segments(&mut self, segment_length: f64) {
         self.segments.clear();
 
@@ -87,6 +90,7 @@ impl Trajectory {
 
         let length: f64 = self.get_spatial_length();
 
+        // Ceil avoids an extra partial segment from float error
         let nsegs: usize = ((length / segment_length) - 1e-9).ceil() as usize;
         let base_x: f64 = self.start.x;
         let base_y: f64 = self.start.y;

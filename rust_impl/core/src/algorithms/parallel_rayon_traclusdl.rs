@@ -1,3 +1,4 @@
+// parallel_rayon_traclusdl.rs — Rayon-parallel TraClus over trajectories and segments
 use std::slice;
 
 use super::base_traclusdl::TraclusAlgorithm;
@@ -28,13 +29,7 @@ impl ParallelRayonTraclusDL {
         }
     }
 
-    /// Completes the clustering by iterating over angle buckets in serial
-    /// Each trajectory inside each bucket is computed in parallel
-    ///
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// # Returns
-    /// * `Vec<Vec<Cluster>>` - A vector of vectors of clusters, where each inner vector corresponds to the clusters found for a specific bucket
+    // Serial over buckets; parallel over trajectories within each bucket
     fn complete_parallel_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
@@ -44,8 +39,7 @@ impl ParallelRayonTraclusDL {
         let mut results: Vec<Vec<Cluster>> = Vec::new();
 
         for bucket in bucket_serial_iter {
-            // Get a copy of nearby trajectories for this angle bucket
-            // Since this is not mutable, this is read-only and thread-safe
+            // Shared read-only nearby copy per bucket
             emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);

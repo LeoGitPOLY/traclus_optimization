@@ -1,3 +1,4 @@
+// input_loader.rs — reads CSV/TSV desire lines and builds RawTrajectories
 use super::super::geometry::input_od_line::InputODLine;
 use super::super::geometry::point::Point;
 use super::super::geometry::trajectory::Trajectory;
@@ -32,10 +33,10 @@ fn get_header_mapping_indexes(
     let num_columns: usize = first_line.split(detect_separator(first_line)).count();
     let num_mapping_fields: usize = mapping.iter().filter(|s: &&String| !s.is_empty()).count();
 
-    // Start with the default ordering inferred from the number of columns.
+    // Default column order from field count
     let default_indexes: Vec<Option<usize>> = InputHeaderField::default_indexes(num_columns);
 
-    // If there is no header or no mapping, the default indexes are correct.
+    // No header or incomplete map — use defaults
     if !is_header || num_mapping_fields < get_param_configs().num_fields_map.min {
         return Ok(default_indexes);
     }
@@ -52,7 +53,7 @@ fn get_header_mapping_indexes(
             continue;
         }
 
-        // Assign the mapped index.
+        // Resolve mapped name to header column index
         let new_index: Option<usize> = header_fields.iter().position(|&s| s == mapped_name);
 
         if new_index.is_none() {
@@ -67,7 +68,7 @@ fn get_header_mapping_indexes(
     Ok(mapping_indexes)
 }
 
-/// Detects if a line is a header by checking if any field is non-numeric
+// Header if any field is non-numeric
 fn is_header(line: &str) -> bool {
     let sep: char = detect_separator(line);
     line.split(sep)
@@ -184,10 +185,11 @@ fn parse_line_to_od(
     })
 }
 
+// Loads and segments all valid OD lines; skips zero-length lines
 pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
     let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
 
-    // Try to read the input file
+    // Read file or emit error
     let content: String = match read_file(&args.file) {
         Ok(c) => c,
         Err(err) => {
@@ -199,7 +201,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
         }
     };
 
-    // Try to get the header mapping indexes
+    // Resolve header column mapping
     let first_line: &str = content.lines().next().unwrap_or("");
     let header_indexes: Vec<Option<usize>> = match get_header_mapping_indexes(first_line, &args.map)
     {
@@ -213,7 +215,7 @@ pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
         }
     };
 
-    // Try to process each line of the input file
+    // Parse body lines into trajectories
     let mut number_point_lines: i32 = 0;
     let mut trajectory_id: usize = 0;
     for (index, line) in content.lines().enumerate() {

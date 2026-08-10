@@ -1,3 +1,4 @@
+// segment.rs — trajectory sub-segment stored as start + midpoint
 use super::point::Point;
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ impl Segment {
         Self { id, start, middle }
     }
 
+    // Reconstructs segment end from stored start and midpoint
     pub fn get_end(&self) -> Point {
         let end: Point = Point {
             x: self.start.x + 2.0 * (self.middle.x - self.start.x),

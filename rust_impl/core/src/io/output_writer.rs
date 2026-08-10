@@ -1,3 +1,4 @@
+// output_writer.rs — writes corridor and segment list files
 use crate::geometry::point::Point;
 use crate::io::args::TraclusArgs;
 use crate::objects::cluster_member::ClusterMember;
@@ -15,7 +16,7 @@ pub enum SegOutFormat {
     NewTraclus,
 }
 
-// Generate the corridor output file to a text file
+// Writes corridorlist.txt beside input file
 pub fn generate_corridor_file(
     args: &TraclusArgs,
     clust_storage: &ClusteredTrajectories,
@@ -35,7 +36,7 @@ pub fn generate_corridor_file(
 
     let mut writer: BufWriter<File> = BufWriter::new(file);
 
-    if let Err(err) = writeln!(writer, "name\tweight\tcoordinates") {
+    if let Err(err) = write_corridor_header(&mut writer) {
         emit_error(AppError::IoError(format!(
             "Failed to write corridor header: {}",
             err
@@ -67,7 +68,7 @@ pub fn generate_corridor_file(
     Some(())
 }
 
-// Generate the segment output file to a text file
+// Writes segmentlist.txt (old or new format)
 pub fn generate_segment_file(
     args: &TraclusArgs,
     clust_storage: &ClusteredTrajectories,
@@ -138,16 +139,19 @@ fn build_corridor_output_filename(args: &TraclusArgs) -> String {
         .unwrap_or("output");
 
     let parent_dir: &Path = input_path.parent().unwrap_or_else(|| Path::new("."));
-
-    format!(
-        "{}/{}[{}-{}-{}-{}].corridorlist.txt",
-        parent_dir.display(),
-        basename,
-        args.segment_size.round(),
-        args.max_angle,
-        args.max_dist.round(),
-        args.min_density,
-    )
+    if args.output.is_empty() {
+        format!(
+            "{}/{}[{}-{}-{}-{}].corridors.txt",
+            parent_dir.display(),
+            basename,
+            args.segment_size.round(),
+            args.max_angle,
+            args.max_dist.round(),
+            args.min_density,
+        )
+    } else {
+        format!("{}/{}.corridors.txt", parent_dir.display(), args.output)
+    }
 }
 
 fn build_segment_output_filename(args: &TraclusArgs, format: &SegOutFormat) -> String {
@@ -159,24 +163,28 @@ fn build_segment_output_filename(args: &TraclusArgs, format: &SegOutFormat) -> S
 
     let parent_dir: &Path = input_path.parent().unwrap_or_else(|| Path::new("."));
 
-    let suffix = match format {
-        SegOutFormat::OldTraclus => "segmentlist_old",
-        SegOutFormat::NewTraclus => "segmentlist",
+    let suffix: &str = match format {
+        SegOutFormat::OldTraclus => "segments_old",
+        SegOutFormat::NewTraclus => "segments",
     };
 
-    format!(
-        "{}/{}[{}-{}-{}-{}].{}.txt",
-        parent_dir.display(),
-        basename,
-        args.segment_size.round(),
-        args.max_angle,
-        args.max_dist.round(),
-        args.min_density,
-        suffix
-    )
+    if args.output.is_empty() {
+        format!(
+            "{}/{}[{}-{}-{}-{}].{}.txt",
+            parent_dir.display(),
+            basename,
+            args.segment_size.round(),
+            args.max_angle,
+            args.max_dist.round(),
+            args.min_density,
+            suffix
+        )
+    } else {
+        format!("{}/{}.segments.txt", parent_dir.display(), args.output)
+    }
 }
 
-// Format: {corridor_id}\t{trajectory_id}\t{segment_id}\t{weight}\t{angle}\tLINESTRING({x1} {y1}, {x2} {y2})
+// Format: {corridor_id}\t{trajectory_id}\t{segment_id}\t{weight}\t{angle}\t{xorigin}\t{yorigin}\t{xdestination}\t{ydestination}
 fn write_single_segment_new(
     writer: &mut BufWriter<File>,
     corridor_id: i32,
@@ -185,7 +193,7 @@ fn write_single_segment_new(
     let end_point: Point = cluster_member.end_point();
     writeln!(
         writer,
-        "{}\t{}\t{}\t{}\t{}\tLINESTRING({} {}, {} {})",
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         corridor_id,
         cluster_member.traj_id,
         cluster_member.segment_id,
@@ -223,11 +231,11 @@ fn write_single_segment_old(
     )
 }
 
-// Format: {id}\t{weight}\tLINESTRING({x1} {y1}, {x2} {y2})
+// Format: {id}\t{weight}\t{start.x}\t{start.y}\t{end.x}\t{end.y}
 fn write_single_corridor(writer: &mut BufWriter<File>, corridor: &Corridor) -> io::Result<()> {
     writeln!(
         writer,
-        "{}\t{}\tLINESTRING({} {}, {} {})",
+        "{}\t{}\t{}\t{}\t{}\t{}",
         corridor.id,
         corridor.weight,
         corridor.start.x,
@@ -239,7 +247,7 @@ fn write_single_corridor(writer: &mut BufWriter<File>, corridor: &Corridor) -> i
 
 // Writes the segment header based on the specified format.
 // Old Traclus: id weight angle corridor_id coordinates
-// New Traclus: corridor_id trajectory_id segment_id weight angle coordinates
+// New Traclus: corridor_id trajectory_id segment_id weight angle xorigin yorigin xdestination ydestination
 fn write_segment_header(writer: &mut BufWriter<File>, format: &SegOutFormat) -> io::Result<()> {
     match format {
         SegOutFormat::OldTraclus => {
@@ -248,8 +256,16 @@ fn write_segment_header(writer: &mut BufWriter<File>, format: &SegOutFormat) -> 
         SegOutFormat::NewTraclus => {
             writeln!(
                 writer,
-                "corridor_id\ttrajectory_id\tsegment_id\tweight\tangle\tcoordinates"
+                "corridor_id\ttrajectory_id\tsegment_id\tweight\tangle\txorigin\tyorigin\txdestination\tydestination"
             )
         }
     }
+}
+
+// Writes the corridor header: id weight xorigin yorigin xdestination ydestination
+fn write_corridor_header(writer: &mut BufWriter<File>) -> io::Result<()> {
+    writeln!(
+        writer,
+        "id\tweight\txorigin\tyorigin\txdestination\tydestination"
+    )
 }

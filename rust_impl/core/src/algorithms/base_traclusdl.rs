@@ -1,3 +1,4 @@
+// base_traclusdl.rs — shared TraClus trait with default DBSCAN steps
 use crate::geometry::{segment::Segment, trajectory::Trajectory};
 use crate::io::args::TraclusArgs;
 use crate::objects::corridor::Corridor;
@@ -13,10 +14,7 @@ use crate::utils::events::event_singleton::{emit, emit_timed_perf};
 use crate::utils::gui_parallel_runner::StopFlag;
 use std::sync::atomic::Ordering;
 
-/// Base trait for TraClus algorithm implementations.
-///
-/// This trait defines the contract that all TraClus variants must follow,
-/// providing both required methods and overridable default implementations
+// Trait for serial and parallel TraClus implementations
 pub trait TraclusAlgorithm {
     // ============================================================
     // Shared Data Accessors
@@ -30,14 +28,7 @@ pub trait TraclusAlgorithm {
     // Required Methods (Must Be Implemented by Implementations)
     // ============================================================
 
-    /// Performs DB-SCAN clustering on trajectory (segments).
-    /// This is the main method to partitions the trajectory (segments) into clusters
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
-    /// # Returns
-    /// * `true` if clustering completed successfully
-    /// * `false` if clustering was stopped early due to a stop signal
+    // DBSCAN over trajectory segments; returns false if stopped early
     fn db_scan_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
@@ -48,25 +39,8 @@ pub trait TraclusAlgorithm {
     // Default Methods (Can Be Overridden If Needed)
     // ============================================================
 
-    /// Finds all reachable trajectory segments from a given seed segment.
-    ///
-    /// This method applies four constraints to determine reachability:
-    /// 1. **Same trajectory constraint**: Excludes segments from the same trajectory
-    /// 2. **Angle constraint**: Filters by direction similarity (max_angle)
-    /// 3. **Distance constraint**: Filters by spatial proximity (max_dist)
-    /// 4. **Density constraint**: Ensures minimum cluster weight (min_density)
-    ///
-    /// # Time Complexity
-    /// TODO: VERIFY THIS!
-    /// O(n × d / bucket_size) where n is nearby trajectories, d is avg trajectory length
-    ///
-    /// # Arguments
-    /// * `seed` - The seed segment to cluster around
-    /// * `nearby_trajs` - Candidate trajectories within spatial proximity
-    ///
-    /// # Returns
-    /// * `Some(Cluster)` if density constraint is met
-    /// * `None` if the cluster doesn't meet minimum density requirements
+    // Finds density-reachable segments using angle, distance, and min_density constraints
+    // TODO: verify cluster_reachable_segs time complexity against bucket indexing — O(n × d / bucket_size) estimated
     fn cluster_reachable_segs(
         &self,
         seed: ClusterSeed,
@@ -115,23 +89,8 @@ pub trait TraclusAlgorithm {
         Some(cluster)
     }
 
-    /// Expands a cluster by iteratively processing candidate segments.
-    ///
-    /// This method implements a breadth-first expansion where each candidate
-    /// segment is used as a new seed to find additional reachable segments.
-    /// The process continues until no new candidates are found.
-    ///
-    /// # Time Complexity
-    /// TODO: VERIFY THIS!
-    /// O(m' × cluster_reachable_segs) = O(m' × n × d / bucket_size)
-    /// where m' is the number of members in the final cluster
-    ///
-    /// # Arguments
-    /// * `cluster` - The cluster to expand (modified in place)
-    /// * `nearby_trajs` - Candidate trajectories to consider
-    ///
-    /// # Returns
-    /// A mutable reference to the expanded cluster
+    // BFS expansion: each candidate becomes a seed until no new candidates remain
+    // TODO: verify expand_segment_cluster time complexity — O(m' × n × d / bucket_size) estimated
     fn expand_segment_cluster<'a>(
         &self,
         cluster: &'a mut Cluster,
@@ -164,22 +123,8 @@ pub trait TraclusAlgorithm {
         cluster
     }
 
-    /// Initializes a cluster from a seed segment.
-    ///
-    /// This is a convenience method that finds the initial reachable segments
-    /// for a given seed without performing expansion.
-    ///
-    /// # Time Complexity
-    /// TODO: VERIFY THIS!
-    /// O(n × d / bucket_size)
-    ///
-    /// # Arguments
-    /// * `seed` - Tuple of (segment, trajectory) to use as the initial seed
-    /// * `nearby_trajs` - Candidate trajectories to consider
-    ///
-    /// # Returns
-    /// * `Some(Cluster)` if initial clustering succeeds
-    /// * `None` if no valid cluster can be formed
+    // Single-pass reachable set from seed without expansion
+    // TODO: verify initial_segment_cluster time complexity — O(n × d / bucket_size) estimated
     fn initial_segment_cluster(
         &self,
         seed: (&Segment, &Trajectory),
@@ -190,11 +135,7 @@ pub trait TraclusAlgorithm {
         self.cluster_reachable_segs(seed_member, nearby_trajs)
     }
 
-    /// Serially cycle through all trajectories and fill non-clustered segments
-    ///
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    // Seeds non_clustered_segments from every raw trajectory segment
     fn fill_non_clustered_segments(
         &self,
         raw_trajectories: &RawTrajectories,
@@ -207,10 +148,7 @@ pub trait TraclusAlgorithm {
         }
     }
 
-    /// Creates corridors for all clustered trajectories based on the clustering results
-    ///
-    /// # Arguments
-    /// * `clustered_trajectories` - The clustered trajectory storage containing all clusters
+    // Converts priority-queue clusters into corridors, respecting stop signal
     fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
         let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
 
@@ -223,7 +161,7 @@ pub trait TraclusAlgorithm {
             self.tick_remove_duplicates(num_last_elements, num_current_elements);
             num_last_elements = num_current_elements;
 
-            // Check for stop signal to bail out early
+            // Bail out early on stop signal
             if self.is_stopped() {
                 return;
             }

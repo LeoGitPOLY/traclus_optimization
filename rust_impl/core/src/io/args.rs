@@ -1,5 +1,4 @@
-// args.rs
-
+// args.rs — CLI argument types, parsing, and TraclusArgs definition
 use clap::{Parser, ValueEnum};
 use std::{fmt, hash::Hash};
 use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::angle_u16::AngleU16};
@@ -118,7 +117,7 @@ impl InputHeaderField {
         INPUT_HEADER_FIELDS.get(i).copied()
     }
 
-    // Returns the default mapping indexes based only on the number of columns in the CSV file. 
+    // Infers column indexes from column count when header/mapping absent
     pub fn default_indexes(num_columns: usize) -> Vec<Option<usize>> {
         let mut indexes: Vec<Option<usize>> = vec![None; Self::COUNT];
 
@@ -133,7 +132,7 @@ impl InputHeaderField {
         indexes
     }
 
-    // Returns an empty mapping with all fields set to None
+    // All fields unmapped
     pub fn empty_mapping() -> Vec<Option<usize>> {
         vec![None; Self::COUNT]
     }
@@ -152,6 +151,7 @@ const INPUT_HEADER_FIELDS: [InputHeaderField; InputHeaderField::COUNT] = [
 ];
 
 
+// Parses "field:column,…" map string into MappingHeader
 fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
     let lower_cased: String = s.to_lowercase();
     let cleaned: String = lower_cased
@@ -194,6 +194,9 @@ fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
 pub struct TraclusArgs {
     #[arg(short = 'f', long = "file", default_value = "")]
     pub file: String,
+
+    #[arg(short = 'o', long = "output", default_value = "")]
+    pub output: String,
 
     #[arg(
         short = 's',
@@ -301,6 +304,7 @@ impl Default for TraclusArgs {
     let cfg: AllArgsConfigs = get_param_configs();
         Self {
             file: String::new(),
+            output: String::new(),
             max_dist: cfg.max_dist.default,
             min_density: cfg.min_density.default,
             max_angle: AngleU16::from_degrees(cfg.max_angle.default),

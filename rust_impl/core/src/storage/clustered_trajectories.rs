@@ -1,3 +1,4 @@
+// clustered_trajectories.rs — clustering results, corridors, and non-clustered segments
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
@@ -34,6 +35,7 @@ impl ClusteredTrajectories {
         }
     }
 
+    // Pops clusters by priority until empty, building Corridor for each
     pub fn finalize_corridors(&mut self, args: &TraclusArgs) {
         let mut num_last_elements: usize = self.clusters.get_size_elements();
 
@@ -66,10 +68,8 @@ impl ClusteredTrajectories {
         }
     }
 
-    // Provides an iterator over all cluster members in all corridors, along with their corridor index
-    // Corridor index is -1 for non-clustered segments
+    // Yields (corridor_id, member); corridor_id -1 for unclustered
     pub fn get_all_cluster_members_iter(&self) -> impl Iterator<Item = (i32, &ClusterMember)> {
-        // Iterate over all corridors and their members, yielding (corridor_id, cluster_member)
         let clustered = self
             .corridors
             .iter()
@@ -80,10 +80,8 @@ impl ClusteredTrajectories {
                     .get_all_members_iter()
                     .map(move |cm| (corridor_idx as i32, cm))
             });
-        // Iterate over non-clustered segments, yielding (-1, cluster_member)
         let non_clustered = self.non_clustered_segments.iter().map(|cm| (-1, cm));
 
-        // Merge the two iterators
         clustered.chain(non_clustered)
     }
 

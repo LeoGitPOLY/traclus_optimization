@@ -1,3 +1,4 @@
+// lib.rs — crate root module declarations
 mod algorithms;
 mod geometry;
 pub mod io;

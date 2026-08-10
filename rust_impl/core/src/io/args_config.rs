@@ -1,10 +1,4 @@
-// args_config.rs - Single source of truth for all args constraints and defaults.
-// Change values here only — TraclusArgs and the GUI both read from these structs.
-
-// ─────────────────────────────────────────────
-// ArgsConfig — constraints for one argument
-// ─────────────────────────────────────────────
-
+// args_config.rs — single source of truth for argument defaults and constraints
 use crate::utils::angle_u16::AngleU16;
 
 pub struct ArgsConfig<T> {
@@ -27,7 +21,7 @@ pub struct AllArgsConfigs {
     pub num_fields_map: ArgsConfig<usize>,
 }
 
-/// Call this from any module that needs defaults, min, or max.
+// Returns shared parameter configs for CLI and GUI
 pub fn get_param_configs() -> AllArgsConfigs {
     AllArgsConfigs {
         segment_size: ArgsConfig {

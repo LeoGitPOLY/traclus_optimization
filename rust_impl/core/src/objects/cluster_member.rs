@@ -1,3 +1,4 @@
+// cluster_member.rs — segment reference inside a cluster or corridor
 use super::super::geometry::{point::Point, segment::Segment, trajectory::Trajectory};
 use crate::utils::angle_u16::AngleU16;
 

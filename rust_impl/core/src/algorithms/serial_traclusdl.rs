@@ -1,3 +1,4 @@
+// serial_traclusdl.rs — single-threaded TraClus implementation
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
 use super::super::storage::{
@@ -22,19 +23,14 @@ impl SerialTraclusDL {
         }
     }
 
-    /// Completes the serial clustering process by iterating over angle buckets
-    /// Each trajectory inside each bucket is computed
-    ///
-    /// # Arguments
-    /// * `raw_trajectories` - The raw trajectory storage containing all trajectories
-    /// * `clustered_trajectories` - The clustered trajectory storage to populate with clusters
+    // Iterates angle buckets serially, clustering each trajectory against nearby copies
     fn complete_serial_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
         clustered_trajectories: &mut ClusteredTrajectories,
     ) {
         for bucket in &raw_trajectories.traj_buckets {
-            // Get a copy of nearby trajectories for this angle bucket
+            // Nearby trajectories copied once per bucket
             emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);
@@ -57,17 +53,7 @@ impl SerialTraclusDL {
         }
     }
 
-    /// Clusters an individual trajectory against nearby trajectories.
-    /// For each segment:
-    /// - Attempts to create an initial cluster if density requirements are met
-    /// - Expands the cluster to include all reachable segments
-    /// - Stores the completed cluster
-    ///
-    /// # Arguments
-    /// * `traj_seed` - The trajectory to use as a clustering seed
-    /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
-    /// # Returns
-    /// * A vector of clusters formed from the trajectory segments
+    // Clusters each segment of traj_seed; expands and collects valid clusters
     fn individual_trajectory_clustering(
         &self,
         traj_seed: &Trajectory,
@@ -112,8 +98,7 @@ impl TraclusAlgorithm for SerialTraclusDL {
     // Required Method
     // ============================================================
 
-    /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
-    /// Implements the main clustering logic for the Serial TraClusDL algorithm.
+    // Three-phase pipeline: discover clusters, fill leftovers, build corridors
     fn db_scan_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
