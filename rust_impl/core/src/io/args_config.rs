@@ -1,5 +1,6 @@
 // args_config.rs — single source of truth for argument defaults and constraints
-use crate::utils::angle_u16::AngleU16;
+
+use crate::utils::data_types::angle_u16::AngleU16;
 
 pub struct ArgsConfig<T> {
     pub default: T,

@@ -1,4 +1,5 @@
 // traclusdl_core.rs — orchestrates load, cluster, and output for GUI and CLI
+
 use std::thread::available_parallelism;
 
 use super::storage::clustered_trajectories::ClusteredTrajectories;
@@ -8,7 +9,7 @@ use crate::utils::events::app_events::{AppError, AppEvent};
 use crate::io::args::{ExecutionMode, InterfaceMode, TraclusArgs};
 use crate::io::input_loader::parse_input_data;
 use crate::io::output_writer::{SegOutFormat, generate_corridor_file, generate_segment_file};
-use crate::utils::events::event_singleton::{emit, emit_error, emit_timed_perf};
+use crate::utils::events::event_singleton::{emit, emit_error};
 use crate::utils::gui_parallel_runner::StopFlag;
 use crate::utils::statistic::{clustering_histogram, directional_correlation};
 
@@ -85,20 +86,17 @@ impl TraclusDLCore {
 
     // CLI entry point: full pipeline without GUI progress overhead
     pub fn run_full_traclus(&self, args: TraclusArgs) {
-        emit_timed_perf("Input_Parsing", true, None);
         let raw_storage: RawTrajectories =
             parse_input_data(&args).expect("Failed to parse input data");
-        emit_timed_perf("Input_Parsing", false, None);
 
         let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(&args);
         let clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(&args);
         clustering_algorithm.db_scan_clustering(&raw_storage, &mut clust_storage);
 
-        emit_timed_perf("Output_Writing", true, None);
         generate_corridor_file(&args, &clust_storage);
         generate_segment_file(&args, &clust_storage, SegOutFormat::NewTraclus);
-        generate_segment_file(&args, &clust_storage, SegOutFormat::OldTraclus);
-        emit_timed_perf("Output_Writing", false, None);
+        // If you want to generate the old Traclus segment output format, uncomment the following line
+        //generate_segment_file(&args, &clust_storage, SegOutFormat::OldTraclus);
     }
 
     // Configures Rayon thread pool, reserving CPUs for logger/GUI when active

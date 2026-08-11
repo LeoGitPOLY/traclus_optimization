@@ -1,4 +1,5 @@
 // output_writer.rs — writes corridor and segment list files
+
 use crate::geometry::point::Point;
 use crate::io::args::TraclusArgs;
 use crate::objects::cluster_member::ClusterMember;

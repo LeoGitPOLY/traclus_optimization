@@ -1,4 +1,5 @@
 // base_traclusdl.rs — shared TraClus trait with default DBSCAN steps
+
 use crate::geometry::{segment::Segment, trajectory::Trajectory};
 use crate::io::args::TraclusArgs;
 use crate::objects::corridor::Corridor;
@@ -10,7 +11,7 @@ use crate::storage::{
     clustered_trajectories::ClusteredTrajectories, raw_trajectories::RawTrajectories,
 };
 use crate::utils::events::app_events::{AppEvent, ComputationType};
-use crate::utils::events::event_singleton::{emit, emit_timed_perf};
+use crate::utils::events::event_singleton::emit;
 use crate::utils::gui_parallel_runner::StopFlag;
 use std::sync::atomic::Ordering;
 
@@ -40,7 +41,6 @@ pub trait TraclusAlgorithm {
     // ============================================================
 
     // Finds density-reachable segments using angle, distance, and min_density constraints
-    // TODO: verify cluster_reachable_segs time complexity against bucket indexing — O(n × d / bucket_size) estimated
     fn cluster_reachable_segs(
         &self,
         seed: ClusterSeed,
@@ -90,7 +90,6 @@ pub trait TraclusAlgorithm {
     }
 
     // BFS expansion: each candidate becomes a seed until no new candidates remain
-    // TODO: verify expand_segment_cluster time complexity — O(m' × n × d / bucket_size) estimated
     fn expand_segment_cluster<'a>(
         &self,
         cluster: &'a mut Cluster,
@@ -124,7 +123,6 @@ pub trait TraclusAlgorithm {
     }
 
     // Single-pass reachable set from seed without expansion
-    // TODO: verify initial_segment_cluster time complexity — O(n × d / bucket_size) estimated
     fn initial_segment_cluster(
         &self,
         seed: (&Segment, &Trajectory),
@@ -173,7 +171,7 @@ pub trait TraclusAlgorithm {
     // Emitter Helpers (For Emitting Progress Events During Clustering)
     // ============================================================
 
-    /// Returns true if a stop has been requested.
+    // Returns true if a stop has been requested
     fn is_stopped(&self) -> bool {
         if let Some(stop_flag) = self.stop_flag() {
             return stop_flag.load(Ordering::Relaxed);
@@ -200,14 +198,12 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::Clustering,
             max_progress: raw_trajectories.get_num_trajectories(),
         });
-        emit_timed_perf("Clustering_All", true, None);
     }
 
     fn emit_complete_clustering(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::Clustering,
         });
-        emit_timed_perf("Clustering_All", false, None);
     }
 
     fn emit_start_remove_duplicates(&self, clustered_trajectories: &ClusteredTrajectories) {
@@ -215,13 +211,11 @@ pub trait TraclusAlgorithm {
             computation_type: ComputationType::RemoveDuplicates,
             max_progress: clustered_trajectories.get_size_priority_queue(),
         });
-        emit_timed_perf("Removing_Duplicates", true, None);
     }
 
     fn emit_complete_remove_duplicates(&self) {
         emit(AppEvent::ComputationComplete {
             computation_type: ComputationType::RemoveDuplicates,
         });
-        emit_timed_perf("Removing_Duplicates", false, None);
     }
 }

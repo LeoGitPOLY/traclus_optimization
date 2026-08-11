@@ -1,4 +1,5 @@
 // parallel_rayon_traclusdl.rs — Rayon-parallel TraClus over trajectories and segments
+
 use std::slice;
 
 use super::base_traclusdl::TraclusAlgorithm;
@@ -10,7 +11,6 @@ use crate::storage::{
     clustered_trajectories::ClusteredTrajectories,
     raw_trajectories::{Bucket, RawTrajectories},
 };
-use crate::utils::events::event_singleton::emit_timed_perf;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 use rayon::prelude::*;
@@ -40,35 +40,32 @@ impl ParallelRayonTraclusDL {
 
         for bucket in bucket_serial_iter {
             // Shared read-only nearby copy per bucket
-            emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);
-            emit_timed_perf("Copy_Nearby_Trajectories", false, None);
 
             // Parallelize over trajectories in this bucket using Rayon
             let traj_parallel_iter: Iter<'_, Trajectory> = bucket.trajectories.par_iter();
             let bucket_results: Vec<Vec<Cluster>> = traj_parallel_iter
                 .map(|traj_seed: &Trajectory| {
-                    let thread_index: Option<usize> = rayon::current_thread_index();
+                    // Each thread checks the stop flag before proceeding with clustering
+                    if self.is_stopped() {
+                        return Vec::new();
+                    }
 
-                    emit_timed_perf("Clustering", true, thread_index);
                     let clusters: Vec<Cluster> =
                         self.individual_trajectory_clustering(traj_seed, &nearby_trajs);
-                    emit_timed_perf("Clustering", false, thread_index);
 
                     clusters
                 })
                 .collect::<Vec<_>>();
 
-            // Commit the results for this bucket
-            emit_timed_perf("Commiting", true, None);
-            results.extend(bucket_results);
-            emit_timed_perf("Commiting", false, None);
-
             // Stop early if requested
             if self.is_stopped() {
                 break;
             }
+
+            // Commit the results for this bucket
+            results.extend(bucket_results);
 
             // Tick after every bucket (count = actual number of trajectories in this bucket)
             self.tick_clustering(bucket.trajectories.len());
@@ -76,17 +73,7 @@ impl ParallelRayonTraclusDL {
         results
     }
 
-    /// Clusters an individual trajectory against nearby trajectories.
-    /// For each segment (treated in parallel):
-    /// - Attempts to create an initial cluster if density requirements are met
-    /// - Expands the cluster to include all reachable segments
-    /// - Stores the completed cluster
-    ///
-    /// # Arguments
-    /// * `traj_seed` - The trajectory to use as a clustering seed
-    /// * `nearby_trajs` - Vector of nearby trajectories to consider for clustering
-    /// # Returns
-    /// * A vector of clusters formed from the trajectory segments
+    // Clusters one trajectory against nearby trajectories by expanding each reachable segment
     fn individual_trajectory_clustering(
         &self,
         traj_seed: &Trajectory,
@@ -136,8 +123,7 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
     // Required Method
     // ============================================================
 
-    /// Performs a version of DBSCAN clustering on trajectory segments organized in angle-based buckets.
-    /// Implements the main clustering logic for the parallel TraClusDL algorithm using Rayon for parallelism.
+    // Runs the parallel DBSCAN pipeline over angle buckets using Rayon
     fn db_scan_clustering(
         &self,
         raw_trajectories: &RawTrajectories,
@@ -156,11 +142,9 @@ impl TraclusAlgorithm for ParallelRayonTraclusDL {
         self.fill_non_clustered_segments(raw_trajectories, clustered_trajectories);
 
         // Phase 3: serial commit (regroup clusters)
-        emit_timed_perf("Commiting_Results", true, None);
         for clusters in results {
             clustered_trajectories.add_list_cluster(clusters);
         }
-        emit_timed_perf("Commiting_Results", false, None);
 
         // Phase 4: create corridors from clusters and finalize non-clustered segments
         self.emit_start_remove_duplicates(clustered_trajectories);

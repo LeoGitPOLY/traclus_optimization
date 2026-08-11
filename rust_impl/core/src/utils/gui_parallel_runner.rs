@@ -1,9 +1,8 @@
-// gui_parallel_runner.rs - Enforces one-task-at-a-time execution for GUI-triggered work on MainTraclusDL
-//
-// The GUI owns one GuiParallelRunner. Every button that triggers computation
-// calls try_run(...). If a task is already running, try_run returns false
-// immediately and the button stays disabled. Otherwise it spawns one std::thread
-// which may internally use the custom Rayon pool inside MainTraclusDL.
+// gui_parallel_runner.rs — enforces one-task-at-a-time execution for GUI-triggered work
+
+// The GUI keeps one runner instance so only one computation can run at a time.
+// Buttons call try_run(...); if work is already running, the call returns false immediately.
+// The worker thread may still use the internal Rayon pool owned by TraclusDLCore.
 
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -44,14 +43,7 @@ impl GuiParallelRunner {
         }
     }
 
-    /// Generic task launcher.
-    ///
-    /// - `main`: Arc-wrapped CoreTraclusDL shared with the worker thread
-    /// - `task`: any fonction on `&mut CoreTraclusDL`; runs on a dedicated std::thread
-    /// - `stop`: flag to signal the task to stop
-    ///
-    /// Returns false immediately (no blocking) if already busy.
-    /// Returns true if the task was accepted and spawned.
+    // Launches one background task if the runner is idle
     pub fn try_run<F>(&self, main: Arc<Mutex<TraclusDLCore>>, task: F) -> bool
     where
         F: FnOnce(&mut TraclusDLCore, StopFlag) + Send + 'static,
@@ -84,7 +76,7 @@ impl GuiParallelRunner {
         true
     }
 
-    /// Signals the running task to stop. No-op if not running.
+    // Signals the running task to stop when one is active
     pub fn stop(&self) {
         if self.is_running() {
             self.stop_flag.store(true, Ordering::Relaxed);

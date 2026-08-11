@@ -1,8 +1,16 @@
 // perf_timer.rs — Event subscriber that collects PerfTimer events and prints a summary on exit
-//
+
 // PerfTimer runs on its own dedicated std::thread.
 // CPU usage stays near zero — the thread is parked while waiting for events.
 // All output is deferred: nothing is printed until the event channel closes.
+
+// How to use it inside the code:
+//  utils::events::event_singleton::emit_timed_perf("name_of_the_task", true, Option<thread_index>);
+//  THE SECTION OF CODE TO TIME
+//  utils::events::event_singleton::emit_timed_perf("name_of_the_task", false, Option<thread_index>);
+
+// If the section of code to time is nested inside another timed section,
+// the parent section will be printed first, followed by its children, and so on recursively.
 
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
@@ -37,8 +45,7 @@ pub struct PerfTimer {
 }
 
 impl PerfTimer {
-    /// Spawn the perf timer thread.
-    /// `rx` is the Receiver returned by EventBus::subscribe().
+    // Spawns the perf timer thread that aggregates timing events
     pub fn start() -> JoinHandle<()> {
         let rx: Receiver<AppEvent> = singleton_subscribe();
 

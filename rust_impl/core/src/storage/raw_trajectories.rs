@@ -1,6 +1,7 @@
 // raw_trajectories.rs — angle-bucketed trajectory index for neighbor lookup
+
 use super::super::geometry::trajectory::Trajectory;
-use crate::utils::angle_u16::{AngleU16, FULL_CIRCLE};
+use crate::utils::data_types::angle_u16::{AngleU16, FULL_CIRCLE};
 
 const BUCKET_SIZE: f64 = 1.0; // degrees, must evenly divide 360.0
 
@@ -69,28 +70,6 @@ impl RawTrajectories {
         }
     }
 
-    // Iterator over trajectories in buckets within max_angle
-    pub fn iter_nearby_angle(&self, angle: AngleU16) -> impl Iterator<Item = &Trajectory> {
-        let idx: usize = self.angle_to_bucket(angle);
-
-        let u_len: usize = self.traj_buckets.len();
-        let i_len: isize = u_len as isize;
-
-        let wrap = |i: isize| -> usize { ((i % i_len) + i_len) as usize % u_len };
-
-        // Number of neighboring buckets required on each side to fully cover max_angle
-        let bucket_radius: isize = self.max_angle.raw().div_ceil(self.bucket_size.raw()) as isize;
-        let mut indices: Vec<usize> = Vec::new();
-
-        for offset in -bucket_radius..=bucket_radius {
-            indices.push(wrap(idx as isize + offset));
-        }
-
-        indices
-            .into_iter()
-            .flat_map(move |i| self.traj_buckets[i].trajectories.iter())
-    }
-
     // Returns a copy of trajectories from all buckets within max_angle
     pub fn vec_nearby_angle(&self, angle: AngleU16) -> Vec<Trajectory> {
         let idx: usize = self.angle_to_bucket(angle);
@@ -126,10 +105,6 @@ impl RawTrajectories {
     #[allow(unused)]
     pub fn print_info(&self) {
         for (i, bucket) in self.traj_buckets.iter().enumerate() {
-            // DEAD: skip empty buckets in debug print — kept for reference
-            // if bucket.trajectories.len() == 0 {
-            //     continue;
-            // }
             println!(
                 "Bucket {}: Angle [{:.2}°, {:.2}°[ - {} trajectories",
                 i,

@@ -1,4 +1,5 @@
 // corridor.rs — weighted average line representing a finalized cluster
+
 use super::super::geometry::point::Point;
 use super::cluster::Cluster;
 use super::cluster_member::ClusterMember;

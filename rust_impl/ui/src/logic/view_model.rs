@@ -1,4 +1,4 @@
-// view_model.rs - Data bound to the GUI fields (form state)
+// view_model.rs — GUI-bound form state
 
 use std::time::Instant;
 
@@ -58,6 +58,7 @@ pub struct ViewModel {
     // Error section
     pub error_popup: Option<String>,
 }
+
 impl ViewModel {
     pub fn new(args: TraclusArgs) -> Self {
         let args_buffer: ArgsBuffer = ArgsBuffer::from_args(&args);

@@ -1,12 +1,11 @@
 // clustered_trajectories.rs — clustering results, corridors, and non-clustered segments
+
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
 use super::super::objects::cluster_member::ClusterMember;
 use super::super::objects::corridor::Corridor;
 use super::super::storage::priority_queue::PriorityQueueCluster;
 use crate::io::args::TraclusArgs;
-use crate::utils::events::app_events::{AppEvent, ComputationType};
-use crate::utils::events::event_singleton::emit;
 
 pub struct ClusteredTrajectories {
     clusters: PriorityQueueCluster,
@@ -32,23 +31,6 @@ impl ClusteredTrajectories {
     pub fn add_list_cluster(&mut self, clusters: Vec<Cluster>) {
         for cluster in clusters {
             self.add_cluster(cluster);
-        }
-    }
-
-    // Pops clusters by priority until empty, building Corridor for each
-    pub fn finalize_corridors(&mut self, args: &TraclusArgs) {
-        let mut num_last_elements: usize = self.clusters.get_size_elements();
-
-        while let Some(completed_cluster) = self.clusters.pop_and_clean(&args) {
-            let index_corridor: usize = self.corridors.len();
-            let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
-            self.corridors.push(corridor);
-
-            emit(AppEvent::ComputationProgress {
-                computation_type: ComputationType::RemoveDuplicates,
-                increment_progress: num_last_elements - self.clusters.get_size_elements(),
-            });
-            num_last_elements = self.clusters.get_size_elements();
         }
     }
 

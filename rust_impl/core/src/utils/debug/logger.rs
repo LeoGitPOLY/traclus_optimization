@@ -1,5 +1,5 @@
 // logger.rs — Event subscriber that prints AppEvents to stdout, excluding perf timers
-//
+
 // The logger runs on its own dedicated std::thread
 // CPU usage stays near zero — the thread is parked while waiting for events.
 
@@ -13,8 +13,7 @@ use crate::utils::events::event_singleton::subscribe as singleton_subscribe;
 pub struct Logger;
 
 impl Logger {
-    /// Spawn the logger thread.
-    /// `rx` is the Receiver returned by EventBus::subscribe().
+    // Spawns the logger thread that prints application events
     pub fn start() -> JoinHandle<()> {
         let rx: Receiver<AppEvent> = singleton_subscribe();
 

@@ -1,4 +1,4 @@
-// traclus_app.rs - Main application state and entry point
+// traclusdl_app.rs — main application state and GUI entry point
 
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
@@ -106,16 +106,15 @@ impl TraclusDLApp {
     pub fn on_plus_vm(&mut self) {
         let vm: &mut ViewModel = self.current_vm();
         vm.error_popup = Some("Functionality not implemented yet. Coming soon!".to_string());
-        // app.vm.push(crate::gui::view_model::ViewModel::default());
     }
 
     // ─────────────────────────────────────────────
     // Events handling
     // ─────────────────────────────────────────────
 
-    /// Drains all pending events from the channel and updates GUI state.
+    // Drains all pending events from the channel and updates GUI state
     pub fn drain_events(&mut self) {
-        // try_recv is non-blocking — returns Err(Empty) immediately when nothing is queued
+        // try_recv is non-blocking
         while let Ok(event) = self.event_rx.try_recv() {
             self.handle_event(event);
         }
@@ -183,7 +182,7 @@ impl TraclusDLApp {
         }
     }
 
-    /// Launches a task on the worker thread via GuiParallelRunner.
+    // Launches a task on the worker thread via GuiParallelRunner
     pub fn launch<F>(&mut self, task: F)
     where
         F: FnOnce(&mut TraclusDLCore, StopFlag) + Send + 'static,
@@ -191,7 +190,7 @@ impl TraclusDLApp {
         self.runner.try_run(Arc::clone(&self.main_traclus), task);
     }
 
-    /// Returns a mutable reference to the currently selected ViewModel.
+    // Returns a mutable reference to the currently selected ViewModel
     pub fn current_vm(&mut self) -> &mut ViewModel {
         &mut self.vm[self.current_selected_vm]
     }
@@ -206,6 +205,7 @@ fn num_cpus_detected() -> usize {
         .map(|n| n.get())
         .unwrap_or(1)
 }
+
 fn estimated_time_total(start: std::time::Instant, progress_percent: f64) -> f64 {
     let real_elapsed: f64 = start.elapsed().as_secs_f64();
 
@@ -225,7 +225,7 @@ fn estimated_time_total(start: std::time::Instant, progress_percent: f64) -> f64
         1.0
     } else {
         // Linear interpolation from initial_boost → 1.0 as progress goes 0.1 → fade_until
-        let t = (progress_percent - 0.1) / (fade_until - 0.1);
+        let t: f64 = (progress_percent - 0.1) / (fade_until - 0.1);
         initial_boost + t * (1.0 - initial_boost)
     };
 
@@ -246,7 +246,7 @@ pub fn start_gui(args: TraclusArgs, main_traclusdl: TraclusDLCore) {
     };
 
     eframe::run_native(
-        "Traclus_DL - Rust Implementation",
+        "TraClus_DL - Rust Implementation",
         options,
         Box::new(|_cc| Box::new(TraclusDLApp::new(args, main_traclusdl))),
     )

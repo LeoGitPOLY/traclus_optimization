@@ -1,4 +1,5 @@
-// app_event.rs - Event enum and EventBus for MainTraclusDL to communicate with GUI and Logger
+// app_events.rs — event enum and EventBus for GUI and logger communication
+
 use std::{fmt, time::Instant};
 
 // ─────────────────────────────────────────────
@@ -36,7 +37,7 @@ pub enum AppEvent {
         thread_index: Option<usize>,
     },
 
-    /// Emitted on any unrecoverable error inside a task
+    // Emitted on any unrecoverable error inside a task
     Error(AppError),
 }
 

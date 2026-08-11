@@ -1,4 +1,5 @@
 // serial_traclusdl.rs — single-threaded TraClus implementation
+
 use super::super::geometry::trajectory::Trajectory;
 use super::super::objects::cluster::Cluster;
 use super::super::storage::{
@@ -7,7 +8,6 @@ use super::super::storage::{
 use super::base_traclusdl::TraclusAlgorithm;
 
 use crate::io::args::TraclusArgs;
-use crate::utils::events::event_singleton::emit_timed_perf;
 use crate::utils::gui_parallel_runner::StopFlag;
 
 pub struct SerialTraclusDL {
@@ -31,10 +31,8 @@ impl SerialTraclusDL {
     ) {
         for bucket in &raw_trajectories.traj_buckets {
             // Nearby trajectories copied once per bucket
-            emit_timed_perf("Copy_Nearby_Trajectories", true, None);
             let nearby_trajs: Vec<Trajectory> =
                 raw_trajectories.vec_nearby_angle(bucket.angle_start);
-            emit_timed_perf("Copy_Nearby_Trajectories", false, None);
 
             // Iterate over trajectories in this bucket serially
             for traj_seed in &bucket.trajectories {

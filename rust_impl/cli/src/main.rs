@@ -1,3 +1,7 @@
+// main.rs — CLI entry point for launching the pipeline
+
+use std::thread::JoinHandle;
+
 use clap::Parser;
 use traclusdl_core::io::args::{InterfaceMode, TraclusArgs};
 use traclusdl_core::traclusdl_core::TraclusDLCore;
@@ -12,7 +16,7 @@ fn main() -> std::io::Result<()> {
     TraclusDLCore::build_thread_pool(&traclus_args, false);
 
     // Start the logger thread or perf timer thread
-    let handle = match traclus_args.interface_mode {
+    let handle: Option<JoinHandle<()>> = match traclus_args.interface_mode {
         InterfaceMode::Logger => Some(Logger::start()),
         InterfaceMode::PerfTimer => Some(PerfTimer::start()),
         _ => None,

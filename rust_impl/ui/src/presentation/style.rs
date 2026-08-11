@@ -1,4 +1,4 @@
-// style.rs - Central place for all sizes and colors used in the GUI
+// style.rs — shared GUI sizes and colors
 
 use eframe::egui::Color32;
 

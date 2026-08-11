@@ -1,4 +1,5 @@
 // point.rs — 2D point with basic vector ops
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
     pub x: f64,

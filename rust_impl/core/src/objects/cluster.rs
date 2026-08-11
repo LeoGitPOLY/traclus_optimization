@@ -1,4 +1,5 @@
 // cluster.rs — DBSCAN cluster with seed, candidates, and members
+
 use super::cluster_member::{ClusterMember, ClusterSeed};
 
 pub struct Cluster {

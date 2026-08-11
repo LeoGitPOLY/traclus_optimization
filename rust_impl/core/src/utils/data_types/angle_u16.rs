@@ -1,13 +1,14 @@
 // angle_u16.rs — fixed-point angle type (hundredths of a degree) for hot-loop comparisons
-/// Strict range invariant: the inner u16 is ALWAYS in 0..=35999 (0.00°..=359.99°).
-use std::{fmt, str::FromStr};
 
+use std::{fmt, str::FromStr};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+
 pub struct AngleU16(u16);
 
 pub const SCALE: f64 = 100.0; // 2 decimal places of precision
 pub const FULL_CIRCLE: u16 = 36_000; // 360.00° * SCALE, exclusive upper bound
 
+// Strict range invariant: the inner u16 is ALWAYS in 0..=35999 (0.00°..=359.99°).
 impl AngleU16 {
     // Normalizes any input degree value into 0..=35999 via integer rem_euclid,
     // so out-of-range input (negative, >360, NaN-adjacent) can never escape the invariant.

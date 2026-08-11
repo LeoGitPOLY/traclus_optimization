@@ -1,4 +1,6 @@
 // segment.rs — trajectory sub-segment stored as start + midpoint
+// The end points is reconstructed from the start and midpoint to save memory
+
 use super::point::Point;
 
 #[derive(Debug, Clone)]

@@ -1,9 +1,8 @@
 // trajectory.rs — OD line split into directed segments for clustering
-use std::f64::consts::PI;
 
+use crate::utils::data_types::angle_u16::AngleU16;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
-use crate::utils::angle_u16::AngleU16;
+use std::f64::consts::PI;
 
 use super::input_od_line::InputODLine;
 use super::point::Point;
@@ -49,7 +48,7 @@ impl Trajectory {
         (dx * dx + dy * dy).sqrt()
     }
 
-    // Minimum distance to polyline and approximate segment index via projection parameter t
+    // Minimum distance from a point to the trajectory, and index of the closest segment
     pub fn distance_to_point(&self, point: &Point) -> (f64, usize) {
         let px: f64 = point.x;
         let py: f64 = point.y;

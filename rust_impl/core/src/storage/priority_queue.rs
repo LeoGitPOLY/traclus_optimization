@@ -1,12 +1,6 @@
 // priority_queue.rs — weight/distance priority queue for cluster deduplication
-// Now: sum_distance is calculated incrementally when members are added for all clusters (not for cluster in a tie)
 
-// TODO: compute sum_distance lazily instead of incrementally on every member add
-
-use crate::{
-    io::args::{ExecutionMode, TraclusArgs},
-    utils::events::event_singleton::emit_timed_perf,
-};
+use crate::io::args::{ExecutionMode, TraclusArgs};
 
 use super::super::objects::{cluster::Cluster, cluster_member::ClusterMember};
 use rayon::{iter::Enumerate, prelude::*, slice::ChunksMut};
@@ -57,27 +51,15 @@ impl PriorityQueueCluster {
             return None;
         }
         if !self.is_initialy_sorted {
-            emit_timed_perf("Sort_by_WeightDistance", true, None);
             self.sort_by_weight_and_distance();
-            emit_timed_perf("Sort_by_WeightDistance", false, None);
         }
 
-        emit_timed_perf("Take_First_Element", true, None);
         let last: Cluster = self.elements.pop().unwrap();
         let used_ids: FxHashSet<(usize, usize)> = Self::collect_used_traj_ids(&last);
-        emit_timed_perf("Take_First_Element", false, None);
 
-        emit_timed_perf("Clean_Remaining_Clusters", true, None);
         self.clean_remaining_clusters(&used_ids, args);
-        emit_timed_perf("Clean_Remaining_Clusters", false, None);
-
-        emit_timed_perf("Clean_NonClustered_Segments", true, None);
         self.clean_non_clustered_segments(&used_ids);
-        emit_timed_perf("Clean_NonClustered_Segments", false, None);
-
-        emit_timed_perf("Sort_by_WeightDistance", true, None);
         self.sort_by_weight_and_distance();
-        emit_timed_perf("Sort_by_WeightDistance", false, None);
 
         Some(last)
     }
@@ -102,8 +84,9 @@ impl PriorityQueueCluster {
         if self.elements.len() < PARALLEL_THRESHOLD {
             mode = ExecutionMode::Serial;
         }
-        emit_timed_perf("Clean_All_Clusters_Section", true, None);
+
         let remove_indexes: Vec<usize> = match mode {
+            // For parallel execution: divide elements into chunks, clean each chunk in parallel, and collect indexes to remove
             ExecutionMode::ParallelRayon => {
                 let chunk_size: usize = (self.elements.len() / rayon::current_num_threads()).max(1);
                 let chunk_iter: Enumerate<ChunksMut<'_, Cluster>> =
@@ -118,15 +101,13 @@ impl PriorityQueueCluster {
                     .collect()
             }
 
+            // For serial execution: clean the entire elements vector in a single pass
             ExecutionMode::Serial => {
                 Self::clean_section_cluster_serial(&mut self.elements, used, args, 0)
             }
         };
-        emit_timed_perf("Clean_All_Clusters_Section", false, None);
 
-        emit_timed_perf("Remove_Indexes_All", true, None);
         Self::remove_indexes(&mut self.elements, &remove_indexes);
-        emit_timed_perf("Remove_Indexes_All", false, None);
     }
 
     #[inline]
@@ -136,9 +117,6 @@ impl PriorityQueueCluster {
         args: &TraclusArgs,
         index_offset: usize,
     ) -> Vec<usize> {
-        let thread_index: Option<usize> = rayon::current_thread_index();
-        emit_timed_perf("Clean_Clusters_serial", true, thread_index);
-
         let mut remove_indexes: Vec<usize> = Vec::new();
 
         for (index, cluster) in elements.iter_mut().enumerate() {
@@ -146,7 +124,7 @@ impl PriorityQueueCluster {
                 remove_indexes.push(index_offset + index);
             }
         }
-        emit_timed_perf("Clean_Clusters_serial", false, thread_index);
+
         remove_indexes
     }
 
@@ -156,7 +134,7 @@ impl PriorityQueueCluster {
         used: &FxHashSet<(usize, usize)>,
         threshold: u32,
     ) -> bool {
-        // Seed already used — discard whole cluster
+        // Seed already used; discard whole cluster
         if used.contains(&(cluster.seed.cm.traj_id, cluster.seed.cm.segment_id)) {
             return true;
         }

@@ -1,4 +1,4 @@
-// traclusdl_gui.rs - GUI rendering (sections and widgets)
+// traclusdl_gui.rs — GUI rendering for sections and widgets
 // This file is mainly AI generated (Claude.ai)
 // It's made to provide a minimal working GUI for users
 
@@ -13,7 +13,7 @@ use super::style::*;
 use crate::logic::traclusdl_app::TraclusDLApp;
 use traclusdl_core::io::args::ExecutionMode;
 use traclusdl_core::io::args_config::get_param_configs;
-use traclusdl_core::utils::angle_u16::AngleU16;
+use traclusdl_core::utils::data_types::angle_u16::AngleU16;
 
 // ─────────────────────────────────────────────
 // App Update (main render loop)
@@ -247,7 +247,7 @@ fn render_parameters_section(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
                             cfg.max_dist.max,
                         );
                         ui.add_space(WIDGET_SPACING);
-                        
+
                         // min_density
                         commit_on_focus_loss(
                             ui,

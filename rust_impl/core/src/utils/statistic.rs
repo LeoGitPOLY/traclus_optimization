@@ -1,21 +1,14 @@
+// statistic.rs — clustering statistics and directional correlation helpers
+
 use crate::storage::clustered_trajectories::ClusteredTrajectories;
 use crate::storage::raw_trajectories::RawTrajectories;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::collections::HashMap;
 
-/// Computes a directional correlation factor in [0.0, 1.0].
-///
-/// - 0.0 → trajectories are perfectly spread across all buckets (no dominant direction)
-/// - 1.0 → all trajectories are in a single bucket (one dominant direction)
-///
-/// Uses a normalized Herfindahl-Hirschman Index (HHI) on bucket shares,
-/// weighted by adjacency: each bucket's share is spread 50% to its neighbors
-/// so that near-concentrated distributions (adjacent buckets) score high too.
-///
-/// # Arguments
-/// * `raw` - The raw trajectories to analyze
+// Computes a directional correlation factor in [0.0, 1.0]
+// Adjacent buckets contribute to the same score so near-concentrated flows still count as directional
 pub fn directional_correlation(raw: &RawTrajectories) -> f64 {
-    let total = raw.get_num_trajectories();
+    let total: usize = raw.get_num_trajectories();
 
     // Edge cases
     if total == 0 {
@@ -68,18 +61,18 @@ pub fn directional_correlation(raw: &RawTrajectories) -> f64 {
     ((hhi - hhi_min) / (hhi_max - hhi_min)).clamp(0.0, 1.0)
 }
 
-/// Per-trajectory segment counts: (segments clustered into a corridor, segments left unclustered).
+// Per-trajectory segment counts: (segments clustered into a corridor, segments left unclustered).
 type TrajSegmentCounts = HashMap<usize, (u32, u32)>;
 
-/// Histogram of trajectories by number of clustered segments, plus summary stats.
+// Histogram of trajectories by number of clustered segments, plus summary stats.
 pub struct ClusteringHistogram {
-    /// `histogram[k]` = number of trajectories with exactly `k` clustered segments.
+    // `histogram[k]` = number of trajectories with exactly `k` clustered segments.
     pub histogram: Vec<usize>,
-    /// Trajectories with at least one clustered segment, out of `total_trajectories`.
+    // Trajectories with at least one clustered segment, out of `total_trajectories`.
     pub num_traj_with_clustered_segment: usize,
-    /// Total number of distinct trajectories observed.
+    // Total number of distinct trajectories observed.
     pub total_trajectories: usize,
-    /// Highest number of clustered segments found for a single trajectory.
+    // Highest number of clustered segments found for a single trajectory.
     pub max_clustered_segments: u32,
 }
 
@@ -105,10 +98,7 @@ impl ClusteringHistogram {
     }
 }
 
-/// Builds a per-trajectory clustered/non-clustered segment count map in parallel.
-///
-/// # Arguments
-/// * `result` - The clustering result to analyze
+// Builds a per-trajectory clustered/non-clustered segment count map in parallel
 fn count_segments_per_trajectory(clust_storage: &ClusteredTrajectories) -> TrajSegmentCounts {
     clust_storage
         .get_all_cluster_members_iter()
@@ -135,14 +125,8 @@ fn count_segments_per_trajectory(clust_storage: &ClusteredTrajectories) -> TrajS
         })
 }
 
-/// Computes the clustering histogram and summary stats for a clustering result.
-///
-/// Buckets trajectories by how many of their segments ended up in a corridor,
-/// then reports the distribution (histogram), coverage (trajectories with
-/// any clustered segment), and the peak.
-///
-/// # Arguments
-/// * `result` - The clustering result to analyze
+// Computes the clustering histogram and summary stats for a clustering result
+// Buckets trajectories by how many of their segments ended up in a corridor
 pub fn clustering_histogram(clust_storage: &ClusteredTrajectories) -> ClusteringHistogram {
     let counts: TrajSegmentCounts = count_segments_per_trajectory(clust_storage);
 

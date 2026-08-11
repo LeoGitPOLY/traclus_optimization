@@ -1,6 +1,7 @@
 // cluster_member.rs — segment reference inside a cluster or corridor
+
 use super::super::geometry::{point::Point, segment::Segment, trajectory::Trajectory};
-use crate::utils::angle_u16::AngleU16;
+use crate::utils::data_types::angle_u16::AngleU16;
 
 pub struct ClusterMember {
     pub traj_id: usize,

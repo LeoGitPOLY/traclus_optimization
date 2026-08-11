@@ -75,7 +75,7 @@ fn is_header(line: &str) -> bool {
         .any(|field: &str| field.trim().parse::<f64>().is_err())
 }
 
-/// Detects whether the line uses tabs, commas, or semicolons as separator.
+// Detects whether the line uses tabs, commas, or semicolons as separator
 fn detect_separator(line: &str) -> char {
     if line.contains('\t') {
         '\t'
@@ -86,6 +86,7 @@ fn detect_separator(line: &str) -> char {
     }
 }
 
+// Parses a string into a type T, returning an io::Error if parsing fails
 fn parse_to_type<T: FromStr>(s: &str, line_number: usize, field_name: &str) -> io::Result<T> {
     s.parse::<T>().map_err(|_| {
         io::Error::new(
@@ -98,11 +99,7 @@ fn parse_to_type<T: FromStr>(s: &str, line_number: usize, field_name: &str) -> i
     })
 }
 
-/// Parses a line into an InputODLine.
-///
-/// Supported formats (tab, comma, or semicolon separated):
-///   With name:    name  weight  x_start  y_start  x_end  y_end
-///   Without name: weight  x_start  y_start  x_end  y_end
+// Parses one input row into an InputODLine
 #[inline]
 fn parse_line_to_od(
     line: &str,
@@ -185,7 +182,7 @@ fn parse_line_to_od(
     })
 }
 
-// Loads and segments all valid OD lines; skips zero-length lines
+// Loads and segments all valid OD lines while skipping zero-length lines
 pub fn parse_input_data(args: &TraclusArgs) -> Option<RawTrajectories> {
     let mut trajectory_storage: RawTrajectories = RawTrajectories::new(args.max_angle);
 

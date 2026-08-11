@@ -1,7 +1,11 @@
 // args.rs — CLI argument types, parsing, and TraclusArgs definition
+
+use crate::{
+    io::args_config::{AllArgsConfigs, get_param_configs},
+    utils::data_types::angle_u16::AngleU16,
+};
 use clap::{Parser, ValueEnum};
 use std::{fmt, hash::Hash};
-use crate::{io::args_config::{AllArgsConfigs, get_param_configs}, utils::angle_u16::AngleU16};
 
 // ─────────────────────────────────────────────
 // ExecutionMode  — algorithm parallelism strategy
@@ -138,7 +142,6 @@ impl InputHeaderField {
     }
 }
 
-
 // Rust does not have built-in enum reflection
 const INPUT_HEADER_FIELDS: [InputHeaderField; InputHeaderField::COUNT] = [
     InputHeaderField::Name,
@@ -149,7 +152,6 @@ const INPUT_HEADER_FIELDS: [InputHeaderField; InputHeaderField::COUNT] = [
     InputHeaderField::XDest,
     InputHeaderField::YDest,
 ];
-
 
 // Parses "field:column,…" map string into MappingHeader
 fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
@@ -176,7 +178,12 @@ fn parse_mapping(s: &str) -> Result<MappingHeader, String> {
             "yorigin" => InputHeaderField::YOrigin,
             "xdest" => InputHeaderField::XDest,
             "ydest" => InputHeaderField::YDest,
-            _ => return Err(format!("Field '{field}' is not accepted. All accepted fields: {:?}", INPUT_HEADER_FIELDS)),
+            _ => {
+                return Err(format!(
+                    "Field '{field}' is not accepted. All accepted fields: {:?}",
+                    INPUT_HEADER_FIELDS
+                ));
+            }
         };
 
         mapping.set_value(field, column.to_string());
@@ -214,7 +221,7 @@ pub struct TraclusArgs {
     )]
     pub segment_size: f64,
 
- #[arg(
+    #[arg(
         short = 'a',
         long = "max_angle",
         default_value_t = AngleU16::from_degrees(get_param_configs().max_angle.default),
@@ -301,7 +308,7 @@ pub struct TraclusArgs {
 
 impl Default for TraclusArgs {
     fn default() -> Self {
-    let cfg: AllArgsConfigs = get_param_configs();
+        let cfg: AllArgsConfigs = get_param_configs();
         Self {
             file: String::new(),
             output: String::new(),

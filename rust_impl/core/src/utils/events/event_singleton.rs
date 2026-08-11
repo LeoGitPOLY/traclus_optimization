@@ -1,3 +1,5 @@
+// event_singleton.rs — shared event bus backed by global sender storage
+
 use std::{
     sync::{
         Mutex, MutexGuard,
@@ -19,7 +21,7 @@ pub fn subscribe() -> Receiver<AppEvent> {
 }
 
 pub fn shutdown() {
-    let mut subscribers = SUBSCRIBERS.lock().unwrap();
+    let mut subscribers: MutexGuard<'_, Vec<Sender<AppEvent>>> = SUBSCRIBERS.lock().unwrap();
     subscribers.clear();
 
     *NUM_SUBSCRIBERS.lock().unwrap() = 0;
@@ -39,6 +41,7 @@ pub fn emit_error(error: AppError) {
     emit(AppEvent::Error(error));
 }
 
+#[allow(unused)]
 pub fn emit_timed_perf(event_label: &str, is_start: bool, thread_index: Option<usize>) {
     emit(AppEvent::PerfTimer {
         event_label: event_label.to_string(),
