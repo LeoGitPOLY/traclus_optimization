@@ -103,7 +103,7 @@ fn parse_to_type<T: FromStr>(s: &str, line_number: usize, field_name: &str) -> i
 #[inline]
 fn parse_line_to_od(
     line: &str,
-    header_indexes: &Vec<Option<usize>>,
+    header_indexes: &[Option<usize>],
     index_line: usize,
 ) -> io::Result<InputODLine> {
     let sep: char = detect_separator(line);

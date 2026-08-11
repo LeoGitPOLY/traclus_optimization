@@ -35,14 +35,16 @@ pub struct GuiParallelRunner {
     stop_flag: StopFlag,
 }
 
-impl GuiParallelRunner {
-    pub fn new() -> Self {
+impl Default for GuiParallelRunner {
+    fn default() -> Self {
         Self {
             is_running: Arc::new(Mutex::new(false)),
             stop_flag: Arc::new(AtomicBool::new(false)),
         }
     }
+}
 
+impl GuiParallelRunner {
     // Launches one background task if the runner is idle
     pub fn try_run<F>(&self, main: Arc<Mutex<TraclusDLCore>>, task: F) -> bool
     where

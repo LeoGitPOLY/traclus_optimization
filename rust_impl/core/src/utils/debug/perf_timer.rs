@@ -64,28 +64,24 @@ impl PerfTimer {
 
         // recv() parks the thread with zero CPU usage until an event is received
         while let Ok(event) = rx.recv() {
-            match event {
-                AppEvent::PerfTimer {
-                    event_label,
-                    exact_instant,
-                    is_start,
-                    thread_index,
-                } => {
-                    let mut full_label: String = event_label.clone();
+            if let AppEvent::PerfTimer {
+                event_label,
+                exact_instant,
+                is_start,
+                thread_index,
+            } = event
+            {
+                let mut full_label: String = event_label.clone();
 
-                    if let Some(tid) = thread_index {
-                        full_label = format!("{}(tid:{})", event_label, tid);
-                    }
-
-                    if is_start {
-                        perf_timer.handle_timer_start(event_label, full_label, exact_instant);
-                    } else {
-                        perf_timer.handle_timer_end(event_label, full_label, exact_instant);
-                    }
+                if let Some(tid) = thread_index {
+                    full_label = format!("{}(tid:{})", event_label, tid);
                 }
 
-                // All other events are handled exclusively by Logger — ignore here
-                _ => {}
+                if is_start {
+                    perf_timer.handle_timer_start(event_label, full_label, exact_instant);
+                } else {
+                    perf_timer.handle_timer_end(event_label, full_label, exact_instant);
+                }
             }
         }
 
@@ -123,10 +119,10 @@ impl PerfTimer {
 
         // Create the record immediately so children can safely reference it
         // Elapsed time and instance count are updated when the timer ends
-        if !self.all_elements.contains_key(&full_label) {
-            let record_element: PerfRecord = PerfRecord::new(full_label.clone());
-            self.all_elements.insert(full_label, record_element);
-        }
+        let label: String = full_label.clone();
+        self.all_elements
+            .entry(full_label)
+            .or_insert_with(|| PerfRecord::new(label));
     }
 
     fn handle_timer_end(

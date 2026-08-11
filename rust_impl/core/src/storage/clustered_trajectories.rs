@@ -35,7 +35,7 @@ impl ClusteredTrajectories {
     }
 
     pub fn pop_and_clean(&mut self, args: &TraclusArgs) -> Option<Cluster> {
-        self.clusters.pop_and_clean(&args)
+        self.clusters.pop_and_clean(args)
     }
 
     pub fn take_non_clustered_segments(&mut self) {

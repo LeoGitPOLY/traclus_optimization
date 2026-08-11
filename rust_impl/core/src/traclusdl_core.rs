@@ -17,22 +17,16 @@ use super::algorithms::base_traclusdl::TraclusAlgorithm;
 use super::algorithms::parallel_rayon_traclusdl::ParallelRayonTraclusDL;
 use super::algorithms::serial_traclusdl::SerialTraclusDL;
 
+#[derive(Default)]
 pub struct TraclusDLCore {
     raw_storage: Option<RawTrajectories>,
     clust_storage: Option<ClusteredTrajectories>,
 }
 
 impl TraclusDLCore {
-    pub fn new() -> Self {
-        Self {
-            raw_storage: None,
-            clust_storage: None,
-        }
-    }
-
     // Parses input file and resets clustered storage
     pub fn load_raw_storage(&mut self, args: &TraclusArgs, _: StopFlag) {
-        self.raw_storage = parse_input_data(&args);
+        self.raw_storage = parse_input_data(args);
         self.clust_storage = None;
 
         if self.raw_storage.is_none() {
@@ -54,7 +48,7 @@ impl TraclusDLCore {
         }
         self.clust_storage = None;
         let raw_storage: &RawTrajectories = self.raw_storage.as_ref().unwrap();
-        let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(&args);
+        let mut clust_storage: ClusteredTrajectories = ClusteredTrajectories::new(args);
 
         let mut clustering_algorithm: Box<dyn TraclusAlgorithm> = Self::get_proper_algorithm(args);
         clustering_algorithm.set_stop_flag(stop);

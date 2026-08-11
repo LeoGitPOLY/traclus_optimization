@@ -43,7 +43,7 @@ impl TraclusDLApp {
             detected_cpus: num_cpus_detected(),
 
             main_traclus,
-            runner: GuiParallelRunner::new(),
+            runner: GuiParallelRunner::default(),
             event_rx,
         }
     }
@@ -142,9 +142,8 @@ impl TraclusDLApp {
                 vm.start_time_computation = Instant::now();
                 vm.computation_type = computation_type.clone();
 
-                vm.output += &format!("Started {:?} computation ", computation_type,)
-                    .trim_end_matches('\n')
-                    .to_string();
+                vm.output +=
+                    format!("Started {:?} computation ", computation_type,).trim_end_matches('\n');
             }
 
             AppEvent::ComputationProgress {

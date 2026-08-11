@@ -125,12 +125,14 @@ impl InputHeaderField {
     pub fn default_indexes(num_columns: usize) -> Vec<Option<usize>> {
         let mut indexes: Vec<Option<usize>> = vec![None; Self::COUNT];
 
-        let missing_optional: usize = Self::COUNT.saturating_sub(num_columns);
+        let missing_optional = Self::COUNT.saturating_sub(num_columns);
 
-        let mut csv_index: usize = 0;
-        for field in INPUT_HEADER_FIELDS.iter().skip(missing_optional) {
+        for (csv_index, field) in INPUT_HEADER_FIELDS
+            .iter()
+            .skip(missing_optional)
+            .enumerate()
+        {
             indexes[*field as usize] = Some(csv_index);
-            csv_index += 1;
         }
 
         indexes
@@ -228,7 +230,6 @@ pub struct TraclusArgs {
         value_parser = |v: &str| {
             let cfg = get_param_configs().max_angle;
             let val: f64 = v.parse().map_err(|_| String::from("must be a number"))?;
-            
             if val < cfg.min || val > cfg.max {
                 Err(format!("max_angle must be in range {}..={}", cfg.min, cfg.max))
             } else {
@@ -327,7 +328,7 @@ impl Default for TraclusArgs {
 impl TraclusArgs {
     pub fn print_small_summary(&self) -> String {
         format!(
-            "TraclusArgs:, max_dist={}, min_density={}, max_angle={}, segment_size={}\n",
+            "TraclusArgs: max_dist={}, min_density={}, max_angle={}, segment_size={}\n",
             self.max_dist, self.min_density, self.max_angle, self.segment_size
         )
     }

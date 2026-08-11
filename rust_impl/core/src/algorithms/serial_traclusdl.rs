@@ -62,7 +62,7 @@ impl SerialTraclusDL {
         for seed_segment in traj_seed.segments_iter() {
             // Try to form an initial cluster from this seed segment
             let cluster: Option<Cluster> =
-                self.initial_segment_cluster((&seed_segment, &traj_seed), nearby_trajs);
+                self.initial_segment_cluster((seed_segment, traj_seed), nearby_trajs);
 
             if let Some(mut cluster) = cluster {
                 // Expand the cluster to include all density-reachable segments
@@ -72,7 +72,7 @@ impl SerialTraclusDL {
             // If no cluster forms, continue to next segment (not dense enough)
         }
 
-        return cluster_group;
+        cluster_group
     }
 }
 
@@ -122,6 +122,7 @@ impl TraclusAlgorithm for SerialTraclusDL {
             return false;
         }
         self.emit_complete_remove_duplicates();
-        return true;
+
+        true
     }
 }

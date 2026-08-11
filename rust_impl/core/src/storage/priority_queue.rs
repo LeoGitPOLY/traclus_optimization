@@ -154,7 +154,7 @@ impl PriorityQueueCluster {
         }
 
         Self::remove_indexes(&mut cluster.members, &remove_indexes);
-        return false;
+        false
     }
 
     fn clean_non_clustered_segments(&mut self, used: &FxHashSet<(usize, usize)>) {

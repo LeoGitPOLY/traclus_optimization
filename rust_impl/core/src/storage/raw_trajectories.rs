@@ -32,7 +32,7 @@ impl RawTrajectories {
         let bucket_raw: u16 = bucket_size.raw();
 
         assert!(
-            FULL_CIRCLE % bucket_raw == 0,
+            FULL_CIRCLE.is_multiple_of(bucket_raw),
             "Bucket size must evenly divide 360°"
         );
 

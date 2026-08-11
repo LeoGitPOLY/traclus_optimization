@@ -32,8 +32,8 @@ impl ClusterMember {
             traj_id: cm.traj_id,
             segment_id: cm.segment_id,
             weight: cm.weight,
-            center: cm.center.clone(),
-            start: cm.start.clone(),
+            center: cm.center,
+            start: cm.start,
         }
     }
     pub fn new_from_traj(traj: &Trajectory, seg: &Segment) -> Self {
@@ -41,8 +41,8 @@ impl ClusterMember {
             traj_id: traj.id,
             segment_id: seg.id,
             weight: traj.weight,
-            center: seg.middle.clone(),
-            start: seg.start.clone(),
+            center: seg.middle,
+            start: seg.start,
         }
     }
 

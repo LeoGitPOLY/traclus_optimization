@@ -11,7 +11,7 @@ use traclusdl_core::utils::events::event_singleton;
 
 fn main() -> std::io::Result<()> {
     let traclus_args: TraclusArgs = TraclusArgs::parse();
-    let main_traclusdl: TraclusDLCore = TraclusDLCore::new();
+    let main_traclusdl: TraclusDLCore = TraclusDLCore::default();
 
     TraclusDLCore::build_thread_pool(&traclus_args, false);
 

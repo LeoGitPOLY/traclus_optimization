@@ -80,14 +80,14 @@ impl ClusteringHistogram {
     #[allow(dead_code)]
     pub fn get_summary(&self) -> Vec<String> {
         let mut output: Vec<String> = Vec::new();
-        output.push(format!("=== Clustered Trajectories Summary ==="));
+        output.push("=== Clustered Trajectories Summary ===".to_string());
         output.push(format!(
             "- Trajectories with at least one clustered segment: {} ({:.1}%)",
             self.num_traj_with_clustered_segment,
             100.0 * self.num_traj_with_clustered_segment as f64 / self.total_trajectories as f64
         ));
         let mut histogram_str: String = "".to_string();
-        histogram_str.push_str(&format!("- Segment clustered distribution:\t"));
+        histogram_str.push_str("- Segment clustered distribution:\t");
         for (i, &count) in self.histogram.iter().enumerate() {
             if count > 0 {
                 histogram_str.push_str(&format!("[{}:{}] ", i, count));

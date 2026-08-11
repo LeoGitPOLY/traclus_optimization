@@ -74,8 +74,8 @@ pub trait TraclusAlgorithm {
                 nearby_traj.id,
                 segment_id,
                 nearby_traj.weight,
-                segment.middle.clone(),
-                segment.start.clone(),
+                segment.middle,
+                segment.start,
             );
             local_weight += candidate.weight;
             cluster.candidates.push(candidate);
@@ -150,7 +150,7 @@ pub trait TraclusAlgorithm {
     fn create_corridors(&self, clustered_trajectories: &mut ClusteredTrajectories) {
         let mut num_last_elements: usize = clustered_trajectories.get_size_priority_queue();
 
-        while let Some(completed_cluster) = clustered_trajectories.pop_and_clean(&self.args()) {
+        while let Some(completed_cluster) = clustered_trajectories.pop_and_clean(self.args()) {
             let index_corridor: usize = clustered_trajectories.corridors.len();
             let corridor: Corridor = Corridor::new(completed_cluster, index_corridor);
             clustered_trajectories.corridors.push(corridor);
