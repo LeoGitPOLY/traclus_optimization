@@ -445,7 +445,7 @@ fn render_action_bar_running(ui: &mut egui::Ui, app: &mut TraclusDLApp) {
     let (r, g, b) = vm.computation_type.color();
     let color_progress = egui::Color32::from_rgb(r, g, b);
 
-    let progress = if vm.total_to_compute > 0 {
+    let progress: f32 = if vm.total_to_compute > 0 {
         vm.num_computed as f32 / vm.total_to_compute as f32
     } else {
         0.0

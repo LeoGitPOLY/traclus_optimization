@@ -159,7 +159,7 @@ impl TraclusDLApp {
 
             AppEvent::ComputationComplete { computation_type } => {
                 vm.num_computed = vm.total_to_compute;
-                let elapsed = vm.start_time_computation.elapsed().as_secs_f64() as u64;
+                let elapsed: u64 = vm.start_time_computation.elapsed().as_secs_f64() as u64;
 
                 if computation_type == vm.computation_type {
                     vm.output += &format!(" -> Completed ({}s) \n", elapsed);

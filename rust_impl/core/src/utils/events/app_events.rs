@@ -92,7 +92,7 @@ impl ComputationType {
         match self {
             ComputationType::Clustering => (39, 115, 38),
             ComputationType::RemoveDuplicates => (196, 148, 81),
-            ComputationType::CreateOutputs => (0, 0, 255),
+            ComputationType::CreateOutputs => (69, 95, 179),
             ComputationType::NotComputing => (128, 128, 128),
         }
     }

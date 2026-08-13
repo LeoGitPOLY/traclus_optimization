@@ -4,7 +4,7 @@ use std::thread::available_parallelism;
 
 use super::storage::clustered_trajectories::ClusteredTrajectories;
 use super::storage::raw_trajectories::RawTrajectories;
-use crate::utils::events::app_events::{AppError, AppEvent};
+use crate::utils::events::app_events::{AppError, AppEvent, ComputationType};
 
 use crate::io::args::{ExecutionMode, InterfaceMode, TraclusArgs};
 use crate::io::input_loader::parse_input_data;
@@ -73,6 +73,12 @@ impl TraclusDLCore {
 
         let clust_storage: &ClusteredTrajectories = self.clust_storage.as_ref().unwrap();
         let args: &TraclusArgs = &clust_storage.args_snapshot;
+
+        // Notify GUI of output generation start, but no progress tracking
+        emit(AppEvent::ComputationStart {
+            computation_type: ComputationType::CreateOutputs,
+            max_progress: 0,
+        });
 
         generate_corridor_file(args, clust_storage);
         generate_segment_file(args, clust_storage, SegOutFormat::NewTraclus);
